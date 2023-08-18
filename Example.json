@@ -1,0 +1,54 @@
+{
+  "MailTo": ["bob@contoso.com"],
+  "Upload": [
+    {
+      "Type": "File",
+      "Source": [
+        "C:\\Finance report Q1.xlsx",
+        "C:\\Finance report Q2.xlsx",
+        "C:\\Finance report Q3.xlsx"
+      ],
+      "Destination": "/reports/",
+      "Option": {
+        "OverwriteDestinationFile": false,
+        "RemoveSourceAfterUpload": false,
+        "ErrorWhen": {
+          "SourceIsNotFound": false
+        }
+      }
+    },
+    {
+      "Type": "Folder",
+      "Source": ["C:\\Applications\\App x"],
+      "Destination": "/Applications/",
+      "Option": {
+        "OverwriteDestinationFile": false,
+        "RemoveSourceAfterUpload": false,
+        "ErrorWhen": {
+          "SourceIsNotFound": false,
+          "SourceFolderIsEmpty": false
+        }
+      }
+    },
+    {
+      "Type": "FolderContent",
+      "Source": ["C:\\Applications\\App x"],
+      "Destination": "/Applications/App x",
+      "Option": {
+        "OverwriteDestinationFile": false,
+        "RemoveSourceAfterUpload": false,
+        "ErrorWhen": {
+          "SourceIsNotFound": false,
+          "SourceFolderIsEmpty": false
+        }
+      }
+    }
+  ],
+  "Sftp": {
+    "ComputerName": "ftp.appx.be",
+    "Credential": {
+      "UserName": "APP_X_SFTP_USERNAME",
+      "Password": "APP_X_SFTP_PASSWORD"
+    }
+  }
+}
