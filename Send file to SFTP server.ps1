@@ -25,13 +25,11 @@
 .PARAMETER Upload.Path
     The path to the file or folder.
 
-.PARAMETER Option.OverwriteExistingFile
-    Overwrite a file when a file with the same name already exists on the 
-    SFTP server.
+.PARAMETER Option.OverwriteDestinationData
+    Overwrite a data on the SFTP server when it already exists.
 
-.PARAMETER Option.RemoveFileAfterUpload
-    Remove the source file when the upload to the SFTP servers was 
-    successful.
+.PARAMETER Option.RemoveSourceAfterUpload
+    Remove the source data when the upload was successful.
 
 .PARAMETER Option.ErrorWhenSourceFileIsNotFound
     Throw an error when there's no source file found or the source folder is 
@@ -127,10 +125,10 @@ Begin {
                     throw "Property 'Upload.Option' not found"
                 }
                 try {
-                    [Boolean]::Parse($task.Option.OverwriteDestinationFile)
+                    [Boolean]::Parse($task.Option.OverwriteDestinationData)
                 }
                 catch {
-                    throw "Property 'Upload.Option.OverwriteDestinationFile' is not a boolean value"
+                    throw "Property 'Upload.Option.OverwriteDestinationData' is not a boolean value"
                 }
                 try {
                     [Boolean]::Parse($task.Option.RemoveSourceAfterUpload)
@@ -238,8 +236,8 @@ Process {
         foreach ($task in $Upload) {
             #region verbose
             $M = 'Upload task'
-            $M += "Option OverwriteDestinationFile '{0}' RemoveSourceAfterUpload '{1}'" -f 
-            $task.Option.OverwriteDestinationFile, 
+            $M += "Option OverwriteDestinationData '{0}' RemoveSourceAfterUpload '{1}'" -f 
+            $task.Option.OverwriteDestinationData, 
             $task.Option.RemoveSourceAfterUpload
             $M += "Error when SourceIsNotFound '{0}' SourceFolderIsEmpty '{1}'" -f 
             $task.Option.ErrorWhen.SourceIsNotFound,
@@ -356,7 +354,7 @@ Process {
                         Destination = $task.Destination
                     }
 
-                    if ($task.Option.OverwriteDestinationFile) {
+                    if ($task.Option.OverwriteDestinationData) {
                         $params.Force = $true
                     }
 
@@ -513,7 +511,7 @@ End {
                 </tr>
                 <tr>
                     <td>Options</td>
-                    <td>Overwrite destination file: $($task.Option.OverwriteDestinationFile)</br>Remove source after upload: $($task.Option.RemoveSourceAfterUpload)</br>Error when source is not found: $($task.Option.ErrorWhen.SourceIsNotFound)</br>$(
+                    <td>Overwrite destination file: $($task.Option.OverwriteDestinationData)</br>Remove source after upload: $($task.Option.RemoveSourceAfterUpload)</br>Error when source is not found: $($task.Option.ErrorWhen.SourceIsNotFound)</br>$(
                         if ($task.Type -ne 'File') {
                             "Error when source folder is empty: $($task.Option.ErrorWhen.SourceFolderIsEmpty)"
                         }

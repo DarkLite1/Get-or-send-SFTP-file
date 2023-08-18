@@ -19,7 +19,7 @@ BeforeAll {
                 )
                 Destination = '/SFTP/folder/'
                 Option      = @{
-                    OverwriteDestinationFile = $false
+                    OverwriteDestinationData = $false
                     RemoveSourceAfterUpload  = $false
                     ErrorWhen                = @{
                         SourceIsNotFound = $false
@@ -157,7 +157,7 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
             It 'Upload.Option.<_> is not a boolean' -ForEach @(
-                'OverwriteDestinationFile', 
+                'OverwriteDestinationData', 
                 'RemoveSourceAfterUpload'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -387,10 +387,10 @@ Describe 'when all tests pass' {
         }
     }
 }
-Describe 'when OverwriteDestinationFile is' {
+Describe 'when OverwriteDestinationData is' {
     It 'true the file on the SFTP server is overwritten' {
         $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Upload[0].Option.OverwriteDestinationFile = $true
+        $testNewInputFile.Upload[0].Option.OverwriteDestinationData = $true
 
         $testNewInputFile | ConvertTo-Json -Depth 5 | 
         Out-File @testOutParams
@@ -406,7 +406,7 @@ Describe 'when OverwriteDestinationFile is' {
     }
     It 'false the file on the SFTP server is not overwritten' {
         $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Upload[0].Option.OverwriteDestinationFile = $false
+        $testNewInputFile.Upload[0].Option.OverwriteDestinationData = $false
 
         $testNewInputFile | ConvertTo-Json -Depth 5 | 
         Out-File @testOutParams
