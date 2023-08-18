@@ -18,8 +18,9 @@
 .PARAMETER Upload.Type
     Defines which files need to be uploaded to the SFTP server.
     Valid values:
-    - FolderContent: all files in a folder, not recursive
     - File         : a single file
+    - Folder       : the complete content of a folder
+    - FolderContent: all files in a folder, not recursive
 
 .PARAMETER Upload.Path
     The path to the file or folder.
