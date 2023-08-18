@@ -404,7 +404,7 @@ Process {
         $M = 'Close SFTP session'
         Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
             
-        Remove-SFTPSession -SessionId $sessionParams.SessionID -EA Ignore
+        $null = Remove-SFTPSession -SessionId $sessionParams.SessionID -EA Ignore
         #endregion
     }
     Catch {
