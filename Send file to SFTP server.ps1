@@ -245,8 +245,8 @@ Process {
             Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
             #endregion
 
+            #region Test SFTP destination folder
             try {
-                #region Test SFTP destination folder
                 $M = "Test SFTP destination folder '{0}'" -f $task.Destination
                 Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
             
@@ -255,12 +255,12 @@ Process {
                 ) {
                     throw "Upload destination folder '$($task.Destination)' not found on SFTP server"
                 }    
-                #endregion
             }
             catch {
                 Write-Warning $_
                 Continue
             }
+            #endregion
             
             foreach ($source in $task.source) {
                 try {
