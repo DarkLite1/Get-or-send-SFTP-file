@@ -9,11 +9,14 @@ BeforeAll {
     )
 
     $testInputFile = @{
-        SendMail = @{
+        SendMail        = @{
             To   = 'bob@contoso.com'
             When = 'Always'
         }
-        Upload   = @(
+        ExportExcelFile = @{
+            When = 'Always'
+        }
+        Upload          = @(
             @{
                 Type        = 'File'
                 Source      = @(
@@ -30,7 +33,7 @@ BeforeAll {
                 }
             }
         )
-        Sftp     = @{
+        Sftp            = @{
             ComputerName = 'PC1'
             Credential   = @{
                 UserName = 'envVarBob'
@@ -122,7 +125,7 @@ Describe 'send an e-mail to the admin when' {
         }
         Context 'property' {
             It '<_> not found' -ForEach @(
-                'SendMail', 'Upload'
+                'SendMail', 'Upload', 'ExportExcelFile'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.$_ = $null
@@ -135,6 +138,42 @@ Describe 'send an e-mail to the admin when' {
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
                         ($Message -like "*$ImportFile*Property '$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'ExportExcelFile.<_> not found' -ForEach @(
+                'When'
+            ) {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.ExportExcelFile.$_ = $null
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'ExportExcelFile.$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'ExportExcelFile.When is not valid' {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.ExportExcelFile.When = 'wrong'
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'ExportExcelFile.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
@@ -302,7 +341,7 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
         }
-    }
+    } -Tag test
     It 'authentication to the SFTP server fails' {
         Mock New-SFTPSession {
             throw 'Failed authenticating'
@@ -346,7 +385,7 @@ Describe 'send an error e-mail to the user when' {
             ($Message -like "*Upload destination folder '/notExisting' not found on SFTP server*")
         }
     }
-} -tag test
+}
 Describe 'when all tests pass' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 5 | 

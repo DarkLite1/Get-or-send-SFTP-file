@@ -4,6 +4,10 @@
     "When": "Always",
     "?": "When: Always | Never | OnlyOnError | OnlyOnErrorOrUpload"
   },
+  "ExportExcelFile": {
+    "When": "Always",
+    "?": "When: Always | Never | OnlyOnError | OnlyOnErrorOrUpload"
+  },
   "Upload": [
     {
       "Type": "File",

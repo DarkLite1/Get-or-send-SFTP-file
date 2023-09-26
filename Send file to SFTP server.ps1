@@ -113,6 +113,15 @@ Begin {
             if ($SendMail.When -notMatch '^Always$|^Never$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
                 throw "Property 'SendMail.When' with value '$($SendMail.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
             }
+            if (-not ($ExportExcelFile = $file.ExportExcelFile)) {
+                throw "Property 'ExportExcelFile' not found"
+            }
+            if (-not $ExportExcelFile.When) {
+                throw "Property 'ExportExcelFile.When' not found"
+            }
+            if ($ExportExcelFile.When -notMatch '^Always$|^Never$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
+                throw "Property 'ExportExcelFile.When' with value '$($ExportExcelFile.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
+            }
             if (-not ($Upload = $file.Upload)) {
                 throw "Property 'Upload' not found"
             }
@@ -428,10 +437,40 @@ Process {
 
 End {
     try {
+        #region Counters
+        $counter = @{
+            Sources      = ($Upload.Source | Measure-Object).Count
+            Uploaded     = ($results.UploadedItems | Measure-Object -Sum).Sum
+            UploadErrors = $results.Where({ $_.Error }).Count
+            SystemErrors = (
+                $Error.Exception.Message | Measure-Object
+            ).Count
+        }
+        #endregion
+
         $mailParams = @{}
        
         #region Create Excel worksheet Overview
-        if ($results) {
+        $createExcelFile = $false
+
+        if (
+            (
+                $ExportExcelFile.When -eq 'Always'
+            ) -or
+            (   
+                ($ExportExcelFile.When -eq 'OnlyOnError') -and 
+                ($counter.UploadErrors -ne 0)
+            ) -or
+            (   
+                ($ExportExcelFile.When -eq 'OnlyOnErrorOrUpload') -and 
+                ($counter.UploadErrors -ne 0) -or ($counter.Uploaded -ne 0)
+            )
+        ) {
+            $createExcelFile = $true
+        }
+
+
+        if ($createExcelFile -and $results) {
             $excelFileLogParams = @{
                 LogFolder    = $logParams.LogFolder
                 Format       = 'yyyy-MM-dd'
@@ -464,17 +503,6 @@ End {
         #endregion
 
         #region Send mail to user
-
-        #region Counters
-        $counter = @{
-            Sources      = ($Upload.Source | Measure-Object).Count
-            Uploaded     = ($results.UploadedItems | Measure-Object -Sum).Sum
-            UploadErrors = $results.Where({ $_.Error }).Count
-            SystemErrors = (
-                $Error.Exception.Message | Measure-Object
-            ).Count
-        }
-        #endregion
 
         #region Mail subject and priority
         $mailParams.Priority = 'Normal'
