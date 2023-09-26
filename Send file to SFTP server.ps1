@@ -603,7 +603,7 @@ End {
             ) -or
             (   
                 ($SendMail.When -eq 'OnlyOnErrorOrUpload') -and 
-                ($totalErrorCount -ne 0) -or ($counter.Uploaded -ne 0)
+                (($totalErrorCount -ne 0) -or ($counter.Uploaded -ne 0))
             )
         ) {
             Send-MailHC @mailParams
