@@ -450,7 +450,7 @@ End {
         #region Counters
         $counter = @{
             Sources      = ($Upload.Source | Measure-Object).Count
-            Uploaded     = $results.Where({ $_.UploadedOn }).Count
+            Uploaded     = ($results.UploadedItems | Measure-Object -Sum).Sum
             UploadErrors = $results.Where({ $_.Error }).Count
             SystemErrors = (
                 $Error.Exception.Message | Measure-Object
