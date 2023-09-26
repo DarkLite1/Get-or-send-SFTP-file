@@ -432,8 +432,17 @@ End {
        
         #region Create Excel worksheet Overview
         if ($results) {
+            $excelFileLogParams = @{
+                LogFolder    = $logParams.LogFolder
+                Format       = 'yyyy-MM-dd'
+                Name         = "$ScriptName - Log.xlsx"
+                Date         = 'ScriptStartTime'
+                NoFormatting = $true
+            }
+
             $excelParams = @{
-                Path         = $logFile + ' - Log.xlsx'
+                Path         = New-LogFileNameHC @excelFileLogParams
+                Append       = $true
                 AutoSize     = $true
                 FreezeTopRow = $true
             }
