@@ -1,5 +1,9 @@
 {
-  "MailTo": ["bob@contoso.com"],
+  "SendMail": {
+    "To": ["bob@contoso.com"],
+    "When": "Always",
+    "?": "When: Always | Never | OnlyOnError | OnlyOnErrorOrUpload"
+  },
   "Upload": [
     {
       "Type": "File",

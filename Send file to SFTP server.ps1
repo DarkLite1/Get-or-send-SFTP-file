@@ -101,8 +101,17 @@ Begin {
       
         #region Test .json file properties
         try {
-            if (-not ($MailTo = $file.MailTo)) {
-                throw "Property 'MailTo' not found"
+            if (-not ($SendMail = $file.SendMail)) {
+                throw "Property 'SendMail' not found"
+            }
+            if (-not $SendMail.To) {
+                throw "Property 'SendMail.To' not found"
+            }
+            if (-not $SendMail.When) {
+                throw "Property 'SendMail.When' not found"
+            }
+            if ($SendMail.When -notMatch '^Always$|^Never$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
+                throw "Property 'SendMail.When' with value '$($SendMail.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
             }
             if (-not ($Upload = $file.Upload)) {
                 throw "Property 'Upload' not found"
@@ -522,11 +531,10 @@ End {
             </table>
             " 
         }
-
         #endregion
                 
         $mailParams += @{
-            To        = $MailTo
+            To        = $SendMail.To
             Bcc       = $ScriptAdmin
             Message   = "
                         $systemErrorsHtmlList
@@ -541,11 +549,25 @@ End {
             $mailParams.Message += 
             "<p><i>* Check the attachment for details</i></p>"
         }
-           
+        
         Get-ScriptRuntimeHC -Stop
-        Send-MailHC @mailParams
-        #endregion
 
+        if (
+            (
+                $SendMail.When -eq 'Always'
+            ) -or
+            (   
+                ($SendMail.When -eq 'OnlyOnError') -and 
+                ($totalErrorCount -ne 0)
+            ) -or
+            (   
+                ($SendMail.When -eq 'OnlyOnErrorOrUpload') -and 
+                ($totalErrorCount -ne 0) -or ($counter.Uploaded -ne 0)
+            )
+        ) {
+            Send-MailHC @mailParams
+        }
+        #endregion
     }
     catch {
         Write-Warning $_

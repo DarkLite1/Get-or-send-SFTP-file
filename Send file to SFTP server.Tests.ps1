@@ -9,8 +9,11 @@ BeforeAll {
     )
 
     $testInputFile = @{
-        MailTo = 'bob@contoso.com'
-        Upload = @(
+        SendMail = @{
+            To   = 'bob@contoso.com'
+            When = 'Always'
+        }
+        Upload   = @(
             @{
                 Type        = 'File'
                 Source      = @(
@@ -27,7 +30,7 @@ BeforeAll {
                 }
             }
         )
-        Sftp   = @{
+        Sftp     = @{
             ComputerName = 'PC1'
             Credential   = @{
                 UserName = 'envVarBob'
@@ -119,7 +122,7 @@ Describe 'send an e-mail to the admin when' {
         }
         Context 'property' {
             It '<_> not found' -ForEach @(
-                'MailTo', 'Upload'
+                'SendMail', 'Upload'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.$_ = $null
@@ -132,6 +135,42 @@ Describe 'send an e-mail to the admin when' {
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
                         ($Message -like "*$ImportFile*Property '$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'SendMail.<_> not found' -ForEach @(
+                'To', 'When'
+            ) {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.SendMail.$_ = $null
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'SendMail.$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'SendMail.When is not valid' {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.SendMail.When = 'wrong'
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'SendMail.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
@@ -283,7 +322,7 @@ Describe 'send an e-mail to the admin when' {
 Describe 'send an error e-mail to the user when' {
     BeforeAll {
         $MailUserParams = {
-            ($To -eq $testInputFile.MailTo) -and 
+            ($To -eq $testInputFile.SendMail.To) -and 
             ($Bcc -eq $testParams.ScriptAdmin) -and 
             ($Priority -eq 'High') -and 
             ($Subject -like '*error*')
@@ -302,12 +341,12 @@ Describe 'send an error e-mail to the user when' {
 
         .$testScript @testParams
 
-        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+        Should -Invoke Send-MailHC -Times 1 -Exactly -ParameterFilter {
             (&$MailUserParams) -and 
-            ($Message -like "*Upload destination folder '$($testNewInputFile.Upload[0].Destination)' not found on SFTP server*")
+            ($Message -like "*Upload destination folder '/notExisting' not found on SFTP server*")
         }
     }
-}
+} -tag test
 Describe 'when all tests pass' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 5 | 
@@ -380,7 +419,7 @@ Describe 'when all tests pass' {
     Context 'send an e-mail' {
         It 'with attachment to the user' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
-            ($To -eq $testInputFile.MailTo) -and
+            ($To -eq $testInputFile.SendMail.To) -and
             ($Bcc -eq $testParams.ScriptAdmin) -and
             ($Priority -eq 'Normal') -and
             ($Subject -eq '2/2 uploaded') -and
