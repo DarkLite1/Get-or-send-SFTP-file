@@ -71,7 +71,7 @@ Begin {
             [Environment]::GetEnvironmentVariable($Name)
         }
 
-        Get-ScriptRuntimeHC -Start
+        $null = Get-ScriptRuntimeHC -Start
         Import-EventLogParamsHC -Source $ScriptName
         Write-EventLog @EventStartParams
         $Error.Clear()
@@ -125,26 +125,26 @@ Begin {
                     throw "Property 'Upload.Option' not found"
                 }
                 try {
-                    [Boolean]::Parse($task.Option.OverwriteDestinationData)
+                    $null = [Boolean]::Parse($task.Option.OverwriteDestinationData)
                 }
                 catch {
                     throw "Property 'Upload.Option.OverwriteDestinationData' is not a boolean value"
                 }
                 try {
-                    [Boolean]::Parse($task.Option.RemoveSourceAfterUpload)
+                    $null = [Boolean]::Parse($task.Option.RemoveSourceAfterUpload)
                 }
                 catch {
                     throw "Property 'Upload.Option.RemoveSourceAfterUpload' is not a boolean value"
                 }
                 try {
-                    [Boolean]::Parse($task.Option.ErrorWhen.SourceIsNotFound)
+                    $null = [Boolean]::Parse($task.Option.ErrorWhen.SourceIsNotFound)
                 }
                 catch {
                     throw "Property 'Upload.Option.ErrorWhen.SourceIsNotFound' is not a boolean value"
                 }
                 if ($task.Type -match '^Folder$|^FolderContent$') {
                     try {
-                        [Boolean]::Parse($task.Option.ErrorWhen.SourceFolderIsEmpty)
+                        $null = [Boolean]::Parse($task.Option.ErrorWhen.SourceFolderIsEmpty)
                     }
                     catch {
                         throw "Property 'Upload.Option.ErrorWhen.SourceFolderIsEmpty' is not a boolean value"
