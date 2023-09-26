@@ -333,20 +333,22 @@ Describe 'when all tests pass' {
         BeforeAll {
             $testExportedExcelRows = @(
                 [PSCustomObject]@{
-                    Type        = $testInputFile.Upload[0].Type
-                    Source      = $testFile[0].FullName
-                    Destination = $testInputFile.Upload[0].Destination
-                    UploadedOn  = Get-Date
-                    Info        = ''
-                    Error       = $null
+                    Type          = $testInputFile.Upload[0].Type
+                    Source        = $testFile[0].FullName
+                    Destination   = $testInputFile.Upload[0].Destination
+                    UploadedItems = 1
+                    UploadedOn    = Get-Date
+                    Info          = ''
+                    Error         = $null
                 }
                 [PSCustomObject]@{
-                    Type        = $testInputFile.Upload[0].Type
-                    Source      = $testFile[1].FullName
-                    Destination = $testInputFile.Upload[0].Destination
-                    UploadedOn  = Get-Date
-                    Info        = ''
-                    Error       = $null
+                    Type          = $testInputFile.Upload[0].Type
+                    Source        = $testFile[1].FullName
+                    Destination   = $testInputFile.Upload[0].Destination
+                    UploadedItems = 1
+                    UploadedOn    = Get-Date
+                    Info          = ''
+                    Error         = $null
                 }
             )
 
@@ -368,6 +370,7 @@ Describe 'when all tests pass' {
                 $actualRow.UploadedOn.ToString('yyyyMMdd') | 
                 Should -Be $testRow.UploadedOn.ToString('yyyyMMdd')
                 $actualRow.Type | Should -Be $testRow.Type
+                $actualRow.UploadedItems | Should -Be $testRow.UploadedItems
                 $actualRow.Error | Should -Be $testRow.Error
                 $actualRow.Info | Should -Be $testRow.Info
                 $actualRow.Error | Should -Be $testRow.Error

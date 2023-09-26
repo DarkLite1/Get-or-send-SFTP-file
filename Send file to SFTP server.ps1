@@ -265,12 +265,13 @@ Process {
             foreach ($source in $task.source) {
                 try {
                     $result = [PSCustomObject]@{
-                        Type        = $task.Type
-                        Source      = $source
-                        Destination = $task.Destination
-                        UploadedOn  = $false
-                        Info        = @()
-                        Error       = $null
+                        Type          = $task.Type
+                        Source        = $source
+                        Destination   = $task.Destination
+                        UploadedItems = 0
+                        UploadedOn    = $false
+                        Info          = @()
+                        Error         = $null
                     }
 
                     $M = "Type '{0}' Source '{1}' Destination '{2}'" -f 
@@ -361,6 +362,7 @@ Process {
                     Set-SFTPItem @sessionParams @params
 
                     $result.UploadedOn = Get-Date
+                    $result.UploadedItems = $sourceData.Count
                     #endregion
 
                     #region Remove source file or folder
