@@ -269,7 +269,7 @@ Process {
                         Source        = $source
                         Destination   = $task.Destination
                         UploadedItems = 0
-                        UploadedOn    = $false
+                        UploadedOn    = $null
                         Info          = @()
                         Error         = $null
                     }
