@@ -12,8 +12,29 @@
 .PARAMETER ImportFile
     A .JSON file that contains all the parameters used by the script.
 
-.PARAMETER MailTo
-    E-mail addresses of where to send the summary e-mail
+.PARAMETER SendMail.To
+    E-mail addresses of where to send the summary e-mail.
+
+.PARAMETER SendMail.When
+    Indicate when an e-mail will be sent.
+
+    Valid values:
+    - Always              : Always sent an e-mail
+    - Never               : Never sent an e-mail
+    - OnlyOnError         : Only sent an e-mail when errors where detected
+    - OnlyOnErrorOrUpload : Only sent an e-mail when errors where detected or
+                            when items were uploaded
+
+.PARAMETER ExportExcelFile.When
+    Indicate when an Excel file will be created containing the log data.
+
+    Valid values:
+    - Always              : Always create an Excel log file
+    - Never               : Never create an Excel log file
+    - OnlyOnError         : Only create an Excel log file when 
+                            errors where detected
+    - OnlyOnErrorOrUpload : Only create an Excel log file when 
+                            errors where detected or when items were uploaded
 
 .PARAMETER Upload.Type
     Defines which files need to be uploaded to the SFTP server.
