@@ -422,7 +422,7 @@ Describe 'when all tests pass' {
             ($To -eq $testInputFile.SendMail.To) -and
             ($Bcc -eq $testParams.ScriptAdmin) -and
             ($Priority -eq 'Normal') -and
-            ($Subject -eq '2/2 uploaded') -and
+            ($Subject -eq '2 items uploaded') -and
             ($Attachments -like '*- Log.xlsx') -and
             ($Message -like "*table*Type*File*Source*Destination*")
             }

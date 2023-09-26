@@ -478,8 +478,12 @@ End {
 
         #region Mail subject and priority
         $mailParams.Priority = 'Normal'
-        $mailParams.Subject = '{0}/{1} uploaded' -f 
-        $counter.Uploaded, $counter.Sources
+        $mailParams.Subject = '{0} item{1} uploaded' -f 
+        $counter.Uploaded, $(
+            if ($counter.Uploaded -ne 1) {
+                's'
+            }
+        )
 
         if (
             $totalErrorCount = $counter.UploadErrors + $counter.SystemErrors
@@ -547,7 +551,7 @@ End {
             Bcc       = $ScriptAdmin
             Message   = "
                         $systemErrorsHtmlList
-                        <p>Download files from an SFTP server.</p>
+                        <p>Upload files to an SFTP server.</p>
                         $summaryHtmlTable"
             LogFolder = $LogParams.LogFolder
             Header    = $ScriptName
