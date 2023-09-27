@@ -1,4 +1,11 @@
 {
+  "Sftp": {
+    "ComputerName": "ftp.appx.be",
+    "Credential": {
+      "UserName": "APP_X_SFTP_USERNAME",
+      "Password": "APP_X_SFTP_PASSWORD"
+    }
+  },
   "SendMail": {
     "To": ["bob@contoso.com"],
     "When": "Always",
@@ -51,12 +58,5 @@
         }
       }
     }
-  ],
-  "Sftp": {
-    "ComputerName": "ftp.appx.be",
-    "Credential": {
-      "UserName": "APP_X_SFTP_USERNAME",
-      "Password": "APP_X_SFTP_PASSWORD"
-    }
-  }
+  ]
 }
