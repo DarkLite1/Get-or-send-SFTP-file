@@ -211,30 +211,6 @@ Begin {
         catch {
             throw "Input file '$ImportFile': $_"
         }
-        #endregion  
-
-        #region Create SFTP credential
-        try {
-            $M = 'Create SFTP credential'
-            Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-
-            $params = @{
-                String      = $Sftp.Credential.Password 
-                AsPlainText = $true
-                Force       = $true
-            }
-            $secureStringPassword = ConvertTo-SecureString @params
-
-            $params = @{
-                TypeName     = 'System.Management.Automation.PSCredential'
-                ArgumentList = $Sftp.Credential.UserName, $secureStringPassword
-                ErrorAction  = 'Stop'
-            }
-            $sftpCredential = New-Object @params
-        }
-        catch {
-            throw "Failed creating the SFTP credential with user name '$($Sftp.Credential.UserName)' and password '$($Sftp.Credential.Password)': $_"
-        }
         #endregion
     }
     catch {
@@ -247,206 +223,29 @@ Begin {
 
 Process {
     Try {
-        #region Open SFTP session
-        try {
-            $M = 'Start SFTP session'
-            Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-
-            $params = @{
-                ComputerName = $Sftp.ComputerName
-                Credential   = $sftpCredential
-                AcceptKey    = $true
-                ErrorAction  = 'Stop'
-            }
-            $sftpSession = New-SFTPSession @params
-        }
-        catch {
-            throw "Failed creating an SFTP session to '$($Sftp.ComputerName)': $_"
-        }
-        #endregion
-
-        $results = @()
-
-        $sessionParams = @{
-            SessionId   = $sftpSession.SessionID
-            ErrorAction = 'Stop'
-        
-        }
-        foreach ($task in $Upload) {
+        foreach ($task in $Tasks) {
             #region verbose
             $M = 'Upload task'
-            $M += "Option OverwriteDestinationData '{0}' RemoveSourceAfterUpload '{1}'" -f 
-            $task.Option.OverwriteDestinationData, 
-            $task.Option.RemoveSourceAfterUpload
-            $M += "Error when SourceIsNotFound '{0}' SourceFolderIsEmpty '{1}'" -f 
-            $task.Option.ErrorWhen.SourceIsNotFound,
-            $task.Option.ErrorWhen.SourceFolderIsEmpty
             Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
             #endregion
 
-            #region Test SFTP destination folder
+            #region Create SFTP secure password string
             try {
-                $M = "Test SFTP destination folder '{0}'" -f $task.Destination
+                $M = 'Create SFTP credential'
                 Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-            
-                if (-not (
-                        Test-SFTPPath @sessionParams -Path $task.Destination)
-                ) {
-                    throw "Upload destination folder '$($task.Destination)' not found on SFTP server"
-                }    
+
+                $params = @{
+                    String      = $Sftp.Credential.Password 
+                    AsPlainText = $true
+                    Force       = $true
+                }
+                $secureStringPassword = ConvertTo-SecureString @params
             }
             catch {
-                Write-Warning $_
-                Continue
+                throw "Failed creating the SFTP credential with user name '$($Sftp.Credential.UserName)' and password '$($Sftp.Credential.Password)': $_"
             }
             #endregion
-            
-            foreach ($source in $task.source) {
-                try {
-                    $result = [PSCustomObject]@{
-                        Type          = $task.Type
-                        Source        = $source
-                        Destination   = $task.Destination
-                        UploadedItems = 0
-                        UploadedOn    = $null
-                        Info          = @()
-                        Error         = $null
-                    }
-
-                    $M = "Type '{0}' Source '{1}' Destination '{2}'" -f 
-                    $result.Type, $result.Source, $result.Destination
-                    Write-Verbose $M
-                    Write-EventLog @EventVerboseParams -Message $M
-                
-                    #region Test source exists
-                    $testPathParams = @{
-                        LiteralPath = $source
-                        PathType    = 'Leaf'
-                    }
-                        
-                    if ($task.Type -match '^Folder$|^FolderContent$') {
-                        $testPathParams.PathType = 'Container'
-                    }
-                        
-                    if (-not (Test-Path @testPathParams)) {
-                        $M = 'Source path not found'
-
-                        if ($task.Option.ErrorWhen.SourceIsNotFound) {
-                            throw $M
-                        }
-                        $result.Info += $M
-                        Continue
-                    }
-                    #endregion
-
-                    #region Get source data
-                    $sourceData = switch ($task.Type) {
-                        'File' {
-                            $result.Source
-                            break
-                        }
-                        'Folder' {
-                            $result.Source
-                            break
-                        }
-                        'FolderContent' {
-                            Get-ChildItem -LiteralPath $task.Source -File |
-                            Select-Object -ExpandProperty 'FullName'
-                            break
-                        }
-                        Default {
-                            throw "Upload.Type '$_' not supported"
-                        }
-                    }
-                    #endregion
-
-                    #region Test if source folder is empty
-                    $sourceFolderEmpty = $false
-
-                    if (
-                        ($task.Type -eq 'FolderContent') -and 
-                        (-not $sourceData)
-                    ) {
-                        $sourceFolderEmpty = $true
-                    }
-                    if (
-                        ($task.Type -eq 'Folder') -and
-                        ((Get-ChildItem -LiteralPath $sourceData | 
-                            Select-Object -First 1 | 
-                            Measure-Object).Count -eq 0)
-                    ) {
-                        $sourceFolderEmpty = $true
-                    }
-
-                    if ($sourceFolderEmpty) {
-                        $M = 'Source folder empty'
-                        if ($task.Option.ErrorWhen.SourceFolderIsEmpty) {
-                            throw $M
-                        }
-                        $result.Info += $M
-                        Continue
-                    }
-                    #endregion
-
-                    #region Upload data to SFTP server
-                    $params = @{
-                        Path        = $sourceData
-                        Destination = $task.Destination
-                    }
-
-                    if ($task.Option.OverwriteDestinationData) {
-                        $params.Force = $true
-                    }
-
-                    Set-SFTPItem @sessionParams @params
-
-                    $result.UploadedOn = Get-Date
-                    $result.UploadedItems = $sourceData.Count
-                    #endregion
-
-                    #region Remove source file or folder
-                    if ($task.Option.RemoveSourceAfterUpload) {
-                        $sourceData | Remove-Item -Force -EA Stop
-
-                        switch ($task.Type) {
-                            'File' { 
-                                $result.Info += 'Removed source file'
-                                break
-                            }
-                            'Folder' { 
-                                $result.Info += 'Removed source folder'
-                                break
-                            }
-                            'FolderContent' { 
-                                $result.Info += 'Removed source folder content'
-                                break
-                            }
-                            Default {
-                                throw "Type '$_' not supported"
-                            }
-                        }
-                    }
-                    #endregion
-                }
-                catch {
-                    $M = "Upload failed: $_"
-                    Write-Warning $M
-                    Write-EventLog @EventErrorParams -Message $M
-                    $result.Error = $_
-                    $Error.RemoveAt(0)
-                }
-                finally {
-                    $results += $result
-                }
-            }                
         }
-  
-        #region Close SFTP session
-        $M = 'Close SFTP session'
-        Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-            
-        $null = Remove-SFTPSession -SessionId $sessionParams.SessionID -EA Ignore
-        #endregion
     }
     Catch {
         Write-Warning $_
