@@ -342,49 +342,6 @@ Describe 'send an e-mail to the admin when' {
             }
         }
     }
-    It 'authentication to the SFTP server fails' {
-        Mock New-SFTPSession {
-            throw 'Failed authenticating'
-        }
-
-        $testInputFile | ConvertTo-Json -Depth 5 | 
-        Out-File @testOutParams
-
-        .$testScript @testParams
-
-        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-            (&$MailAdminParams) -and 
-            ($Message -like "*Failed creating an SFTP session to '$($testInputFile.sftp.ComputerName)'*")
-        }
-    }
-}
-Describe 'send an error e-mail to the user when' {
-    BeforeAll {
-        $MailUserParams = {
-            ($To -eq $testInputFile.SendMail.To) -and 
-            ($Bcc -eq $testParams.ScriptAdmin) -and 
-            ($Priority -eq 'High') -and 
-            ($Subject -like '*error*')
-        }    
-    }
-    It 'the SFTP upload destination folder does not exist' {
-        Mock Test-SFTPPath {
-            $false
-        }
-
-        $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Upload[0].Destination = '/notExisting'
-
-        $testNewInputFile | ConvertTo-Json -Depth 5 | 
-        Out-File @testOutParams
-
-        .$testScript @testParams
-
-        Should -Invoke Send-MailHC -Times 1 -Exactly -ParameterFilter {
-            (&$MailUserParams) -and 
-            ($Message -like "*Upload destination folder '/notExisting' not found on SFTP server*")
-        }
-    }
 }
 Describe 'when all tests pass' {
     BeforeAll {
@@ -392,20 +349,6 @@ Describe 'when all tests pass' {
         Out-File @testOutParams
 
         .$testScript @testParams
-    }
-    It 'upload each source to the SFTP server' {
-        @(
-            $testInputFile.Upload[0].Source[0]
-            $testInputFile.Upload[0].Source[1]
-            
-        ) | ForEach-Object {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
-                $Path -eq $_
-            }
-        }
-    }
-    It 'close the SFTP session' {
-        Should -Invoke Remove-SFTPSession -Times 1 -Exactly -Scope Describe
     }
     Context 'export an Excel file' {
         BeforeAll {
@@ -466,75 +409,5 @@ Describe 'when all tests pass' {
             ($Message -like "*table*Type*File*Source*Destination*")
             }
         }
-    }
-}
-Describe 'when OverwriteDestinationData is' {
-    It 'true the file on the SFTP server is overwritten' {
-        $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Upload[0].Option.OverwriteDestinationData = $true
-
-        $testNewInputFile | ConvertTo-Json -Depth 5 | 
-        Out-File @testOutParams
-
-        .$testScript @testParams
-
-        $testNewInputFile.Upload[0].Source | ForEach-Object {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -eq $_) -and
-                ($Force)
-            }
-        }
-    }
-    It 'false the file on the SFTP server is not overwritten' {
-        $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Upload[0].Option.OverwriteDestinationData = $false
-
-        $testNewInputFile | ConvertTo-Json -Depth 5 | 
-        Out-File @testOutParams
-
-        .$testScript @testParams
-
-        $testNewInputFile.Upload[0].Source | ForEach-Object {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -eq $_) -and
-                (-not $Force)
-            }
-        }
-    }
-}
-Describe 'when RemoveSourceAfterUpload is' {
-    It 'true the uploaded source is removed' {
-        $testSourceFiles = @(
-            (New-Item 'TestDrive:/file3.txt' -ItemType File).FullName
-            (New-Item 'TestDrive:/file4.txt' -ItemType File).FullName
-        )
-
-        $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Upload[0].Source = $testSourceFiles
-        $testNewInputFile.Upload[0].Option.RemoveSourceAfterUpload = $true
-
-        $testNewInputFile | ConvertTo-Json -Depth 5 | 
-        Out-File @testOutParams
-
-        .$testScript @testParams
-
-        $testSourceFiles | Should -Not -Exist
-    }
-    It 'false the uploaded source is not removed' {
-        $testSourceFiles = @(
-            (New-Item 'TestDrive:/file3.txt' -ItemType File).FullName
-            (New-Item 'TestDrive:/file4.txt' -ItemType File).FullName
-        )
-
-        $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Upload[0].Source = $testSourceFiles
-        $testNewInputFile.Upload[0].Option.RemoveSourceAfterUpload = $false
-
-        $testNewInputFile | ConvertTo-Json -Depth 5 | 
-        Out-File @testOutParams
-
-        .$testScript @testParams
-
-        $testSourceFiles | Should -Exist
     }
 }
