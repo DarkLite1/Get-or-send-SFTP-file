@@ -243,8 +243,6 @@ Begin {
         catch {
             throw "Input file '$ImportFile': $_"
         }
-
-        
     }
     catch {
         Write-Warning $_
@@ -262,22 +260,7 @@ Process {
             Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
             #endregion
 
-            #region Create SFTP secure password string
-            try {
-                $M = 'Create SFTP credential'
-                Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-
-                $params = @{
-                    String      = $Sftp.Credential.Password 
-                    AsPlainText = $true
-                    Force       = $true
-                }
-                $secureStringPassword = ConvertTo-SecureString @params
-            }
-            catch {
-                throw "Failed creating the SFTP credential with user name '$($Sftp.Credential.UserName)' and password '$($Sftp.Credential.Password)': $_"
-            }
-            #endregion
+         
         }
     }
     Catch {
