@@ -17,44 +17,13 @@
   },
   "Upload": [
     {
-      "Type": "File",
-      "Source": [
-        "C:\\Finance report Q1.xlsx",
-        "C:\\Finance report Q2.xlsx",
-        "C:\\Finance report Q3.xlsx"
-      ],
+      "Path": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
       "Destination": "/reports/",
       "Option": {
-        "OverwriteDestinationData": false,
-        "RemoveSourceAfterUpload": false,
+        "OverwriteFileOnSftpServer": false,
+        "RemoveFileAfterUpload": false,
         "ErrorWhen": {
-          "SourceIsNotFound": false
-        }
-      }
-    },
-    {
-      "Type": "Folder",
-      "Source": ["C:\\Applications\\App x"],
-      "Destination": "/Applications/",
-      "Option": {
-        "OverwriteDestinationData": false,
-        "RemoveSourceAfterUpload": false,
-        "ErrorWhen": {
-          "SourceIsNotFound": false,
-          "SourceFolderIsEmpty": false
-        }
-      }
-    },
-    {
-      "Type": "FolderContent",
-      "Source": ["C:\\Applications\\App x"],
-      "Destination": "/Applications/App x",
-      "Option": {
-        "OverwriteDestinationData": false,
-        "RemoveSourceAfterUpload": false,
-        "ErrorWhen": {
-          "SourceIsNotFound": false,
-          "SourceFolderIsEmpty": false
+          "UploadPathIsNotFound": false
         }
       }
     }

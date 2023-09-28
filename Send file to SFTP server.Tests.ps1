@@ -341,7 +341,7 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
         }
-    } -Tag test
+    }
     It 'authentication to the SFTP server fails' {
         Mock New-SFTPSession {
             throw 'Failed authenticating'
