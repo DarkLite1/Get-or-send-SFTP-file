@@ -204,28 +204,47 @@ Begin {
                 }
                 #endregion
             }
-       
-            $Sftp = @{
-                ComputerName = $task.Sftp.ComputerName
-                Credential   = @{
-                    UserName = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.UserName
-                    Password = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.Password
-                }
-            }
-            if (-not $sftp.ComputerName) {
-                throw "Property 'Sftp.ComputerName' not found"
-            }
-            if (-not $sftp.Credential.UserName) {
-                throw "Property 'Sftp.Credential.UserName' not found"
-            }
-            if (-not $sftp.Credential.Password) {
-                throw "Property 'Sftp.Credential.Password' not found"
-            }
         }
         catch {
             throw "Input file '$ImportFile': $_"
         }
         #endregion
+
+        try {
+            foreach ($task in $Tasks) {
+                #region Add environment variable SFTP Password
+                $params = @{
+                    String      = $null
+                    AsPlainText = $true
+                    Force       = $true
+                    ErrorAction = 'Stop'
+                }
+
+                if (-not (
+                        $params.String = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.Password)
+                ) {
+                    throw "Environment variable '`$ENV:$($task.Sftp.Credential.Password)' in 'Sftp.Credential.Password' not found on computer $ENV:COMPUTERNAME"
+                }
+                
+                $task.Sftp.Credential.Password = ConvertTo-SecureString @params
+                #endregion
+
+                #region Add environment variable SFTP UserName
+                if (-not (
+                        $params.String = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.UserName)
+                ) {
+                    throw "Environment variable '`$ENV:$($task.Sftp.Credential.UserName)' in 'Sftp.Credential.UserName' not found on computer $ENV:COMPUTERNAME"
+                }
+
+                $task.Sftp.Credential.UserName = $params.String
+                #endregion
+            }
+        }
+        catch {
+            throw "Input file '$ImportFile': $_"
+        }
+
+        
     }
     catch {
         Write-Warning $_

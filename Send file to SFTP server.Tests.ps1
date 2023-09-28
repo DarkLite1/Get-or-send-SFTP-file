@@ -299,8 +299,52 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
         }
+        It 'the SFTP password is not found in the environment variables' {
+            Mock Get-EnvironmentVariableValueHC {
+                'user'
+            } -ParameterFilter {
+                $Name -eq $testInputFile.Tasks[0].Sftp.Credential.UserName
+            }
+            Mock Get-EnvironmentVariableValueHC -ParameterFilter {
+                $Name -eq $testInputFile.Tasks[0].Sftp.Credential.Password
+            }
+
+            $testInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+
+            .$testScript @testParams
+    
+            Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                    (&$MailAdminParams) -and ($Message -like "*Environment variable '`$ENV:$($testInputFile.Tasks[0].Sftp.Credential.Password)' in 'Sftp.Credential.Password' not found*")
+            }
+            Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                $EntryType -eq 'Error'
+            }
+        }
+        It 'the SFTP user name is not found in the environment variables' {
+            Mock Get-EnvironmentVariableValueHC {
+                'pass'
+            } -ParameterFilter {
+                $Name -eq $testInputFile.Tasks[0].Sftp.Credential.Password
+            }
+            Mock Get-EnvironmentVariableValueHC -ParameterFilter {
+                $Name -eq $testInputFile.Tasks[0].Sftp.Credential.UserName
+            }
+
+            $testInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+
+            .$testScript @testParams
+    
+            Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                    (&$MailAdminParams) -and ($Message -like "*Environment variable '`$ENV:$($testInputFile.Tasks[0].Sftp.Credential.UserName)' in 'Sftp.Credential.UserName' not found*")
+            }
+            Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                $EntryType -eq 'Error'
+            }
+        }
     }
-}  -Tag test
+} -Tag test
 Describe 'when all tests pass' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 5 | 
