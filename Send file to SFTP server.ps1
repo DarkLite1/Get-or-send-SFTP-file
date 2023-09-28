@@ -122,80 +122,94 @@ Begin {
       
         #region Test .json file properties
         try {
-            if (-not ($SendMail = $file.SendMail)) {
-                throw "Property 'SendMail' not found"
-            }
-            if (-not $SendMail.To) {
-                throw "Property 'SendMail.To' not found"
-            }
-            if (-not $SendMail.When) {
-                throw "Property 'SendMail.When' not found"
-            }
-            if ($SendMail.When -notMatch '^Always$|^Never$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
-                throw "Property 'SendMail.When' with value '$($SendMail.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
-            }
-            if (-not ($ExportExcelFile = $file.ExportExcelFile)) {
-                throw "Property 'ExportExcelFile' not found"
-            }
-            if (-not $ExportExcelFile.When) {
-                throw "Property 'ExportExcelFile.When' not found"
-            }
-            if ($ExportExcelFile.When -notMatch '^Always$|^Never$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
-                throw "Property 'ExportExcelFile.When' with value '$($ExportExcelFile.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
-            }
-            if (-not ($Upload = $file.Upload)) {
-                throw "Property 'Upload' not found"
+            if (-not ($Tasks = $file.Tasks)) {
+                throw "Property 'Tasks' not found"
             }
 
-            foreach ($task in $Upload) {
-                if (-not $task.Type) {
-                    throw "Property 'Upload.Type' not found"
+            foreach ($task in $Tasks) {
+                @('Name', 'Sftp', 'Upload', 'SendMail', 'ExportExcelFile') | 
+                Where-Object { -not $task.$_ } |
+                ForEach-Object {
+                    throw "Property 'Tasks.$_' not found"
                 }
-                if ($task.Type -notMatch '^File$|^Folder$|^FolderContent$') {
-                    throw "Property 'Upload.Type' must be 'File', 'Folder' or 'FolderContent'"
+                
+                @('ComputerName', 'Path', 'Credential') | 
+                Where-Object { -not $task.Sftp.$_ } |
+                ForEach-Object {
+                    throw "Property 'Tasks.Sftp.$_' not found"
                 }
-                if (-not $task.Source) {
-                    throw "Property 'Upload.Source' not found"
+                
+                @('UserName', 'Password') | 
+                Where-Object { -not $task.Sftp.Credential.$_ } |
+                ForEach-Object {
+                    throw "Property 'Tasks.Sftp.Credential.$_' not found"
                 }
-                if (-not $task.Destination) {
-                    throw "Property 'Upload.Destination' not found"
+                
+                @('Path', 'Option') | 
+                Where-Object { -not $task.Upload.$_ } |
+                ForEach-Object {
+                    throw "Property 'Tasks.Upload.$_' not found"
                 }
-                if (-not $task.Option) {
-                    throw "Property 'Upload.Option' not found"
+                
+                @('To', 'When') | 
+                Where-Object { -not $task.SendMail.$_ } |
+                ForEach-Object {
+                    throw "Property 'Tasks.SendMail.$_' not found"
                 }
-                try {
-                    $null = [Boolean]::Parse($task.Option.OverwriteDestinationData)
+                
+                @('When') | 
+                Where-Object { -not $task.ExportExcelFile.$_ } |
+                ForEach-Object {
+                    throw "Property 'Tasks.ExportExcelFile.$_' not found"
                 }
-                catch {
-                    throw "Property 'Upload.Option.OverwriteDestinationData' is not a boolean value"
-                }
-                try {
-                    $null = [Boolean]::Parse($task.Option.RemoveSourceAfterUpload)
-                }
-                catch {
-                    throw "Property 'Upload.Option.RemoveSourceAfterUpload' is not a boolean value"
-                }
-                try {
-                    $null = [Boolean]::Parse($task.Option.ErrorWhen.SourceIsNotFound)
-                }
-                catch {
-                    throw "Property 'Upload.Option.ErrorWhen.SourceIsNotFound' is not a boolean value"
-                }
-                if ($task.Type -match '^Folder$|^FolderContent$') {
+
+                #region Test boolean values
+                foreach (
+                    $boolean in 
+                    @(
+                        'OverwriteFileOnSftpServer', 
+                        'RemoveFileAfterUpload'
+                    )
+                ) {
                     try {
-                        $null = [Boolean]::Parse($task.Option.ErrorWhen.SourceFolderIsEmpty)
+                        $null = [Boolean]::Parse($task.Upload.Option.$boolean)
                     }
                     catch {
-                        throw "Property 'Upload.Option.ErrorWhen.SourceFolderIsEmpty' is not a boolean value"
-                    }   
+                        throw "Property 'Tasks.Upload.Option.$boolean' is not a boolean value"
+                    }
                 }
-            }
 
+                foreach (
+                    $boolean in 
+                    @(
+                        'UploadPathIsNotFound'
+                    )
+                ) {
+                    try {
+                        $null = [Boolean]::Parse($task.Upload.Option.ErrorWhen.$boolean)
+                    }
+                    catch {
+                        throw "Property 'Tasks.Upload.Option.ErrorWhen.$boolean' is not a boolean value"
+                    }
+                }
+                #endregion
+
+                #region Test When is valid
+                if ($task.SendMail.When -notMatch '^Always$|^Never$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
+                    throw "Property 'Tasks.SendMail.When' with value '$($task.SendMail.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
+                }
+
+                if ($task.ExportExcelFile.When -notMatch '^Always$|^Never$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
+                    throw "Property 'Tasks.ExportExcelFile.When' with value '$($task.ExportExcelFile.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
+                }
+                #endregion
+            }
+       
             $Sftp = @{
-                ComputerName = $file.Sftp.ComputerName
+                ComputerName = $task.Sftp.ComputerName
                 Credential   = @{
-                    UserName = Get-EnvironmentVariableValueHC -Name $file.Sftp.Credential.UserName
-                    Password = Get-EnvironmentVariableValueHC -Name $file.Sftp.Credential.Password
+                    UserName = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.UserName
+                    Password = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.Password
                 }
             }
             if (-not $sftp.ComputerName) {

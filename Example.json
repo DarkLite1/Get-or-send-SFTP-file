@@ -1,6 +1,7 @@
 {
   "Tasks": [
     {
+      "Name": "Upload app x",
       "Sftp": {
         "ComputerName": "ftp.appx.be",
         "Path": "/reports/",
@@ -20,7 +21,6 @@
         }
       },
       "SendMail": {
-        "Header": "Upload app x",
         "To": ["bob@contoso.com"],
         "When": "Always",
         "?": "When: Always | Never | OnlyOnError | OnlyOnErrorOrUpload"

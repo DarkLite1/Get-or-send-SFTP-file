@@ -3,43 +3,40 @@
 #Requires -Version 5.1
 
 BeforeAll {
-    $testFile = @(
-        New-Item 'TestDrive:/file1.txt' -ItemType File
-        New-Item 'TestDrive:/file2.txt' -ItemType File
-    )
-
     $testInputFile = @{
-        SendMail        = @{
-            To   = 'bob@contoso.com'
-            When = 'Always'
-        }
-        ExportExcelFile = @{
-            When = 'Always'
-        }
-        Upload          = @(
+        Tasks = @(
             @{
-                Type        = 'File'
-                Source      = @(
-                    $testFile[0].FullName
-                    $testFile[1].FullName
-                )
-                Destination = '/SFTP/folder/'
-                Option      = @{
-                    OverwriteDestinationData = $false
-                    RemoveSourceAfterUpload  = $false
-                    ErrorWhen                = @{
-                        SourceIsNotFound = $false
+                Name            = 'App x'
+                Sftp            = @{
+                    ComputerName = 'PC1'
+                    Path         = '/SFTP/folder/'
+                    Credential   = @{
+                        UserName = 'envVarBob'
+                        Password = 'envVarPasswordBob'
                     }
+                }
+                Upload          = @{
+                    Path   = @(
+                        (New-Item 'TestDrive:\a.txt').FullName
+                        (New-Item 'TestDrive:\b.txt').FullName
+                    )
+                    Option = @{
+                        OverwriteFileOnSftpServer = $false
+                        RemoveFileAfterUpload     = $false
+                        ErrorWhen                 = @{
+                            UploadPathIsNotFound = $false
+                        }
+                    }
+                }
+                SendMail        = @{
+                    To   = 'bob@contoso.com'
+                    When = 'Always'
+                }
+                ExportExcelFile = @{
+                    When = 'Always'
                 }
             }
         )
-        Sftp            = @{
-            ComputerName = 'PC1'
-            Credential   = @{
-                UserName = 'envVarBob'
-                Password = 'envVarPasswordBob'
-            }
-        }
     }
 
     $testOutParams = @{
@@ -71,16 +68,6 @@ BeforeAll {
     } -ParameterFilter {
         $Name -eq $testInputFile.SFtp.Credential.Password
     }
-    Mock Set-SFTPItem
-    Mock New-SFTPSession {
-        [PSCustomObject]@{
-            SessionID = 1
-        }
-    }
-    Mock Test-SFTPPath {
-        $true
-    }
-    Mock Remove-SFTPSession
     Mock Send-MailHC
     Mock Write-EventLog
 }
@@ -124,11 +111,11 @@ Describe 'send an e-mail to the admin when' {
             }
         }
         Context 'property' {
-            It '<_> not found' -ForEach @(
-                'SendMail', 'Upload', 'ExportExcelFile'
+            It 'Tasks.<_> not found' -ForEach @(
+                'Name', 'Sftp', 'Upload', 'SendMail', 'ExportExcelFile'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.$_ = $null
+                $testNewInputFile.Tasks[0].$_ = $null
     
                 $testNewInputFile | ConvertTo-Json -Depth 5 | 
                 Out-File @testOutParams
@@ -137,17 +124,17 @@ Describe 'send an e-mail to the admin when' {
                     
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property '$_' not found*")
+                        ($Message -like "*$ImportFile*Property 'Tasks.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
                 }
             }
-            It 'ExportExcelFile.<_> not found' -ForEach @(
-                'When'
+            It 'Tasks.Sftp.<_> not found' -ForEach @(
+                'ComputerName', 'Path', 'Credential'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.ExportExcelFile.$_ = $null
+                $testNewInputFile.Tasks[0].Sftp.$_ = $null
     
                 $testNewInputFile | ConvertTo-Json -Depth 5 | 
                 Out-File @testOutParams
@@ -156,176 +143,17 @@ Describe 'send an e-mail to the admin when' {
                     
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'ExportExcelFile.$_' not found*")
+                        ($Message -like "*$ImportFile*Property 'Tasks.Sftp.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
                 }
             }
-            It 'ExportExcelFile.When is not valid' {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.ExportExcelFile.When = 'wrong'
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-                    
-                .$testScript @testParams
-
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'ExportExcelFile.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
-                }
-            }
-            It 'SendMail.<_> not found' -ForEach @(
-                'To', 'When'
-            ) {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.SendMail.$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-                    
-                .$testScript @testParams
-                    
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'SendMail.$_' not found*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
-                }
-            }
-            It 'SendMail.When is not valid' {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.SendMail.When = 'wrong'
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-                    
-                .$testScript @testParams
-
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'SendMail.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
-                }
-            }
-            It 'Upload.<_> not found' -ForEach @(
-                'Type', 'Source', 'Destination', 'Option'
-            ) {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Upload[0].$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-                    
-                .$testScript @testParams
-                    
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Upload.$_' not found*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
-                }
-            }
-            It 'Upload.Option.<_> is not a boolean' -ForEach @(
-                'OverwriteDestinationData', 
-                'RemoveSourceAfterUpload'
-            ) {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Upload[0].Option.$_ = 2
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-                    
-                .$testScript @testParams
-                    
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Upload.Option.$_' is not a boolean value*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
-                }
-            }
-            It 'Upload.Option.ErrorWhen.<_> is not a boolean' -ForEach @(
-                'SourceIsNotFound'
-            ) {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Upload[0].Option.ErrorWhen.$_ = 2
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-                    
-                .$testScript @testParams
-                    
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Upload.Option.ErrorWhen.$_' is not a boolean value*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
-                }
-            }
-            It 'Upload.Option.ErrorWhen.<_> is not a boolean' -ForEach @(
-                'SourceFolderIsEmpty'
-            ) {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Upload[0].Option.ErrorWhen.$_ = 2
-                $testNewInputFile.Upload[0].Type = 'FolderContent'
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-
-                .$testScript @testParams
-
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Upload[0].Option.ErrorWhen.$_ = 2
-                $testNewInputFile.Upload[0].Type = 'Folder'
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-                    
-                .$testScript @testParams
-                    
-                Should -Invoke Send-MailHC -Exactly 2 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Upload.Option.ErrorWhen.$_' is not a boolean value*")
-                }
-                Should -Invoke Write-EventLog -Exactly 2 -ParameterFilter {
-                    $EntryType -eq 'Error'
-                }
-            }
-            It 'Sftp.<_> not found' -ForEach @(
-                'ComputerName'
-            ) {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Sftp.$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-                    
-                .$testScript @testParams
-                    
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Sftp.$_' not found*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
-                }
-            }
-            It 'Sftp.Credential.<_> not found' -ForEach @(
+            It 'Tasks.Sftp.Credential.<_> not found' -ForEach @(
                 'UserName', 'Password'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Sftp.Credential.$_ = $null
+                $testNewInputFile.Tasks[0].Sftp.Credential.$_ = $null
     
                 $testNewInputFile | ConvertTo-Json -Depth 5 | 
                 Out-File @testOutParams
@@ -334,7 +162,137 @@ Describe 'send an e-mail to the admin when' {
                     
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Sftp.Credential.$_' not found*")
+                        ($Message -like "*$ImportFile*Property 'Tasks.Sftp.Credential.$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'Tasks.Upload.<_> not found' -ForEach @(
+                'Path', 'Option'
+            ) {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks[0].Upload.$_ = $null
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.Upload.$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'Tasks.Upload.Option.<_> not a boolean' -ForEach @(
+                'OverwriteFileOnSftpServer', 
+                'RemoveFileAfterUpload'
+            ) {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks[0].Upload.Option.$_ = $null
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.Upload.Option.$_' is not a boolean value*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'Tasks.Upload.Option.ErrorWhen.<_> not a boolean' -ForEach @(
+                'UploadPathIsNotFound'
+            ) {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks[0].Upload.Option.ErrorWhen.$_ = $null
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.Upload.Option.ErrorWhen.$_' is not a boolean value*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'Tasks.SendMail.<_> not found' -ForEach @(
+                'To', 'When'
+            ) {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks[0].SendMail.$_ = $null
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.SendMail.$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'Tasks.ExportExcelFile.<_> not found' -ForEach @(
+                 'When'
+            ) {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks[0].ExportExcelFile.$_ = $null
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.ExportExcelFile.$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'Tasks.ExportExcelFile.When is not valid' {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks[0].ExportExcelFile.When = 'wrong'
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.ExportExcelFile.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'Tasks.SendMail.When is not valid' {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks[0].SendMail.When = 'wrong'
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.SendMail.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
@@ -342,7 +300,7 @@ Describe 'send an e-mail to the admin when' {
             }
         }
     }
-}
+}  -Tag test
 Describe 'when all tests pass' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 5 | 
