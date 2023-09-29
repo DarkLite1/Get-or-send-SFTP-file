@@ -126,6 +126,16 @@ Begin {
                 throw "Property 'Tasks' not found"
             }
 
+            if (-not ($MaxConcurrentJobs = $file.MaxConcurrentJobs)) {
+                throw "Property 'MaxConcurrentJobs' not found"
+            }
+            
+            #region Test integer value
+            if (-not ($MaxConcurrentJobs -is [int])) {
+                throw "Property 'MaxConcurrentJobs' needs to be a number, the value '$MaxConcurrentJobs' is not supported."
+            }
+            #endregion
+
             foreach ($task in $Tasks) {
                 @('Name', 'Sftp', 'Upload', 'SendMail', 'ExportExcelFile') | 
                 Where-Object { -not $task.$_ } |
@@ -255,12 +265,10 @@ Begin {
 Process {
     Try {
         foreach ($task in $Tasks) {
-            #region verbose
             $M = 'Upload task'
             Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-            #endregion
 
-         
+            
         }
     }
     Catch {

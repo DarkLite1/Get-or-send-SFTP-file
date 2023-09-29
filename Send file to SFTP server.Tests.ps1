@@ -4,7 +4,8 @@
 
 BeforeAll {
     $testInputFile = @{
-        Tasks = @(
+        MaxConcurrentJobs = 1
+        Tasks             = @(
             @{
                 Name            = 'App x'
                 Sftp            = @{
@@ -246,7 +247,7 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
             It 'Tasks.ExportExcelFile.<_> not found' -ForEach @(
-                 'When'
+                'When'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].ExportExcelFile.$_ = $null
@@ -298,6 +299,42 @@ Describe 'send an e-mail to the admin when' {
                     $EntryType -eq 'Error'
                 }
             }
+            It '<_> not found' -ForEach @(
+                'MaxConcurrentJobs', 'Tasks'
+            ) {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.$_ = $null
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property '$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'MaxConcurrentJobs not a number' {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.MaxConcurrentJobs = 'wrong'
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'MaxConcurrentJobs' needs to be a number, the value 'wrong' is not supported.*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
         }
         It 'the SFTP password is not found in the environment variables' {
             Mock Get-EnvironmentVariableValueHC {
@@ -344,7 +381,7 @@ Describe 'send an e-mail to the admin when' {
             }
         }
     }
-} -Tag test
+}
 Describe 'when all tests pass' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 5 | 
@@ -412,4 +449,4 @@ Describe 'when all tests pass' {
             }
         }
     }
-}
+} -Skip

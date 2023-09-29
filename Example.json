@@ -1,4 +1,5 @@
 {
+  "MaxConcurrentJobs": 5,
   "Tasks": [
     {
       "Name": "Upload app x",
