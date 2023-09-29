@@ -221,11 +221,13 @@ Begin {
                 #endregion
             }
 
+            #region Test unique Task.Name
             $Tasks.Task.Name | Group-Object | Where-Object {
                 $_.Count -gt 1
             } | ForEach-Object {
                 throw "Property 'Tasks.Task.Name' with value '$($_.Name)' is not unique. Each task name needs to be unique."
             }
+            #endregion
         }
         catch {
             throw "Input file '$ImportFile': $_"
