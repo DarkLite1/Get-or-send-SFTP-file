@@ -2,7 +2,10 @@
   "MaxConcurrentJobs": 5,
   "Tasks": [
     {
-      "Name": "Upload app x",
+      "Task": {
+        "Name": "Upload app x",
+        "ExecutedOnComputerName": "localhost"
+      },
       "Sftp": {
         "ComputerName": "ftp.appx.be",
         "Path": "/reports/",

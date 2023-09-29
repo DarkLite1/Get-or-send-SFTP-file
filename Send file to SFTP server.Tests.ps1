@@ -7,7 +7,10 @@ BeforeAll {
         MaxConcurrentJobs = 1
         Tasks             = @(
             @{
-                Name            = 'App x'
+                Task            = @{
+                    Name                   = 'App x'
+                    ExecutedOnComputerName = 'localhost'
+                }
                 Sftp            = @{
                     ComputerName = 'PC1'
                     Path         = '/SFTP/folder/'
@@ -112,8 +115,44 @@ Describe 'send an e-mail to the admin when' {
             }
         }
         Context 'property' {
+            It '<_> not found' -ForEach @(
+                'MaxConcurrentJobs', 'Tasks'
+            ) {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.$_ = $null
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property '$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'MaxConcurrentJobs not a number' {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.MaxConcurrentJobs = 'wrong'
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'MaxConcurrentJobs' needs to be a number, the value 'wrong' is not supported.*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
             It 'Tasks.<_> not found' -ForEach @(
-                'Name', 'Sftp', 'Upload', 'SendMail', 'ExportExcelFile'
+                'Task', 'Sftp', 'Upload', 'SendMail', 'ExportExcelFile'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].$_ = $null
@@ -126,6 +165,25 @@ Describe 'send an e-mail to the admin when' {
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
                         ($Message -like "*$ImportFile*Property 'Tasks.$_' not found*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            }
+            It 'Tasks.Task.<_> not found' -ForEach @(
+                'Name', 'ExecutedOnComputerName'
+            ) {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks[0].Task.$_ = $null
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+                    
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.Task.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
@@ -294,42 +352,6 @@ Describe 'send an e-mail to the admin when' {
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
                         ($Message -like "*$ImportFile*Property 'Tasks.SendMail.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
-                }
-            }
-            It '<_> not found' -ForEach @(
-                'MaxConcurrentJobs', 'Tasks'
-            ) {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-                    
-                .$testScript @testParams
-                    
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property '$_' not found*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
-                }
-            }
-            It 'MaxConcurrentJobs not a number' {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.MaxConcurrentJobs = 'wrong'
-    
-                $testNewInputFile | ConvertTo-Json -Depth 5 | 
-                Out-File @testOutParams
-                    
-                .$testScript @testParams
-                    
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'MaxConcurrentJobs' needs to be a number, the value 'wrong' is not supported.*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'

@@ -129,7 +129,7 @@ Begin {
             if (-not ($MaxConcurrentJobs = $file.MaxConcurrentJobs)) {
                 throw "Property 'MaxConcurrentJobs' not found"
             }
-            
+
             #region Test integer value
             if (-not ($MaxConcurrentJobs -is [int])) {
                 throw "Property 'MaxConcurrentJobs' needs to be a number, the value '$MaxConcurrentJobs' is not supported."
@@ -137,12 +137,18 @@ Begin {
             #endregion
 
             foreach ($task in $Tasks) {
-                @('Name', 'Sftp', 'Upload', 'SendMail', 'ExportExcelFile') | 
+                @('Task', 'Sftp', 'Upload', 'SendMail', 'ExportExcelFile') | 
                 Where-Object { -not $task.$_ } |
                 ForEach-Object {
                     throw "Property 'Tasks.$_' not found"
                 }
                 
+                @('Name', 'ExecutedOnComputerName') | 
+                Where-Object { -not $task.Task.$_ } |
+                ForEach-Object {
+                    throw "Property 'Tasks.Task.$_' not found"
+                }
+
                 @('ComputerName', 'Path', 'Credential') | 
                 Where-Object { -not $task.Sftp.$_ } |
                 ForEach-Object {
