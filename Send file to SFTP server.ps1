@@ -143,7 +143,7 @@ Begin {
                     throw "Property 'Tasks.$_' not found"
                 }
                 
-                @('Name', 'ExecutedOnComputerName') | 
+                @('Name', 'ExecuteOnComputerName') | 
                 Where-Object { -not $task.Task.$_ } |
                 ForEach-Object {
                     throw "Property 'Tasks.Task.$_' not found"
@@ -279,10 +279,48 @@ Begin {
 Process {
     Try {
         foreach ($task in $Tasks) {
-            $M = 'Upload task'
-            Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
+            $task | Add-Member -NotePropertyMembers @{
+                Job = @{
+                    Object  = $null
+                    Results = @()
+                }
+            }
 
-            
+            $invokeParams = @{
+                ScriptBlock  = $scriptBlock
+                ArgumentList = $task.Upload.Path, $task.Sftp.ComputerName, 
+                $task.Sftp.Path, $task.Sftp.UserName, $task.Sftp.Password, 
+                $task.Option.OverwriteFileOnSftpServer, 
+                $task.Option.RemoveFileAfterUpload,
+                $task.Option.ErrorWhenUploadPathIsNotFound
+            }
+    
+            $M = "Start job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' Sftp.Path '{3}' Sftp.UserName '{4}' Option.OverwriteFileOnSftpServer '{5}' Option.RemoveFileAfterUpload '{6}' Option.ErrorWhenUploadPathIsNotFound '{7}' Upload.Path '{8}'" -f $task.Task.Name, $task.Task.ExecuteOnComputerName,
+            $invokeParams.ArgumentList[1], $invokeParams.ArgumentList[2], 
+            $invokeParams.ArgumentList[3], $invokeParams.ArgumentList[5],
+            $invokeParams.ArgumentList[6], $invokeParams.ArgumentList[7],
+            $($invokeParams.ArgumentList[0] -join "', '")
+            Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
+      
+            $jobs += if (
+                ($task.Task.ExecuteOnComputerName) -and
+                ($task.Task.ExecuteOnComputerName -ne 'localhost') -and
+                ($task.Task.ExecuteOnComputerName -ne $ENV:COMPUTERNAME) -and
+                ($task.Task.ExecuteOnComputerName -ne "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
+            ) {
+                $invokeParams.ComputerName = $task.Task.ExecuteOnComputerName
+                $invokeParams.AsJob = $true
+                Invoke-Command @invokeParams
+            }
+            else {
+                Start-Job @invokeParams
+            }
+    
+            $params = @{
+                Name       = $task.Job.Object 
+                MaxThreads = $MaxConcurrentJobs     
+            }
+            Wait-MaxRunningJobsHC @params
         }
     }
     Catch {

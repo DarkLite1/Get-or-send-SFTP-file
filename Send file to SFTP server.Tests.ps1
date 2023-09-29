@@ -3,13 +3,18 @@
 #Requires -Version 5.1
 
 BeforeAll {
+    $realCmdLet = @{
+        StartJob      = Get-Command Start-Job
+        InvokeCommand = Get-Command Invoke-Command
+    }
+
     $testInputFile = @{
         MaxConcurrentJobs = 1
         Tasks             = @(
             @{
                 Task            = @{
-                    Name                   = 'App x'
-                    ExecutedOnComputerName = 'localhost'
+                    Name                  = 'App x'
+                    ExecuteOnComputerName = 'localhost'
                 }
                 Sftp            = @{
                     ComputerName = 'PC1'
@@ -64,14 +69,9 @@ BeforeAll {
     
     Mock Get-EnvironmentVariableValueHC {
         'bob'
-    } -ParameterFilter {
-        $Name -eq $testInputFile.SFtp.Credential.UserName
     }
-    Mock Get-EnvironmentVariableValueHC {
-        'PasswordBob'
-    } -ParameterFilter {
-        $Name -eq $testInputFile.SFtp.Credential.Password
-    }
+    Mock Invoke-Command
+    Mock Start-Job
     Mock Send-MailHC
     Mock Write-EventLog
 }
@@ -171,7 +171,7 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
             It 'Tasks.Task.<_> not found' -ForEach @(
-                'Name', 'ExecutedOnComputerName'
+                'Name', 'ExecuteOnComputerName'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].Task.$_ = $null
@@ -378,7 +378,7 @@ Describe 'send an e-mail to the admin when' {
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
                 }
-            } -Tag test
+            }
         }
         It 'the SFTP password is not found in the environment variables' {
             Mock Get-EnvironmentVariableValueHC {
@@ -424,6 +424,30 @@ Describe 'send an e-mail to the admin when' {
                 $EntryType -eq 'Error'
             }
         }
+    }
+}
+Describe 'execute the SFTP script' {
+    It 'with Invoke-Command when ExecuteOnComputerName is not the localhost' {
+        Mock Invoke-Command {
+            & $realCmdLet.InvokeCommand -Scriptblock { 
+                $using:testData
+            } -AsJob -ComputerName $env:COMPUTERNAME
+        }
+
+        $testNewInputFile = Copy-ObjectHC $testInputFile
+        $testNewInputFile.Tasks[0].Task.ExecuteOnComputerName = 'localhost'
+
+        $testNewInputFile | ConvertTo-Json -Depth 5 | 
+        Out-File @testOutParams
+            
+
+        .$testScript @testParams
+    }
+    It 'with Start-Job when ExecuteOnComputerName is the localhost' {
+        $testInputFile | ConvertTo-Json -Depth 5 | 
+        Out-File @testOutParams
+
+        .$testScript @testParams
     }
 }
 Describe 'when all tests pass' {

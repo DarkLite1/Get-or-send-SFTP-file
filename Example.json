@@ -4,7 +4,7 @@
     {
       "Task": {
         "Name": "Upload app x",
-        "ExecutedOnComputerName": "localhost"
+        "ExecuteOnComputerName": "localhost"
       },
       "Sftp": {
         "ComputerName": "ftp.appx.be",
