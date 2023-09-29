@@ -302,7 +302,7 @@ Process {
             }
 
             $invokeParams = @{
-                ScriptBlock  = $scriptBlock
+                FilePath     = $SftpScriptPathItem
                 ArgumentList = $task.Upload.Path, $task.Sftp.ComputerName, 
                 $task.Sftp.Path, $task.Sftp.UserName, $task.Sftp.Password, 
                 $task.Option.OverwriteFileOnSftpServer, 
