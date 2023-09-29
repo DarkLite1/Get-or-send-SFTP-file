@@ -357,6 +357,28 @@ Describe 'send an e-mail to the admin when' {
                     $EntryType -eq 'Error'
                 }
             }
+            It 'Tasks.Name is not unique' {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks = @(
+                    $testInputFile.Tasks[0]
+                    $testInputFile.Tasks[0]
+                )
+                $testNewInputFile.Tasks[0].Task.Name = 'Name1'
+                $testNewInputFile.Tasks[1].Task.Name = 'Name1'
+    
+                $testNewInputFile | ConvertTo-Json -Depth 5 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.Task.Name' with value 'Name1' is not unique*")
+                }
+                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                    $EntryType -eq 'Error'
+                }
+            } -Tag test
         }
         It 'the SFTP password is not found in the environment variables' {
             Mock Get-EnvironmentVariableValueHC {
