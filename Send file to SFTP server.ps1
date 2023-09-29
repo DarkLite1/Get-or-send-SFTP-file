@@ -75,6 +75,7 @@ Param (
     [String]$ScriptName,
     [Parameter(Mandatory)]
     [String]$ImportFile,
+    [string]$SftpScriptPath = "$PSScriptRoot\Send to SFTP.ps1",
     [String]$LogFolder = "$env:POWERSHELL_LOG_FOLDER\File or folder\Send file to SFTP server\$ScriptName",
     [String[]]$ScriptAdmin = @(
         $env:POWERSHELL_SCRIPT_ADMIN,
@@ -97,6 +98,19 @@ Begin {
         Write-EventLog @EventStartParams
         $Error.Clear()
         
+        #region Test SFTP script path exits
+        try {
+            $params = @{
+                Path        = $SftpScriptPath
+                ErrorAction = 'Stop'
+            }
+            $SftpScriptPathItem = (Get-Item @params).FullName
+        }
+        catch {
+            throw "SftpScriptPath '$SftpScriptPath' not found"
+        }
+        #endregion
+
         #region Create log folder
         try {
             $logParams = @{
@@ -278,6 +292,7 @@ Begin {
 
 Process {
     Try {
+        #region Start jobs to upload files        
         foreach ($task in $Tasks) {
             $task | Add-Member -NotePropertyMembers @{
                 Job = @{
@@ -302,7 +317,7 @@ Process {
             $($invokeParams.ArgumentList[0] -join "', '")
             Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
       
-            $jobs += if (
+            $task.Job.Object = if (
                 ($task.Task.ExecuteOnComputerName) -and
                 ($task.Task.ExecuteOnComputerName -ne 'localhost') -and
                 ($task.Task.ExecuteOnComputerName -ne $ENV:COMPUTERNAME) -and
@@ -317,11 +332,12 @@ Process {
             }
     
             $params = @{
-                Name       = $task.Job.Object 
+                Name       = $Tasks.Task.Job.Object | Where-Object { $_ }
                 MaxThreads = $MaxConcurrentJobs     
             }
             Wait-MaxRunningJobsHC @params
         }
+        #endregion
     }
     Catch {
         Write-Warning $_

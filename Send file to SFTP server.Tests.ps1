@@ -55,10 +55,11 @@ BeforeAll {
 
     $testScript = $PSCommandPath.Replace('.Tests.ps1', '.ps1')
     $testParams = @{
-        ScriptName  = 'Test (Brecht)'
-        ImportFile  = $testOutParams.FilePath
-        LogFolder   = New-Item 'TestDrive:/log' -ItemType Directory
-        ScriptAdmin = 'admin@conotoso.com'
+        ScriptName     = 'Test (Brecht)'
+        ImportFile     = $testOutParams.FilePath
+        SftpScriptPath = (New-Item 'TestDrive:/s.ps1' -ItemType 'File').FullName
+        LogFolder      = New-Item 'TestDrive:/log' -ItemType Directory
+        ScriptAdmin    = 'admin@conotoso.com'
     }
 
     Function Get-EnvironmentVariableValueHC {
@@ -424,6 +425,22 @@ Describe 'send an e-mail to the admin when' {
                 $EntryType -eq 'Error'
             }
         }
+        It 'the SFTP script is not found' {
+            $testNewParams = $testParams.Clone()
+            $testNewParams.SftpScriptPath = 'c:\doesNotExist.ps1'
+            
+            $testInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+
+            .$testScript @testNewParams
+    
+            Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                    (&$MailAdminParams) -and ($Message -like "*SftpScriptPath 'c:\doesNotExist.ps1' not found*")
+            }
+            Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                $EntryType -eq 'Error'
+            }
+        } -tag test
     }
 }
 Describe 'execute the SFTP script' {
