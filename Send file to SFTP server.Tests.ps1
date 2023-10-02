@@ -565,31 +565,122 @@ Describe 'when the SFTP script has been executed' {
             }
         }
     } -Skip
-} -Tag test
-
-Describe 'do not create an Excel file when' {
-    It "ExportExcelFile.When is 'Never'" {
-        $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Tasks[0].ExportExcelFile.When = 'Never'
-
-        $testNewInputFile | ConvertTo-Json -Depth 5 | 
-        Out-File @testOutParams
-
-        .$testScript @testParams
-
-        Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
-        Should -BeNullOrEmpty
-    }
-    It "ExportExcelFile.When is 'OnlyOnError' and no errors are found" {
-        $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnError'
-
-        $testNewInputFile | ConvertTo-Json -Depth 5 | 
-        Out-File @testOutParams
-
-        .$testScript @testParams
-
-        Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
-        Should -BeNullOrEmpty
-    }
 }
+
+Describe 'ExportExcelFile.When' {
+    Context 'create no Excel file' {
+        It "'Never'" {
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'Never'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
+            Should -BeNullOrEmpty
+        }
+        It "'OnlyOnError' and no errors are found" {
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnError'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
+            Should -BeNullOrEmpty
+        }
+        It "'OnlyOnErrorOrUpload' and there are no errors and no uploads" {
+            Mock Start-Job {
+                & $realCmdLet.InvokeCommand -Scriptblock { 
+                   
+                } -AsJob -ComputerName $env:COMPUTERNAME
+            }
+
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrUpload'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
+            Should -BeNullOrEmpty
+        } 
+    }
+    Context 'create an Excel file' {
+        It "'OnlyOnError' and there are errors" {
+            Mock Start-Job {
+                & $realCmdLet.InvokeCommand -Scriptblock { 
+                    [PSCustomObject]@{
+                        Path       = 'a'
+                        UploadedOn = Get-Date
+                        Action     = @()
+                        Error      = 'oops'
+                    }     
+                } -AsJob -ComputerName $env:COMPUTERNAME
+            }
+
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnError'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
+            Should -Not -BeNullOrEmpty
+        }
+        It "'OnlyOnErrorOrUpload' and there are uploads but no errors" {
+            Mock Start-Job {
+                & $realCmdLet.InvokeCommand -Scriptblock { 
+                    [PSCustomObject]@{
+                        Path       = 'a'
+                        UploadedOn = Get-Date
+                        Action     = @('upload')
+                        Error      = $null
+                    }     
+                } -AsJob -ComputerName $env:COMPUTERNAME
+            }
+
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrUpload'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
+            Should -Not -BeNullOrEmpty
+        }
+        It "'OnlyOnErrorOrUpload' and there are errors but no uploads" {
+            Mock Start-Job {
+                & $realCmdLet.InvokeCommand -Scriptblock { 
+                    [PSCustomObject]@{
+                        Path       = 'a'
+                        UploadedOn = Get-Date
+                        Action     = @()
+                        Error      = 'oops'
+                    }     
+                } -AsJob -ComputerName $env:COMPUTERNAME
+            }
+
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrUpload'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
+            Should -Not -BeNullOrEmpty
+        }
+    }
+} -Tag test
