@@ -43,16 +43,10 @@ Param (
 )
 
 try {
-    $result = [PSCustomObject]@{
-        Upload = @{
-            Path    = $Path
-            Results = @()
-        }
-        Error  = $null
-    }
-
     #region Get files to upload
-    $filesToUpload = foreach ($P in $Path) {
+    $filesToUpload = @()
+
+    foreach ($P in $Path) {
         try {
             Write-Verbose "Test path '$P'"
             $item = Get-Item -LiteralPath $P -ErrorAction 'Ignore'
@@ -70,7 +64,7 @@ try {
             #endregion
 
             #region Get files
-            if ($item.PSIsContainer) {
+            $filesToUpload += if ($item.PSIsContainer) {
                 Write-Verbose "Get files in folder '$P'"
                 (Get-ChildItem -LiteralPath $item.FullName -File).FullName
             }
@@ -80,7 +74,7 @@ try {
             #endregion
         }
         catch {
-            $result.Upload.Results += [PSCustomObject]@{
+            [PSCustomObject]@{
                 Path       = $P
                 UploadedOn = $null
                 Action     = $null
@@ -183,18 +177,21 @@ try {
             $Error.RemoveAt(0)        
         }
         finally {
-            $result.Upload.Results += $uploadResult
+            $uploadResult
         }
     }
 }
 catch {
+    [PSCustomObject]@{
+        Path       = $Path
+        UploadedOn = $null
+        Action     = $null
+        Error      = $_
+    }
     Write-Warning $_
-    $result.Error = $_
     $Error.RemoveAt(0)
 }
 finally {
-    $result
-
     #region Close SFTP session
     if ($sessionParams.SessionID) {
         Write-Verbose 'Close SFTP session'

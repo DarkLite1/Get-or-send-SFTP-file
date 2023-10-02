@@ -64,7 +64,7 @@ Describe 'generate an error when' {
 
         $testResult = .$testScript @testNewParams
 
-        $testResult.Upload.Results.Error | 
+        $testResult.Error | 
         Should -Be "Path '$($testNewParams.Path)' not found"
     }
     It 'the upload fails' {
@@ -77,7 +77,7 @@ Describe 'generate an error when' {
 
         $testResult = .$testScript @testNewParams
 
-        $testResult.Upload.Results.Error | Should -Be 'upload failed'
+        $testResult.Error | Should -Be 'upload failed'
     }
 }
 Describe 'do not start an SFTP sessions when' {
@@ -147,10 +147,9 @@ Describe 'upload to the SFTP server' {
 
         $testResults = .$testScript @testNewParams
 
-        $testResults.Upload.Path | Should -HaveCount $testFiles.Count
-        $testResults.Upload.Results | Should -HaveCount $testFiles.Count
+        $testResults | Should -HaveCount $testFiles.Count
 
-        $testResults.Upload.Results | ForEach-Object {
+        $testResults | ForEach-Object {
             $_.Path | Should -Not -BeNullOrEmpty
             $_.UploadedOn | Should -Not -BeNullOrEmpty
             $_.Action | Should -BeNullOrEmpty
@@ -216,7 +215,7 @@ Describe 'RemoveFileAfterUpload ' {
             }
         }
         It 'return an object with results' {
-            $testResults.Upload.Results | ForEach-Object {
+            $testResults | ForEach-Object {
                 $_.Path | Should -Not -BeNullOrEmpty
                 $_.UploadedOn | Should -Not -BeNullOrEmpty
                 $_.Action | Should -BeNullOrEmpty
@@ -243,7 +242,7 @@ Describe 'RemoveFileAfterUpload ' {
             }
         }
         It 'return an object with results' {
-            $testResults.Upload.Results | ForEach-Object {
+            $testResults | ForEach-Object {
                 $_.Path | Should -Not -BeNullOrEmpty
                 $_.UploadedOn | Should -Not -BeNullOrEmpty
                 $_.Action | Should -Be 'File removed after upload'
