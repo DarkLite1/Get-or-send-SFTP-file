@@ -351,13 +351,10 @@ Process {
         #region Get job results
         foreach ($task in $Tasks) {
             $task.Job.Results += Receive-Job -Job $task.Job.Object
+            
             $M = "Received '{0}' job result{1} for task '{2}'" -f 
             $task.Job.Results.Count,
-            $(
-                if ($task.Job.Results.Count -ne 1) {
-                    's'
-                }
-            ),
+            $(if ($task.Job.Results.Count -ne 1) { 's' }),
             $task.Task.Name
             Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
         }

@@ -526,7 +526,7 @@ Describe 'execute the SFTP script' {
 
         Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments
     }
-} -tag test
+}
 Describe 'when all tests pass' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 5 | 
