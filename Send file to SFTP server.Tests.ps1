@@ -33,7 +33,7 @@ BeforeAll {
                         OverwriteFileOnSftpServer = $false
                         RemoveFileAfterUpload     = $false
                         ErrorWhen                 = @{
-                            UploadPathIsNotFound = $false
+                            UploadPathIsNotFound = $true
                         }
                     }
                 }
@@ -47,6 +47,32 @@ BeforeAll {
             }
         )
     }
+
+    $testData = @(
+        [PSCustomObject]@{
+            Upload = @{
+                Path    = $Path
+                Results = @(
+                    [PSCustomObject]@{
+                        Path       = $P
+                        UploadedOn = $null
+                        Action     = $null
+                        Error      = $_
+                    }
+                )
+            }
+            Sftp   = @{
+                ComputerName = $SftpComputerName
+                UserName     = $SftpUserName
+                Path         = $SftpPath
+            }
+            Option = @{
+                OverwriteFileOnSftpServer = $OverwriteFileOnSftpServer
+                RemoveFileAfterUpload     = $RemoveFileAfterUpload
+            }
+            Error  = $null
+        }
+    )
 
     $testOutParams = @{
         FilePath = (New-Item "TestDrive:/Test.json" -ItemType File).FullName
@@ -69,10 +95,30 @@ BeforeAll {
     }
     
     Mock Get-EnvironmentVariableValueHC {
-        'bob'
+        'bobUserName'
+    } -ParameterFilter {
+        $Name -eq $testInputFile.Tasks[0].Sftp.Credential.UserName
     }
-    Mock Invoke-Command
-    Mock Start-Job
+    Mock Get-EnvironmentVariableValueHC {
+        'bobPassword'
+    } -ParameterFilter {
+        $Name -eq $testInputFile.Tasks[0].Sftp.Credential.Password
+    }
+    Mock ConvertTo-SecureString {
+        'bobPasswordEncrypted'
+    } -ParameterFilter {
+        $String -eq 'bobPassword'
+    }
+    Mock Start-Job {
+        & $realCmdLet.InvokeCommand -Scriptblock { 
+            $using:testData
+        } -AsJob -ComputerName $env:COMPUTERNAME
+    }
+    Mock Invoke-Command {
+        & $realCmdLet.InvokeCommand -Scriptblock { 
+            $using:testData
+        } -AsJob -ComputerName $env:COMPUTERNAME
+    }
     Mock Send-MailHC
     Mock Write-EventLog
 }
@@ -440,31 +486,45 @@ Describe 'send an e-mail to the admin when' {
             Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                 $EntryType -eq 'Error'
             }
-        } -tag test
+        }
     }
 }
 Describe 'execute the SFTP script' {
-    It 'with Invoke-Command when ExecuteOnComputerName is not the localhost' {
-        Mock Invoke-Command {
-            & $realCmdLet.InvokeCommand -Scriptblock { 
-                $using:testData
-            } -AsJob -ComputerName $env:COMPUTERNAME
+    BeforeAll {
+        $testJobArguments = {
+            ($FilePath -eq $testParams.SftpScriptPath) -and
+            ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Upload.Path[0]) -and
+            ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Upload.Path[1]) -and
+            ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
+            ($ArgumentList[2] -eq $testInputFile.Tasks[0].Sftp.Path) -and
+            ($ArgumentList[3] -eq 'bobUserName') -and
+            ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
+            ($ArgumentList[5] -eq $testInputFile.Tasks[0].Option.OverwriteFileOnSftpServer) -and
+            ($ArgumentList[6] -eq $testInputFile.Tasks[0].Option.RemoveFileAfterUpload) -and
+            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.ErrorWhen.UploadPathIsNotFound)
         }
+    }
+    It 'with Invoke-Command when ExecuteOnComputerName is not the localhost' {
+        $testNewInputFile = Copy-ObjectHC $testInputFile
+        $testNewInputFile.Tasks[0].Task.ExecuteOnComputerName = 'PC1'
 
+        $testNewInputFile | ConvertTo-Json -Depth 5 | 
+        Out-File @testOutParams
+            
+        .$testScript @testParams
+
+        Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments
+    }
+    It 'with Start-Job when ExecuteOnComputerName is the localhost' {
         $testNewInputFile = Copy-ObjectHC $testInputFile
         $testNewInputFile.Tasks[0].Task.ExecuteOnComputerName = 'localhost'
 
         $testNewInputFile | ConvertTo-Json -Depth 5 | 
         Out-File @testOutParams
             
-
         .$testScript @testParams
-    }
-    It 'with Start-Job when ExecuteOnComputerName is the localhost' {
-        $testInputFile | ConvertTo-Json -Depth 5 | 
-        Out-File @testOutParams
 
-        .$testScript @testParams
+        Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments
     }
 }
 Describe 'when all tests pass' {

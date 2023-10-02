@@ -303,8 +303,11 @@ Process {
 
             $invokeParams = @{
                 FilePath     = $SftpScriptPathItem
-                ArgumentList = $task.Upload.Path, $task.Sftp.ComputerName, 
-                $task.Sftp.Path, $task.Sftp.UserName, $task.Sftp.Password, 
+                ArgumentList = $task.Upload.Path, 
+                $task.Sftp.ComputerName, 
+                $task.Sftp.Path, 
+                $task.Sftp.Credential.UserName, 
+                $task.Sftp.Credential.Password, 
                 $task.Option.OverwriteFileOnSftpServer, 
                 $task.Option.RemoveFileAfterUpload,
                 $task.Option.ErrorWhenUploadPathIsNotFound
@@ -332,7 +335,7 @@ Process {
             }
     
             $params = @{
-                Name       = $Tasks.Task.Job.Object | Where-Object { $_ }
+                Name       = $Tasks.Job.Object | Where-Object { $_ }
                 MaxThreads = $MaxConcurrentJobs     
             }
             Wait-MaxRunningJobsHC @params
