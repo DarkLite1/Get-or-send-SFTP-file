@@ -230,7 +230,7 @@ Begin {
                 }
 
                 if ($task.ExportExcelFile.When -notMatch '^Always$|^Never$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
-                    throw "Property 'Tasks.ExportExcelFile.When' with value '$($task.ExportExcelFile.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
+                    throw "Property 'Tasks.ExportExcelFile.When' with value '$($task.ExportExcelFile.When)' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
                 }
                 #endregion
             }
@@ -373,9 +373,10 @@ End {
         foreach ($task in $Tasks) {
             #region Counters
             $counter = @{
-                Sources      = ($Upload.Source | Measure-Object).Count
-                Uploaded     = ($results.UploadedItems | Measure-Object -Sum).Sum
-                UploadErrors = $results.Where({ $_.Error }).Count
+                Uploaded     = ($task.Job.Results.Where(
+                        { $_.UploadedOn }) | Measure-Object).Count
+                UploadErrors = ($task.Job.Results.Where(
+                        { $_.Error }) | Measure-Object).Count
                 SystemErrors = (
                     $Error.Exception.Message | Measure-Object
                 ).Count
@@ -388,27 +389,27 @@ End {
             $createExcelFile = $false
 
             if (
-                (
-                    $ExportExcelFile.When -eq 'Always'
+                (   
+                    ($task.ExportExcelFile.When -eq 'OnlyOnError') -and 
+                    ($counter.UploadErrors -ne 0)
                 ) -or
                 (   
-                ($ExportExcelFile.When -eq 'OnlyOnError') -and 
-                ($counter.UploadErrors -ne 0)
-                ) -or
-                (   
-                ($ExportExcelFile.When -eq 'OnlyOnErrorOrUpload') -and 
-                ($counter.UploadErrors -ne 0) -or ($counter.Uploaded -ne 0)
+                    ($task.ExportExcelFile.When -eq 'OnlyOnErrorOrUpload') -and 
+                    (
+                        ($counter.UploadErrors -ne 0) -or 
+                        ($counter.Uploaded -ne 0)
+                    )
                 )
             ) {
                 $createExcelFile = $true
             }
 
 
-            if ($createExcelFile -and $results) {
+            if ($createExcelFile) {
                 $excelFileLogParams = @{
                     LogFolder    = $logParams.LogFolder
                     Format       = 'yyyy-MM-dd'
-                    Name         = "$ScriptName - Log.xlsx"
+                    Name         = "$ScriptName - $($task.Task.Name) - Log.xlsx"
                     Date         = 'ScriptStartTime'
                     NoFormatting = $true
                 }
@@ -418,19 +419,21 @@ End {
                     Append       = $true
                     AutoSize     = $true
                     FreezeTopRow = $true
+                    Verbose      = $false
                 }
 
                 $excelParams.WorksheetName = 'Overview'
                 $excelParams.TableName = 'Overview'
 
                 $M = "Export {0} rows to Excel sheet '{1}'" -f 
-                $results.Count, $excelParams.WorksheetName
+                $task.Job.Results.Count, $excelParams.WorksheetName
                 Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
             
-                $results | Select-Object *, @{
-                    Name       = 'Info'
-                    Expression = { $_.Info -join ', ' }
-                } -ExcludeProperty 'Info' | Export-Excel @excelParams
+                $task.Job.Results | Select-Object Path, 
+                UploadedOn, @{
+                    Name       = 'Action'
+                    Expression = { $_.Action -join ', ' }
+                }, Error | Export-Excel @excelParams
 
                 $mailParams.Attachments = $excelParams.Path
             }

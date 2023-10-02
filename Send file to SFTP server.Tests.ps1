@@ -42,7 +42,7 @@ BeforeAll {
                     When = 'Always'
                 }
                 ExportExcelFile = @{
-                    When = 'Always'
+                    When = 'OnlyOnErrorOrUpload'
                 }
             }
         )
@@ -52,13 +52,13 @@ BeforeAll {
         [PSCustomObject]@{
             Path       = $testInputFile.Tasks[0].Upload.Path[0]
             UploadedOn = Get-Date
-            Action     = $null
+            Action     = @('file uploaded', 'file removed')
             Error      = $null
         }     
         [PSCustomObject]@{
             Path       = $testInputFile.Tasks[0].Upload.Path[1]
             UploadedOn = Get-Date
-            Action     = $null
+            Action     = @('file uploaded', 'file removed')
             Error      = $null
         }
     )
@@ -370,7 +370,7 @@ Describe 'send an e-mail to the admin when' {
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Tasks.ExportExcelFile.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
+                        ($Message -like "*$ImportFile*Property 'Tasks.ExportExcelFile.When' with value 'wrong' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
@@ -523,30 +523,15 @@ Describe 'when the SFTP script has been executed' {
 
         .$testScript @testParams
     }
-    Context 'export an Excel file' {
+    Context 'create one Excel file for each task for a single day' {
         BeforeAll {
-            $testExportedExcelRows = @(
-                [PSCustomObject]@{
-                    Type          = $testInputFile.Upload[0].Type
-                    Source        = $testFile[0].FullName
-                    Destination   = $testInputFile.Upload[0].Destination
-                    UploadedItems = 1
-                    UploadedOn    = Get-Date
-                    Info          = ''
-                    Error         = $null
-                }
-                [PSCustomObject]@{
-                    Type          = $testInputFile.Upload[0].Type
-                    Source        = $testFile[1].FullName
-                    Destination   = $testInputFile.Upload[0].Destination
-                    UploadedItems = 1
-                    UploadedOn    = Get-Date
-                    Info          = ''
-                    Error         = $null
-                }
-            )
+            $testExportedExcelRows = $testData | 
+            Select-Object Path, UploadedOn, @{
+                Name       = 'Action'
+                Expression = { $_.Action -join ', ' }
+            }, Error
 
-            $testExcelLogFile = Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '* - Log.xlsx'
+            $testExcelLogFile = Get-ChildItem $testParams.LogFolder -File -Recurse -Filter "* - $($testInputFile.Tasks[0].Task.Name) - Log.xlsx"
 
             $actual = Import-Excel -Path $testExcelLogFile.FullName -WorksheetName 'Overview'
         }
@@ -559,14 +544,11 @@ Describe 'when the SFTP script has been executed' {
         It 'with the correct data in the rows' {
             foreach ($testRow in $testExportedExcelRows) {
                 $actualRow = $actual | Where-Object {
-                    $_.Source -eq $testRow.Source
+                    $_.Path -eq $testRow.Path
                 }
                 $actualRow.UploadedOn.ToString('yyyyMMdd') | 
                 Should -Be $testRow.UploadedOn.ToString('yyyyMMdd')
-                $actualRow.Type | Should -Be $testRow.Type
-                $actualRow.UploadedItems | Should -Be $testRow.UploadedItems
-                $actualRow.Error | Should -Be $testRow.Error
-                $actualRow.Info | Should -Be $testRow.Info
+                $actualRow.Action | Should -Be $testRow.Action
                 $actualRow.Error | Should -Be $testRow.Error
             }
         }
@@ -582,5 +564,32 @@ Describe 'when the SFTP script has been executed' {
             ($Message -like "*table*Type*File*Source*Destination*")
             }
         }
+    } -Skip
+} -Tag test
+
+Describe 'do not create an Excel file when' {
+    It "ExportExcelFile.When is 'Never'" {
+        $testNewInputFile = Copy-ObjectHC $testInputFile
+        $testNewInputFile.Tasks[0].ExportExcelFile.When = 'Never'
+
+        $testNewInputFile | ConvertTo-Json -Depth 5 | 
+        Out-File @testOutParams
+
+        .$testScript @testParams
+
+        Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
+        Should -BeNullOrEmpty
     }
-} -Skip
+    It "ExportExcelFile.When is 'OnlyOnError' and no errors are found" {
+        $testNewInputFile = Copy-ObjectHC $testInputFile
+        $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnError'
+
+        $testNewInputFile | ConvertTo-Json -Depth 5 | 
+        Out-File @testOutParams
+
+        .$testScript @testParams
+
+        Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
+        Should -BeNullOrEmpty
+    }
+}

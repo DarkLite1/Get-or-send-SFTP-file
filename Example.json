@@ -27,11 +27,11 @@
       "SendMail": {
         "To": ["bob@contoso.com"],
         "When": "Always",
-        "?": "When: Always | Never | OnlyOnError | OnlyOnErrorOrUpload"
+        "?": "When: Never | OnlyOnError | OnlyOnErrorOrUpload | Always"
       },
       "ExportExcelFile": {
         "When": "Always",
-        "?": "When: Always | Never | OnlyOnError | OnlyOnErrorOrUpload"
+        "?": "When: Never | OnlyOnError | OnlyOnErrorOrUpload"
       }
     }
   ]
