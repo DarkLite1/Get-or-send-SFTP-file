@@ -84,12 +84,12 @@ try {
             $Error.RemoveAt(0)        
         }
     }
-
+    #endregion
+    
     if (-not $filesToUpload) {
         Write-Verbose 'No files to upload'
         Exit
     }
-    #endregion
 
     #region Create SFTP credential
     try {

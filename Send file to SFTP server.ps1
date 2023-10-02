@@ -308,12 +308,12 @@ Process {
                 $task.Sftp.Path, 
                 $task.Sftp.Credential.UserName, 
                 $task.Sftp.Credential.Password, 
-                $task.Option.OverwriteFileOnSftpServer, 
-                $task.Option.RemoveFileAfterUpload,
-                $task.Option.ErrorWhenUploadPathIsNotFound
+                $task.Upload.Option.OverwriteFileOnSftpServer, 
+                $task.Upload.Option.RemoveFileAfterUpload,
+                $task.Upload.Option.ErrorWhen.UploadPathIsNotFound
             }
     
-            $M = "Start job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' Sftp.Path '{3}' Sftp.UserName '{4}' Option.OverwriteFileOnSftpServer '{5}' Option.RemoveFileAfterUpload '{6}' Option.ErrorWhenUploadPathIsNotFound '{7}' Upload.Path '{8}'" -f $task.Task.Name, $task.Task.ExecuteOnComputerName,
+            $M = "Start job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' Sftp.Path '{3}' Sftp.UserName '{4}' Option.OverwriteFileOnSftpServer '{5}' Option.RemoveFileAfterUpload '{6}' Option.ErrorWhen.UploadPathIsNotFound '{7}' Upload.Path '{8}'" -f $task.Task.Name, $task.Task.ExecuteOnComputerName,
             $invokeParams.ArgumentList[1], $invokeParams.ArgumentList[2], 
             $invokeParams.ArgumentList[3], $invokeParams.ArgumentList[5],
             $invokeParams.ArgumentList[6], $invokeParams.ArgumentList[7],
@@ -339,6 +339,27 @@ Process {
                 MaxThreads = $MaxConcurrentJobs     
             }
             Wait-MaxRunningJobsHC @params
+        }
+        #endregion
+
+        #region Wait for all jobs to finish
+        Write-Verbose 'Wait for all jobs to finish'
+        
+        $null = $Tasks.Job.Object | Wait-Job
+        #endregion
+
+        #region Get job results
+        foreach ($task in $Tasks) {
+            $task.Job.Results += Receive-Job -Job $task.Job.Object
+            $M = "Received '{0}' job result{1} for task '{2}'" -f 
+            $task.Job.Results.Count,
+            $(
+                if ($task.Job.Results.Count -ne 1) {
+                    's'
+                }
+            ),
+            $task.Task.Name
+            Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
         }
         #endregion
     }

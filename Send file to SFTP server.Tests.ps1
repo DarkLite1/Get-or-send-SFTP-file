@@ -499,9 +499,9 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[2] -eq $testInputFile.Tasks[0].Sftp.Path) -and
             ($ArgumentList[3] -eq 'bobUserName') -and
             ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
-            ($ArgumentList[5] -eq $testInputFile.Tasks[0].Option.OverwriteFileOnSftpServer) -and
-            ($ArgumentList[6] -eq $testInputFile.Tasks[0].Option.RemoveFileAfterUpload) -and
-            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.ErrorWhen.UploadPathIsNotFound)
+            ($ArgumentList[5] -eq $testInputFile.Tasks[0].Upload.Option.OverwriteFileOnSftpServer) -and
+            ($ArgumentList[6] -eq $testInputFile.Tasks[0].Upload.Option.RemoveFileAfterUpload) -and
+            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Upload.Option.ErrorWhen.UploadPathIsNotFound)
         }
     }
     It 'with Invoke-Command when ExecuteOnComputerName is not the localhost' {
@@ -526,7 +526,7 @@ Describe 'execute the SFTP script' {
 
         Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments
     }
-}
+} -tag test
 Describe 'when all tests pass' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 5 | 
