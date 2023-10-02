@@ -144,7 +144,7 @@ try {
             $uploadResult = [PSCustomObject]@{
                 Path       = $file
                 UploadedOn = $null
-                Action     = $null
+                Action     = @()
                 Error      = $null
             }   
     
@@ -159,7 +159,8 @@ try {
             }
     
             Set-SFTPItem @sessionParams @params
-    
+
+            $uploadResult.Action += 'file uploaded'
             $uploadResult.UploadedOn = Get-Date
             #endregion
     
@@ -167,7 +168,7 @@ try {
             if ($RemoveFileAfterUpload) {
                 $file | Remove-Item -Force -ErrorAction 'Stop'
     
-                $uploadResult.Action = 'File removed after upload'
+                $uploadResult.Action += 'file removed'
             }
             #endregion
         }

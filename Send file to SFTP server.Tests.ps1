@@ -48,6 +48,21 @@ BeforeAll {
         )
     }
 
+    $testData = @(
+        [PSCustomObject]@{
+            Path       = $testInputFile.Tasks[0].Upload.Path[0]
+            UploadedOn = Get-Date
+            Action     = $null
+            Error      = $null
+        }     
+        [PSCustomObject]@{
+            Path       = $testInputFile.Tasks[0].Upload.Path[1]
+            UploadedOn = Get-Date
+            Action     = $null
+            Error      = $null
+        }
+    )
+
     $testOutParams = @{
         FilePath = (New-Item "TestDrive:/Test.json" -ItemType File).FullName
         Encoding = 'utf8'
@@ -90,7 +105,7 @@ BeforeAll {
     }
     Mock Invoke-Command {
         & $realCmdLet.InvokeCommand -Scriptblock { 
-            $using:testData
+            
         } -AsJob -ComputerName $env:COMPUTERNAME
     }
     Mock Send-MailHC
@@ -501,7 +516,7 @@ Describe 'execute the SFTP script' {
         Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments
     }
 }
-Describe 'when all tests pass' {
+Describe 'when the SFTP script has been executed' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 5 | 
         Out-File @testOutParams

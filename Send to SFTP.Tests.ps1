@@ -152,7 +152,7 @@ Describe 'upload to the SFTP server' {
         $testResults | ForEach-Object {
             $_.Path | Should -Not -BeNullOrEmpty
             $_.UploadedOn | Should -Not -BeNullOrEmpty
-            $_.Action | Should -BeNullOrEmpty
+            $_.Action | Should -Be 'file uploaded'
             $_.Error | Should -BeNullOrEmpty
         }
     }
@@ -218,7 +218,7 @@ Describe 'RemoveFileAfterUpload ' {
             $testResults | ForEach-Object {
                 $_.Path | Should -Not -BeNullOrEmpty
                 $_.UploadedOn | Should -Not -BeNullOrEmpty
-                $_.Action | Should -BeNullOrEmpty
+                $_.Action | Should -Be 'file uploaded'
                 $_.Error | Should -BeNullOrEmpty
             }
         }
@@ -245,7 +245,8 @@ Describe 'RemoveFileAfterUpload ' {
             $testResults | ForEach-Object {
                 $_.Path | Should -Not -BeNullOrEmpty
                 $_.UploadedOn | Should -Not -BeNullOrEmpty
-                $_.Action | Should -Be 'File removed after upload'
+                $_.Action[0] | Should -Be 'file uploaded'
+                $_.Action[1] | Should -Be 'file removed'
                 $_.Error | Should -BeNullOrEmpty
             }
         }
