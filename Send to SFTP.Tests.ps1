@@ -149,16 +149,6 @@ Describe 'upload to the SFTP server' {
 
         $testResults.Upload.Path | Should -HaveCount $testFiles.Count
         $testResults.Upload.Results | Should -HaveCount $testFiles.Count
-        $testResults.Sftp.ComputerName | 
-        Should -Be $testNewParams.SftpComputerName
-        $testResults.Sftp.UserName | 
-        Should -Be $testNewParams.SftpUserName
-        $testResults.Sftp.Path | 
-        Should -Be $testNewParams.SftpPath
-        $testResults.Option.OverwriteFileOnSftpServer | 
-        Should -Be $false
-        $testResults.Option.RemoveFileAfterUpload | 
-        Should -Be $false
 
         $testResults.Upload.Results | ForEach-Object {
             $_.Path | Should -Not -BeNullOrEmpty

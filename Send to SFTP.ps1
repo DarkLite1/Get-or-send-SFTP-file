@@ -48,15 +48,6 @@ try {
             Path    = $Path
             Results = @()
         }
-        Sftp   = @{
-            ComputerName = $SftpComputerName
-            UserName     = $SftpUserName
-            Path         = $SftpPath
-        }
-        Option = @{
-            OverwriteFileOnSftpServer = $OverwriteFileOnSftpServer
-            RemoveFileAfterUpload     = $RemoveFileAfterUpload
-        }
         Error  = $null
     }
 
