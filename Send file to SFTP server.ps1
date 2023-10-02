@@ -351,7 +351,7 @@ Process {
         #region Get job results
         foreach ($task in $Tasks) {
             $task.Job.Results += Receive-Job -Job $task.Job.Object
-            
+
             $M = "Received '{0}' job result{1} for task '{2}'" -f 
             $task.Job.Results.Count,
             $(if ($task.Job.Results.Count -ne 1) { 's' }),
@@ -370,114 +370,115 @@ Process {
 
 End {
     try {
-        #region Counters
-        $counter = @{
-            Sources      = ($Upload.Source | Measure-Object).Count
-            Uploaded     = ($results.UploadedItems | Measure-Object -Sum).Sum
-            UploadErrors = $results.Where({ $_.Error }).Count
-            SystemErrors = (
-                $Error.Exception.Message | Measure-Object
-            ).Count
-        }
-        #endregion
+        foreach ($task in $Tasks) {
+            #region Counters
+            $counter = @{
+                Sources      = ($Upload.Source | Measure-Object).Count
+                Uploaded     = ($results.UploadedItems | Measure-Object -Sum).Sum
+                UploadErrors = $results.Where({ $_.Error }).Count
+                SystemErrors = (
+                    $Error.Exception.Message | Measure-Object
+                ).Count
+            }
+            #endregion
 
-        $mailParams = @{}
+            $mailParams = @{}
        
-        #region Create Excel worksheet Overview
-        $createExcelFile = $false
+            #region Create Excel worksheet Overview
+            $createExcelFile = $false
 
-        if (
-            (
-                $ExportExcelFile.When -eq 'Always'
-            ) -or
-            (   
+            if (
+                (
+                    $ExportExcelFile.When -eq 'Always'
+                ) -or
+                (   
                 ($ExportExcelFile.When -eq 'OnlyOnError') -and 
                 ($counter.UploadErrors -ne 0)
-            ) -or
-            (   
+                ) -or
+                (   
                 ($ExportExcelFile.When -eq 'OnlyOnErrorOrUpload') -and 
                 ($counter.UploadErrors -ne 0) -or ($counter.Uploaded -ne 0)
-            )
-        ) {
-            $createExcelFile = $true
-        }
-
-
-        if ($createExcelFile -and $results) {
-            $excelFileLogParams = @{
-                LogFolder    = $logParams.LogFolder
-                Format       = 'yyyy-MM-dd'
-                Name         = "$ScriptName - Log.xlsx"
-                Date         = 'ScriptStartTime'
-                NoFormatting = $true
+                )
+            ) {
+                $createExcelFile = $true
             }
 
-            $excelParams = @{
-                Path         = New-LogFileNameHC @excelFileLogParams
-                Append       = $true
-                AutoSize     = $true
-                FreezeTopRow = $true
-            }
 
-            $excelParams.WorksheetName = 'Overview'
-            $excelParams.TableName = 'Overview'
+            if ($createExcelFile -and $results) {
+                $excelFileLogParams = @{
+                    LogFolder    = $logParams.LogFolder
+                    Format       = 'yyyy-MM-dd'
+                    Name         = "$ScriptName - Log.xlsx"
+                    Date         = 'ScriptStartTime'
+                    NoFormatting = $true
+                }
 
-            $M = "Export {0} rows to Excel sheet '{1}'" -f 
-            $results.Count, $excelParams.WorksheetName
-            Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
+                $excelParams = @{
+                    Path         = New-LogFileNameHC @excelFileLogParams
+                    Append       = $true
+                    AutoSize     = $true
+                    FreezeTopRow = $true
+                }
+
+                $excelParams.WorksheetName = 'Overview'
+                $excelParams.TableName = 'Overview'
+
+                $M = "Export {0} rows to Excel sheet '{1}'" -f 
+                $results.Count, $excelParams.WorksheetName
+                Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
             
-            $results | Select-Object *, @{
-                Name       = 'Info'
-                Expression = { $_.Info -join ', ' }
-            } -ExcludeProperty 'Info' | Export-Excel @excelParams
+                $results | Select-Object *, @{
+                    Name       = 'Info'
+                    Expression = { $_.Info -join ', ' }
+                } -ExcludeProperty 'Info' | Export-Excel @excelParams
 
-            $mailParams.Attachments = $excelParams.Path
-        }
-        #endregion
-
-        #region Send mail to user
-
-        #region Mail subject and priority
-        $mailParams.Priority = 'Normal'
-        $mailParams.Subject = '{0} item{1} uploaded' -f 
-        $counter.Uploaded, $(
-            if ($counter.Uploaded -ne 1) {
-                's'
+                $mailParams.Attachments = $excelParams.Path
             }
-        )
+            #endregion
 
-        if (
-            $totalErrorCount = $counter.UploadErrors + $counter.SystemErrors
-        ) {
-            $mailParams.Priority = 'High'
-            $mailParams.Subject += ", $totalErrorCount error{0}" -f $(
-                if ($totalErrorCount -ne 1) { 's' }
+            #region Send mail to user
+
+            #region Mail subject and priority
+            $mailParams.Priority = 'Normal'
+            $mailParams.Subject = '{0} item{1} uploaded' -f 
+            $counter.Uploaded, $(
+                if ($counter.Uploaded -ne 1) {
+                    's'
+                }
             )
-        }
-        #endregion
+
+            if (
+                $totalErrorCount = $counter.UploadErrors + $counter.SystemErrors
+            ) {
+                $mailParams.Priority = 'High'
+                $mailParams.Subject += ", $totalErrorCount error{0}" -f $(
+                    if ($totalErrorCount -ne 1) { 's' }
+                )
+            }
+            #endregion
         
-        #region Create html error list
-        $systemErrorsHtmlList = if ($counter.SystemErrors) {
-            "<p>Detected <b>{0} error{1}</b>:{2}</p>" -f $counter.SystemErrors, 
-            $(
-                if ($counter.SystemErrors -ne 1) { 's' }
-            ),
-            $(
-                $Error.Exception.Message | Where-Object { $_ } | 
-                ConvertTo-HtmlListHC
-            )
-        }
-        #endregion
+            #region Create html error list
+            $systemErrorsHtmlList = if ($counter.SystemErrors) {
+                "<p>Detected <b>{0} error{1}</b>:{2}</p>" -f $counter.SystemErrors, 
+                $(
+                    if ($counter.SystemErrors -ne 1) { 's' }
+                ),
+                $(
+                    $Error.Exception.Message | Where-Object { $_ } | 
+                    ConvertTo-HtmlListHC
+                )
+            }
+            #endregion
 
-        #region Create html summary table
-        $summaryHtmlTable = ''
+            #region Create html summary table
+            $summaryHtmlTable = ''
 
-        $i = 0
+            $i = 0
 
-        foreach ($task in $Upload) {
-            $i++
+            foreach ($task in $Upload) {
+                $i++
 
-            $summaryHtmlTable += "
+                $summaryHtmlTable += "
             <table>
                 <tr>
                     <th colspan=`"2`">Task $i</th>
@@ -504,44 +505,45 @@ End {
                 </tr>
             </table>
             " 
-        }
-        #endregion
+            }
+            #endregion
                 
-        $mailParams += @{
-            To        = $SendMail.To
-            Bcc       = $ScriptAdmin
-            Message   = "
+            $mailParams += @{
+                To        = $SendMail.To
+                Bcc       = $ScriptAdmin
+                Message   = "
                         $systemErrorsHtmlList
                         <p>Upload files to an SFTP server.</p>
                         $summaryHtmlTable"
-            LogFolder = $LogParams.LogFolder
-            Header    = $ScriptName
-            Save      = $LogFile + ' - Mail.html'
-        }
+                LogFolder = $LogParams.LogFolder
+                Header    = $ScriptName
+                Save      = $LogFile + ' - Mail.html'
+            }
         
-        if ($mailParams.Attachments) {
-            $mailParams.Message += 
-            "<p><i>* Check the attachment for details</i></p>"
-        }
+            if ($mailParams.Attachments) {
+                $mailParams.Message += 
+                "<p><i>* Check the attachment for details</i></p>"
+            }
         
-        Get-ScriptRuntimeHC -Stop
+            Get-ScriptRuntimeHC -Stop
 
-        if (
-            (
-                $SendMail.When -eq 'Always'
-            ) -or
-            (   
+            if (
+                (
+                    $SendMail.When -eq 'Always'
+                ) -or
+                (   
                 ($SendMail.When -eq 'OnlyOnError') -and 
                 ($totalErrorCount -ne 0)
-            ) -or
-            (   
+                ) -or
+                (   
                 ($SendMail.When -eq 'OnlyOnErrorOrUpload') -and 
                 (($totalErrorCount -ne 0) -or ($counter.Uploaded -ne 0))
-            )
-        ) {
-            Send-MailHC @mailParams
+                )
+            ) {
+                Send-MailHC @mailParams
+            }
+            #endregion
         }
-        #endregion
     }
     catch {
         Write-Warning $_

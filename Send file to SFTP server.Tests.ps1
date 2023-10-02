@@ -48,32 +48,6 @@ BeforeAll {
         )
     }
 
-    $testData = @(
-        [PSCustomObject]@{
-            Upload = @{
-                Path    = $Path
-                Results = @(
-                    [PSCustomObject]@{
-                        Path       = $P
-                        UploadedOn = $null
-                        Action     = $null
-                        Error      = $_
-                    }
-                )
-            }
-            Sftp   = @{
-                ComputerName = $SftpComputerName
-                UserName     = $SftpUserName
-                Path         = $SftpPath
-            }
-            Option = @{
-                OverwriteFileOnSftpServer = $OverwriteFileOnSftpServer
-                RemoveFileAfterUpload     = $RemoveFileAfterUpload
-            }
-            Error  = $null
-        }
-    )
-
     $testOutParams = @{
         FilePath = (New-Item "TestDrive:/Test.json" -ItemType File).FullName
         Encoding = 'utf8'
