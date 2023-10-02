@@ -331,6 +331,7 @@ Process {
                 Invoke-Command @invokeParams
             }
             else {
+                $task.Task.ExecuteOnComputerName = $ENV:COMPUTERNAME
                 Start-Job @invokeParams
             }
     
@@ -433,22 +434,46 @@ End {
                 UploadedOn, @{
                     Name       = 'Action'
                     Expression = { $_.Action -join ', ' }
-                }, Error | Export-Excel @excelParams
+                }, Error, @{
+                    Name       = 'ExecutedOn'
+                    Expression = { $_.PSComputerName }
+                } | Export-Excel @excelParams
 
                 $mailParams.Attachments = $excelParams.Path
             }
             #endregion
 
             #region Send mail to user
+            $sendMail = $false
+
+            if (
+                (
+                    ($task.SendMail.When -eq 'Always')
+                ) -or
+                (   
+                    ($task.SendMail.When -eq 'OnlyOnError') -and 
+                    ($counter.UploadErrors -ne 0)
+                ) -or
+                (   
+                    ($task.SendMail.When -eq 'OnlyOnErrorOrUpload') -and 
+                    (
+                        ($counter.UploadErrors -ne 0) -or 
+                        ($counter.Uploaded -ne 0)
+                    )
+                )
+            ) {
+                $sendMail = $true
+            }
+
+            if (-not $sendMail) {
+                Write-Verbose 'No e-mail sent'
+                Continue
+            }
 
             #region Mail subject and priority
             $mailParams.Priority = 'Normal'
             $mailParams.Subject = '{0} item{1} uploaded' -f 
-            $counter.Uploaded, $(
-                if ($counter.Uploaded -ne 1) {
-                    's'
-                }
-            )
+            $counter.Uploaded, $(if ($counter.Uploaded -ne 1) { 's' })
 
             if (
                 $totalErrorCount = $counter.UploadErrors + $counter.SystemErrors
@@ -474,17 +499,11 @@ End {
             #endregion
 
             #region Create html summary table
-            $summaryHtmlTable = ''
-
-            $i = 0
-
-            foreach ($task in $Upload) {
-                $i++
-
-                $summaryHtmlTable += "
+            $summaryHtmlTable = foreach ($task in $Upload) {
+                "
             <table>
                 <tr>
-                    <th colspan=`"2`">Task $i</th>
+                    <th colspan=`"2`">$($task.Task.Name)</th>
                 </tr>
                 <tr>
                     <td>Type</td>
@@ -512,7 +531,7 @@ End {
             #endregion
                 
             $mailParams += @{
-                To        = $SendMail.To
+                To        = $task.SendMail.To
                 Bcc       = $ScriptAdmin
                 Message   = "
                         $systemErrorsHtmlList
@@ -529,22 +548,7 @@ End {
             }
         
             Get-ScriptRuntimeHC -Stop
-
-            if (
-                (
-                    $SendMail.When -eq 'Always'
-                ) -or
-                (   
-                ($SendMail.When -eq 'OnlyOnError') -and 
-                ($totalErrorCount -ne 0)
-                ) -or
-                (   
-                ($SendMail.When -eq 'OnlyOnErrorOrUpload') -and 
-                (($totalErrorCount -ne 0) -or ($counter.Uploaded -ne 0))
-                )
-            ) {
-                Send-MailHC @mailParams
-            }
+            Send-MailHC @mailParams
             #endregion
         }
     }

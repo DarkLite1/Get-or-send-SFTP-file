@@ -516,14 +516,14 @@ Describe 'execute the SFTP script' {
         Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments
     }
 }
-Describe 'when the SFTP script has been executed' {
+Describe 'export the results of the SFTP script' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 5 | 
         Out-File @testOutParams
 
         .$testScript @testParams
     }
-    Context 'create one Excel file for each task for a single day' {
+    Context 'to an Excel file' {
         BeforeAll {
             $testExportedExcelRows = $testData | 
             Select-Object Path, UploadedOn, @{
@@ -535,7 +535,7 @@ Describe 'when the SFTP script has been executed' {
 
             $actual = Import-Excel -Path $testExcelLogFile.FullName -WorksheetName 'Overview'
         }
-        It 'to the log folder' {
+        It 'in the log folder' {
             $testExcelLogFile | Should -Not -BeNullOrEmpty
         }
         It 'with the correct total rows' {
@@ -553,20 +553,7 @@ Describe 'when the SFTP script has been executed' {
             }
         }
     }
-    Context 'send an e-mail' {
-        It 'with attachment to the user' {
-            Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
-            ($To -eq $testInputFile.SendMail.To) -and
-            ($Bcc -eq $testParams.ScriptAdmin) -and
-            ($Priority -eq 'Normal') -and
-            ($Subject -eq '2 items uploaded') -and
-            ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*Type*File*Source*Destination*")
-            }
-        }
-    } -Skip
 }
-
 Describe 'ExportExcelFile.When' {
     Context 'create no Excel file' {
         It "'Never'" {
@@ -683,4 +670,127 @@ Describe 'ExportExcelFile.When' {
             Should -Not -BeNullOrEmpty
         }
     }
-} -Tag test
+}
+Describe 'SendMail.When' {
+    Context 'send an e-mail' {
+        It 'with attachment to the user' {
+            Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
+            ($To -eq $testInputFile.SendMail.To) -and
+            ($Bcc -eq $testParams.ScriptAdmin) -and
+            ($Priority -eq 'Normal') -and
+            ($Subject -eq '2 items uploaded') -and
+            ($Attachments -like '*- Log.xlsx') -and
+            ($Message -like "*table*Type*File*Source*Destination*")
+            }
+        }
+    }
+    Context 'send no e-mail' {
+        It "'Never'" {
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].SendMail.When = 'Never'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Should -Not -Invoke Send-MailHC
+        }
+        It "'OnlyOnError' and no errors are found" {
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnError'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Should -Not -Invoke Send-MailHC
+        }
+        It "'OnlyOnErrorOrUpload' and there are no errors and no uploads" {
+            Mock Start-Job {
+                & $realCmdLet.InvokeCommand -Scriptblock { 
+                   
+                } -AsJob -ComputerName $env:COMPUTERNAME
+            }
+
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrUpload'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Should -Not -Invoke Send-MailHC
+        }
+    }
+    Context 'send an e-mail' {
+        It "'OnlyOnError' and there are errors" {
+            Mock Start-Job {
+                & $realCmdLet.InvokeCommand -Scriptblock { 
+                    [PSCustomObject]@{
+                        Path       = 'a'
+                        UploadedOn = Get-Date
+                        Action     = @()
+                        Error      = 'oops'
+                    }     
+                } -AsJob -ComputerName $env:COMPUTERNAME
+            }
+
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnError'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Should -Invoke Send-MailHC
+        }
+        It "'OnlyOnErrorOrUpload' and there are uploads but no errors" {
+            Mock Start-Job {
+                & $realCmdLet.InvokeCommand -Scriptblock { 
+                    [PSCustomObject]@{
+                        Path       = 'a'
+                        UploadedOn = Get-Date
+                        Action     = @('upload')
+                        Error      = $null
+                    }     
+                } -AsJob -ComputerName $env:COMPUTERNAME
+            }
+
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrUpload'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Should -Invoke Send-MailHC
+        }
+        It "'OnlyOnErrorOrUpload' and there are errors but no uploads" {
+            Mock Start-Job {
+                & $realCmdLet.InvokeCommand -Scriptblock { 
+                    [PSCustomObject]@{
+                        Path       = 'a'
+                        UploadedOn = Get-Date
+                        Action     = @()
+                        Error      = 'oops'
+                    }     
+                } -AsJob -ComputerName $env:COMPUTERNAME
+            }
+
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrUpload'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testParams
+    
+            Should -Invoke Send-MailHC
+        }
+    } -Tag test
+}
