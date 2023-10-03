@@ -1,6 +1,5 @@
 ﻿#Requires -Version 5.1
 #Requires -Modules Toolbox.HTML, Toolbox.EventLog
-#Requires -Modules Posh-SSH
 
 <#
 .SYNOPSIS
