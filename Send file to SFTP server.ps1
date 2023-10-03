@@ -31,10 +31,10 @@
 .PARAMETER Sftp.ComputerName
     The URL where the SFTP server can be reached.
     
-    .PARAMETER Sftp.Path
+.PARAMETER Sftp.Path
     Path on the SFTP server where the uploaded files will be saved.
 
-    .PARAMETER Sftp.Credential.UserName
+.PARAMETER Sftp.Credential.UserName
     The user name used to authenticate to the SFTP server. This is an 
     environment variable on the client running the script.
     
