@@ -74,7 +74,7 @@ BeforeAll {
         ImportFile     = $testOutParams.FilePath
         SftpScriptPath = (New-Item 'TestDrive:/s.ps1' -ItemType 'File').FullName
         LogFolder      = New-Item 'TestDrive:/log' -ItemType Directory
-        ScriptAdmin    = 'admin@conotoso.com'
+        ScriptAdmin    = 'admin@contoso.com'
     }
 
     Function Get-EnvironmentVariableValueHC {
@@ -516,14 +516,14 @@ Describe 'execute the SFTP script' {
         Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments
     }
 }
-Describe 'export the results of the SFTP script' {
+Describe 'when the SFTP script runs successfully' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 5 | 
         Out-File @testOutParams
 
         .$testScript @testParams
     }
-    Context 'to an Excel file' {
+    Context 'create an Excel file' {
         BeforeAll {
             $testExportedExcelRows = $testData | 
             Select-Object Path, UploadedOn, @{
@@ -550,6 +550,18 @@ Describe 'export the results of the SFTP script' {
                 Should -Be $testRow.UploadedOn.ToString('yyyyMMdd')
                 $actualRow.Action | Should -Be $testRow.Action
                 $actualRow.Error | Should -Be $testRow.Error
+            }
+        }
+    }
+    Context 'send an e-mail' {
+        It 'with attachment to the user' {
+            Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
+            ($To -eq $testInputFile.Tasks[0].SendMail.To) -and
+            ($Bcc -eq $testParams.ScriptAdmin) -and
+            ($Priority -eq 'Normal') -and
+            ($Subject -eq '2 items uploaded') -and
+            ($Attachments -like '*- Log.xlsx') -and
+            ($Message -like "*table*$($testInputFile.Tasks[0].Task.Name)*SFTP server details*$($testInputFile.Tasks[0].Sftp.ComputerName)*$($testInputFile.Tasks[0].Sftp.Path)*bobUserName*Upload path*$($testInputFile.Tasks[0].Upload.Path[0])*$($testInputFile.Tasks[0].Upload.Path[1])*Options*Overwrite file on SFTP server*")
             }
         }
     }
@@ -672,18 +684,6 @@ Describe 'ExportExcelFile.When' {
     }
 }
 Describe 'SendMail.When' {
-    Context 'send an e-mail' {
-        It 'with attachment to the user' {
-            Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
-            ($To -eq $testInputFile.SendMail.To) -and
-            ($Bcc -eq $testParams.ScriptAdmin) -and
-            ($Priority -eq 'Normal') -and
-            ($Subject -eq '2 items uploaded') -and
-            ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*Type*File*Source*Destination*")
-            }
-        }
-    }
     Context 'send no e-mail' {
         It "'Never'" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -792,5 +792,5 @@ Describe 'SendMail.When' {
     
             Should -Invoke Send-MailHC
         }
-    } -Tag test
+    }
 }

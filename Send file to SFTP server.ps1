@@ -372,6 +372,8 @@ Process {
 End {
     try {
         foreach ($task in $Tasks) {
+            $mailParams = @{}
+            
             #region Counters
             $counter = @{
                 Uploaded     = ($task.Job.Results.Where(
@@ -383,8 +385,6 @@ End {
                 ).Count
             }
             #endregion
-
-            $mailParams = @{}
        
             #region Create Excel worksheet Overview
             $createExcelFile = $false
@@ -466,7 +466,7 @@ End {
             }
 
             if (-not $sendMail) {
-                Write-Verbose 'No e-mail sent'
+                Write-Verbose 'No need to send an e-mail'
                 Continue
             }
 
@@ -499,35 +499,44 @@ End {
             #endregion
 
             #region Create html summary table
-            $summaryHtmlTable = foreach ($task in $Upload) {
-                "
+            $summaryHtmlTable = "
             <table>
                 <tr>
                     <th colspan=`"2`">$($task.Task.Name)</th>
                 </tr>
                 <tr>
-                    <td>Type</td>
-                    <td>$($task.Type)</td>
+                    <td>SFTP server details</td>
+                    <td>
+                        <ul>
+                            <li>$($task.Sftp.ComputerName)</li>
+                            <li>$($task.Sftp.Path)</li>
+                            <li>$($task.Sftp.Credential.UserName)</li>
+                        </ul>
+                    </td>
                 </tr>
                 <tr>
-                    <td>Source</td>
-                    <td>$($task.Source -join '</br>')</td>
-                </tr>
-                <tr>
-                    <td>Destination</td>
-                    <td>$($task.Destination)</td>
+                    <td>Upload path</td>
+                    <td>
+                        <ul>
+                            $(
+                                $task.Upload.Path | ForEach-Object {
+                                '<li>' + $_ + '</li>'}
+                            )
+                        </ul>
+                    </td>
                 </tr>
                 <tr>
                     <td>Options</td>
-                    <td>Overwrite destination file: $($task.Option.OverwriteDestinationData)</br>Remove source after upload: $($task.Option.RemoveSourceAfterUpload)</br>Error when source is not found: $($task.Option.ErrorWhen.SourceIsNotFound)</br>$(
-                        if ($task.Type -ne 'File') {
-                            "Error when source folder is empty: $($task.Option.ErrorWhen.SourceFolderIsEmpty)"
-                        }
-                    )</td>
+                    <td>
+                        <ul>
+                            <li>Overwrite file on SFTP server: $($task.Upload.Option.OverwriteFileOnSftpServer)</li>
+                            <li>Remove file after upload: $($task.Upload.Option.RemoveFileAfterUpload)</li>
+                            <li>Error when upload path is not found: $($task.Upload.Option.ErrorWhen.UploadPathIsNotFound)</li>
+                        </ul>
+                    </td>
                 </tr>
             </table>
             " 
-            }
             #endregion
                 
             $mailParams += @{
