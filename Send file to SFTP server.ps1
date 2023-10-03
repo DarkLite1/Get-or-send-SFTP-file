@@ -465,11 +465,6 @@ End {
                 $sendMailToUser = $true
             }
 
-            if (-not $sendMailToUser) {
-                Write-Verbose 'No need to send an e-mail'
-                Continue
-            }
-
             #region Mail subject and priority
             $mailParams.Priority = 'Normal'
             $mailParams.Subject = '{0} item{1} uploaded' -f 
@@ -557,7 +552,21 @@ End {
             }
         
             Get-ScriptRuntimeHC -Stop
-            Send-MailHC @mailParams
+
+            if ($sendMailToUser) {
+                Send-MailHC @mailParams
+            }
+            else {
+                Write-Verbose 'Send no e-mail to the user'
+
+                if ($totalErrorCount -ne 0) {
+                    Write-Verbose 'Send mail to admin only with errors'
+    
+                    $mailParams.To = $ScriptAdmin
+                    $mailParams.Remove('BCC')
+                    Send-MailHC @mailParams
+                }
+            }
             #endregion
         }
     }

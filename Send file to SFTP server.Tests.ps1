@@ -684,7 +684,12 @@ Describe 'ExportExcelFile.When' {
     }
 }
 Describe 'SendMail.When' {
-    Context 'send no e-mail' {
+    BeforeAll {
+        $testParamFilter = @{
+            ParameterFilter = { $To -eq $testNewInputFile.Tasks[0].SendMail.To }
+        }
+    }
+    Context 'send no e-mail to the user' {
         It "'Never'" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].SendMail.When = 'Never'
@@ -694,7 +699,7 @@ Describe 'SendMail.When' {
     
             .$testScript @testParams
     
-            Should -Not -Invoke Send-MailHC
+            Should -Not -Invoke Send-MailHC @testParamFilter
         }
         It "'OnlyOnError' and no errors are found" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -725,7 +730,7 @@ Describe 'SendMail.When' {
             Should -Not -Invoke Send-MailHC
         }
     }
-    Context 'send an e-mail' {
+    Context 'send an e-mail to the user' {
         It "'OnlyOnError' and there are errors" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
@@ -746,7 +751,7 @@ Describe 'SendMail.When' {
     
             .$testScript @testParams
     
-            Should -Invoke Send-MailHC
+            Should -Invoke Send-MailHC @testParamFilter
         }
         It "'OnlyOnErrorOrUpload' and there are uploads but no errors" {
             Mock Start-Job {
@@ -768,7 +773,7 @@ Describe 'SendMail.When' {
     
             .$testScript @testParams
     
-            Should -Invoke Send-MailHC
+            Should -Invoke Send-MailHC @testParamFilter
         }
         It "'OnlyOnErrorOrUpload' and there are errors but no uploads" {
             Mock Start-Job {
@@ -790,7 +795,7 @@ Describe 'SendMail.When' {
     
             .$testScript @testParams
     
-            Should -Invoke Send-MailHC
+            Should -Invoke Send-MailHC @testParamFilter
         }
     }
-}
+} -tag test
