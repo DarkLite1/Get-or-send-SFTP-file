@@ -10,8 +10,15 @@
     e-mail to the user when needed, but always send an e-mail to the admin on 
     errors.
 
+    The computer that is running the SFTP code should have the module 'Posh-SSH'
+    installed.
+
 .PARAMETER ImportFile
     A .JSON file that contains all the parameters used by the script.
+
+.PARAMETER Tasks
+    Each task in Tasks represents a job that needs to be executed. Multiple
+    SFTP jobs are supported.
 
 .PARAMETER Task.Name
     Name of the task. This name is used for naming the Excel log file and for
