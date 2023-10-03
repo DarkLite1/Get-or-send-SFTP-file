@@ -373,6 +373,10 @@ End {
     try {
         foreach ($task in $Tasks) {
             $mailParams = @{}
+            $sendMailTo = @{
+                Admin = $false
+                User = $false
+            }
 
             #region Counters
             $counter = @{
@@ -443,9 +447,7 @@ End {
             }
             #endregion
 
-            #region Send mail to user
-            $sendMailToUser = $false
-
+            #region Check to send mail to user
             if (
                 (
                     ($task.SendMail.When -eq 'Always')
@@ -462,8 +464,9 @@ End {
                     )
                 )
             ) {
-                $sendMailToUser = $true
+                $sendMailTo.User = $true
             }
+            #endregion
 
             #region Mail subject and priority
             $mailParams.Priority = 'Normal'
@@ -473,13 +476,19 @@ End {
             if (
                 $totalErrorCount = $counter.UploadErrors + $counter.SystemErrors
             ) {
+                $sendMailTo.Admin = $true
                 $mailParams.Priority = 'High'
                 $mailParams.Subject += ", $totalErrorCount error{0}" -f $(
                     if ($totalErrorCount -ne 1) { 's' }
                 )
             }
             #endregion
-        
+
+            if (-not ($sendMailTo.User -or $sendMailTo.Admin)) {
+                Write-Verbose 'No need to send an e-mail'
+                Continue
+            }
+
             #region Create html error list
             $systemErrorsHtmlList = if ($counter.SystemErrors) {
                 "<p>Detected <b>{0} error{1}</b>:{2}</p>" -f $counter.SystemErrors, 
@@ -534,6 +543,7 @@ End {
             " 
             #endregion
                 
+            #region Send mail
             $mailParams += @{
                 To        = $task.SendMail.To
                 Bcc       = $ScriptAdmin
@@ -553,13 +563,13 @@ End {
         
             Get-ScriptRuntimeHC -Stop
 
-            if ($sendMailToUser) {
+            if ($sendMailTo.User) {
                 Send-MailHC @mailParams
             }
             else {
                 Write-Verbose 'Send no e-mail to the user'
 
-                if ($totalErrorCount -ne 0) {
+                if ($sendMailTo.Admin) {
                     Write-Verbose 'Send mail to admin only with errors'
     
                     $mailParams.To = $ScriptAdmin
