@@ -30,7 +30,7 @@
         "?": "When: Never | OnlyOnError | OnlyOnErrorOrUpload | Always"
       },
       "ExportExcelFile": {
-        "When": "Always",
+        "When": "OnlyOnErrorOrUpload",
         "?": "When: Never | OnlyOnError | OnlyOnErrorOrUpload"
       }
     }

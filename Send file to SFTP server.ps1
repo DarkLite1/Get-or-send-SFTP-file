@@ -7,16 +7,53 @@
     Upload files to an SFTP server.
 
 .DESCRIPTION
-    Upload all files in a folder or a single file to an SFTP server.
+    Upload all files in a folder or a single file to an SFTP server. Send an 
+    e-mail to the user when needed, but always send an e-mail to the admin on 
+    errors.
 
 .PARAMETER ImportFile
     A .JSON file that contains all the parameters used by the script.
 
+.PARAMETER Task.Name
+    Name of the task. This name is used for naming the Excel log file and for
+    naming the tasks in the e-mail sent to the user.
+
+.PARAMETER Task.ExecuteOnComputerName
+    Defines on which machine the SFTP commands are executed. Can be the 
+    localhost or a remote computer name.
+
+.PARAMETER Sftp.ComputerName
+    The URL where the SFTP server can be reached.
+    
+    .PARAMETER Sftp.Path
+    Path on the SFTP server where the uploaded files will be saved.
+
+    .PARAMETER Sftp.Credential.UserName
+    The user name used to authenticate to the SFTP server. This is an 
+    environment variable on the client running the script.
+    
+.PARAMETER Sftp.Credential.Password
+    The password used to authenticate to the SFTP server. This is an 
+    environment variable on the client running the script.
+    
+.PARAMETER Upload.Path
+    One ore more full paths to a file or folder. When Path is a folder, the files within that folder will be uploaded.
+
+.PARAMETER Upload.Option.OverwriteFileOnSftpServer
+    Overwrite a file on the SFTP server when it already exists.
+
+.PARAMETER Upload.Option.RemoveFileAfterUpload
+    Remove a file after it was successfully uploaded to the SFTP server.
+
+.PARAMETER Upload.Option.ErrorWhen.UploadPathIsNotFound
+    Throw an error when the file to upload is not found. When Path is a folder
+    this option is ignored, because a folder can be empty.
+
 .PARAMETER SendMail.To
-    E-mail addresses of where to send the summary e-mail.
+    E-mail addresses of users where to send the summary e-mail.
 
 .PARAMETER SendMail.When
-    Indicate when an e-mail will be sent.
+    Indicate when an e-mail will be sent to the user.
 
     Valid values:
     - Always              : Always sent an e-mail
@@ -29,44 +66,11 @@
     Indicate when an Excel file will be created containing the log data.
 
     Valid values:
-    - Always              : Always create an Excel log file
     - Never               : Never create an Excel log file
     - OnlyOnError         : Only create an Excel log file when 
                             errors where detected
     - OnlyOnErrorOrUpload : Only create an Excel log file when 
                             errors where detected or when items were uploaded
-
-.PARAMETER Upload.Type
-    Defines which files need to be uploaded to the SFTP server.
-    Valid values:
-    - File         : a single file
-    - Folder       : the complete content of a folder
-    - FolderContent: all files in a folder, not recursive
-
-.PARAMETER Upload.Path
-    The path to the file or folder.
-
-.PARAMETER Option.OverwriteDestinationData
-    Overwrite a data on the SFTP server when it already exists.
-
-.PARAMETER Option.RemoveSourceAfterUpload
-    Remove the source data when the upload was successful.
-
-.PARAMETER Option.ErrorWhenSourceFileIsNotFound
-    Throw an error when there's no source file found or the source folder is 
-    empty. Upon errors an e-mail is be sent to the admin.
-
-.PARAMETER Sftp.Credential.UserName
-    The user name used to authenticate to the SFTP server.
-
-.PARAMETER Sftp.Credential.Password
-    The password used to authenticate to the SFTP server.
-
-.PARAMETER Sftp.ComputerName
-    The URL where the SFTP server can be reached.
-
-.PARAMETER Sftp.Path
-    Path on the SFTP server where the uploaded files will be saved.
 #>
 
 [CmdLetBinding()]
