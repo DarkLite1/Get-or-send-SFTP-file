@@ -373,7 +373,7 @@ End {
     try {
         foreach ($task in $Tasks) {
             $mailParams = @{}
-            
+
             #region Counters
             $counter = @{
                 Uploaded     = ($task.Job.Results.Where(
@@ -444,7 +444,7 @@ End {
             #endregion
 
             #region Send mail to user
-            $sendMail = $false
+            $sendMailToUser = $false
 
             if (
                 (
@@ -462,10 +462,10 @@ End {
                     )
                 )
             ) {
-                $sendMail = $true
+                $sendMailToUser = $true
             }
 
-            if (-not $sendMail) {
+            if (-not $sendMailToUser) {
                 Write-Verbose 'No need to send an e-mail'
                 Continue
             }
