@@ -384,8 +384,6 @@ End {
         foreach ($task in $Tasks) {
             $mailParams = @{}
 
-            $sendMailToUser = $false
-
             #region Counters
             $counter = @{
                 Uploaded     = $task.Job.Results.Where(
@@ -475,6 +473,8 @@ End {
             #endregion
 
             #region Check to send mail to user
+            $sendMailToUser = $false
+
             if (
                 (
                     ($task.SendMail.When -eq 'Always')
@@ -568,6 +568,8 @@ End {
             Get-ScriptRuntimeHC -Stop
 
             if ($sendMailToUser) {
+                Write-Verbose 'Send e-mail to the user'
+
                 if ($counter.TotalErrors) {
                     $mailParams.Bcc = $ScriptAdmin
                 }
@@ -578,7 +580,9 @@ End {
 
                 if ($counter.TotalErrors) {
                     Write-Verbose 'Send e-mail to admin only with errors'
+                    
                     $mailParams.To = $ScriptAdmin
+                    Send-MailHC @mailParams
                 }
             }
             #endregion
