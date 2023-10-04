@@ -138,7 +138,7 @@ Begin {
 
         #region Import .json file
         $M = "Import .json file '$ImportFile'"
-        Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
+        Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
       
         $file = Get-Content $ImportFile -Raw -EA Stop -Encoding UTF8 | 
         ConvertFrom-Json
