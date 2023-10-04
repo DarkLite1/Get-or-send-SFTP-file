@@ -516,18 +516,25 @@ End {
                     <th colspan=`"2`">$($task.Task.Name)</th>
                 </tr>
                 <tr>
-                    <td>SFTP server details</td>
-                    <td>
-                        <ul>
-                            <li>$($task.Sftp.ComputerName)</li>
-                            <li>$($task.Sftp.Path)</li>
-                            <li>$($task.Sftp.Credential.UserName)</li>
-                        </ul>
-                    </td>
+                    <td colspan=`"2`">SFTP server details</td>
                 </tr>
                 <tr>
-                    <td>Upload path</td>
-                    <td>
+                    <td>Computer name</td>
+                    <td>$($task.Sftp.ComputerName)</td>
+                </tr>
+                <tr>
+                    <td>Path</td>
+                    <td>$($task.Sftp.Path)</td>
+                </tr>
+                <tr>
+                    <td>User name</td>
+                    <td>$($task.Sftp.Credential.UserName)</td>
+                </tr>
+                <tr>
+                    <td colspan=`"2`">Upload path</td>
+                </tr>
+                <tr>
+                    <td colspan=`"2`">
                         <ul>
                             $(
                                 $task.Upload.Path | ForEach-Object {
@@ -537,8 +544,8 @@ End {
                     </td>
                 </tr>
                 <tr>
-                    <td>Options</td>
-                    <td>
+                    <td colspan=`"2`">Options</td>
+                    <td colspan=`"2`">
                         <ul>
                             <li>Overwrite file on SFTP server: $($task.Upload.Option.OverwriteFileOnSftpServer)</li>
                             <li>Remove file after upload: $($task.Upload.Option.RemoveFileAfterUpload)</li>
@@ -555,8 +562,10 @@ End {
                 To        = $task.SendMail.To
                 Message   = "
                         $systemErrorsHtmlList
-                        <p>Upload files to an SFTP server.</p>
-                        $summaryHtmlTable"
+                        <p>Uploaded <b>{0} file{1}</b> to the SFTP server below.</p>
+                        $summaryHtmlTable" -f $counter.Uploaded, $(
+                    if ($counter.Uploaded -ne 1) { 's' }
+                )
                 LogFolder = $LogParams.LogFolder
                 Header    = $ScriptName
                 Save      = $LogFile + ' - Mail.html'
