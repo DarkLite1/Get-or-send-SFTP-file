@@ -384,10 +384,7 @@ End {
         foreach ($task in $Tasks) {
             $mailParams = @{}
 
-            $sendMailTo = @{
-                Admin = $false
-                User  = $false
-            }
+            $sendMailToUser = $false
 
             #region Counters
             $counter = @{
@@ -493,7 +490,7 @@ End {
                     )
                 )
             ) {
-                $sendMailTo.User = $true
+                $sendMailToUser = $true
             }
             #endregion
 
@@ -570,7 +567,7 @@ End {
         
             Get-ScriptRuntimeHC -Stop
 
-            if ($sendMailTo.User) {
+            if ($sendMailToUser) {
                 if ($counter.TotalErrors) {
                     $mailParams.Bcc = $ScriptAdmin
                 }
