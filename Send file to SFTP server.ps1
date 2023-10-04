@@ -235,12 +235,14 @@ Begin {
                 #endregion
 
                 #region Test When is valid
-                if ($task.SendMail.When -notMatch '^Always$|^Never$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
-                    throw "Property 'Tasks.SendMail.When' with value '$($task.SendMail.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
-                }
+                if ($file.SendMail.When -ne 'Never') {   
+                    if ($task.SendMail.When -notMatch '^Always$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
+                        throw "Property 'Tasks.SendMail.When' with value '$($task.SendMail.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
+                    }
 
-                if ($task.ExportExcelFile.When -notMatch '^Always$|^Never$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
-                    throw "Property 'Tasks.ExportExcelFile.When' with value '$($task.ExportExcelFile.When)' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
+                    if ($task.ExportExcelFile.When -notMatch '^Always$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
+                        throw "Property 'Tasks.ExportExcelFile.When' with value '$($task.ExportExcelFile.When)' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
+                    }
                 }
                 #endregion
             }
