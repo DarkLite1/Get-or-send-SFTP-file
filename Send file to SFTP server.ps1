@@ -383,20 +383,27 @@ End {
     try {
         foreach ($task in $Tasks) {
             $mailParams = @{}
+
             $sendMailTo = @{
                 Admin = $false
-                User = $false
+                User  = $false
             }
 
             #region Counters
             $counter = @{
-                Uploaded     = ($task.Job.Results.Where(
-                        { $_.UploadedOn }) | Measure-Object).Count
-                UploadErrors = ($task.Job.Results.Where(
-                        { $_.Error }) | Measure-Object).Count
+                Uploaded     = $task.Job.Results.Where(
+                    { $_.UploadedOn }).Count
+                UploadErrors = $task.Job.Results.Where(
+                    { $_.Error }).Count
                 SystemErrors = (
                     $Error.Exception.Message | Measure-Object
                 ).Count
+                TotalErrors  = (
+                    $task.Job.Results.Where({ $_.Error }).Count +
+                    (
+                        $Error.Exception.Message | Measure-Object
+                    ).Count
+                )
             }
             #endregion
        
@@ -457,6 +464,19 @@ End {
             }
             #endregion
 
+            #region Mail subject and priority
+            $mailParams.Priority = 'Normal'
+            $mailParams.Subject = '{0} item{1} uploaded' -f 
+            $counter.Uploaded, $(if ($counter.Uploaded -ne 1) { 's' })
+
+            if ($counter.TotalErrors) {
+                $mailParams.Priority = 'High'
+                $mailParams.Subject += ",{0} error{1}" -f 
+                $counter.TotalErrors,
+                $(if ($counter.TotalErrors -ne 1) { 's' })
+            }
+            #endregion
+
             #region Check to send mail to user
             if (
                 (
@@ -464,40 +484,18 @@ End {
                 ) -or
                 (   
                     ($task.SendMail.When -eq 'OnlyOnError') -and 
-                    ($counter.UploadErrors -ne 0)
+                    ($counter.TotalErrors)
                 ) -or
                 (   
                     ($task.SendMail.When -eq 'OnlyOnErrorOrUpload') -and 
                     (
-                        ($counter.UploadErrors -ne 0) -or 
-                        ($counter.Uploaded -ne 0)
+                        ($counter.Uploaded) -or ($counter.TotalErrors)
                     )
                 )
             ) {
                 $sendMailTo.User = $true
             }
             #endregion
-
-            #region Mail subject and priority
-            $mailParams.Priority = 'Normal'
-            $mailParams.Subject = '{0} item{1} uploaded' -f 
-            $counter.Uploaded, $(if ($counter.Uploaded -ne 1) { 's' })
-
-            if (
-                $totalErrorCount = $counter.UploadErrors + $counter.SystemErrors
-            ) {
-                $sendMailTo.Admin = $true
-                $mailParams.Priority = 'High'
-                $mailParams.Subject += ", $totalErrorCount error{0}" -f $(
-                    if ($totalErrorCount -ne 1) { 's' }
-                )
-            }
-            #endregion
-
-            if (-not ($sendMailTo.User -or $sendMailTo.Admin)) {
-                Write-Verbose 'No need to send an e-mail'
-                Continue
-            }
 
             #region Create html error list
             $systemErrorsHtmlList = if ($counter.SystemErrors) {
@@ -556,7 +554,6 @@ End {
             #region Send mail
             $mailParams += @{
                 To        = $task.SendMail.To
-                Bcc       = $ScriptAdmin
                 Message   = "
                         $systemErrorsHtmlList
                         <p>Upload files to an SFTP server.</p>
@@ -574,17 +571,17 @@ End {
             Get-ScriptRuntimeHC -Stop
 
             if ($sendMailTo.User) {
+                if ($counter.TotalErrors) {
+                    $mailParams.Bcc = $ScriptAdmin
+                }
                 Send-MailHC @mailParams
             }
             else {
                 Write-Verbose 'Send no e-mail to the user'
 
-                if ($sendMailTo.Admin) {
-                    Write-Verbose 'Send mail to admin only with errors'
-    
+                if ($counter.TotalErrors) {
+                    Write-Verbose 'Send e-mail to admin only with errors'
                     $mailParams.To = $ScriptAdmin
-                    $mailParams.Remove('BCC')
-                    Send-MailHC @mailParams
                 }
             }
             #endregion

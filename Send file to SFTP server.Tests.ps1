@@ -557,7 +557,6 @@ Describe 'when the SFTP script runs successfully' {
         It 'with attachment to the user' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
             ($To -eq $testInputFile.Tasks[0].SendMail.To) -and
-            ($Bcc -eq $testParams.ScriptAdmin) -and
             ($Priority -eq 'Normal') -and
             ($Subject -eq '2 items uploaded') -and
             ($Attachments -like '*- Log.xlsx') -and
