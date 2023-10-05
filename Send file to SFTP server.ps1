@@ -161,47 +161,49 @@ Begin {
             #endregion
 
             foreach ($task in $Tasks) {
-                @('Task', 'Sftp', 'Upload', 'SendMail', 'ExportExcelFile') | 
-                Where-Object { -not $task.$_ } |
-                ForEach-Object {
-                    throw "Property 'Tasks.$_' not found"
-                }
+                @(
+                    'Task', 'Sftp', 'Upload', 'SendMail', 'ExportExcelFile'
+                ).where(
+                    { -not $task.$_ }
+                ).foreach(
+                    { throw "Property 'Tasks.$_' not found" }
+                )
                 
-                @('Name', 'ExecuteOnComputerName') | 
-                Where-Object { -not $task.Task.$_ } |
-                ForEach-Object {
-                    throw "Property 'Tasks.Task.$_' not found"
-                }
+                @('Name', 'ExecuteOnComputerName').where(
+                    { -not $task.Task.$_ }
+                ).foreach(
+                    { throw "Property 'Tasks.Task.$_' not found" }
+                )
 
-                @('ComputerName', 'Path', 'Credential') | 
-                Where-Object { -not $task.Sftp.$_ } |
-                ForEach-Object {
-                    throw "Property 'Tasks.Sftp.$_' not found"
-                }
+                @('ComputerName', 'Path', 'Credential').where(
+                    { -not $task.Sftp.$_ }
+                ).foreach(
+                    { throw "Property 'Tasks.Sftp.$_' not found" }
+                )
+                                
+                @('UserName', 'Password').Where(
+                    { -not $task.Sftp.Credential.$_ }
+                ).foreach(
+                    { throw "Property 'Tasks.Sftp.Credential.$_' not found" }
+                )
                 
-                @('UserName', 'Password') | 
-                Where-Object { -not $task.Sftp.Credential.$_ } |
-                ForEach-Object {
-                    throw "Property 'Tasks.Sftp.Credential.$_' not found"
-                }
+                @('Path', 'Option').Where(
+                    { -not $task.Upload.$_ }
+                ).foreach(
+                    { throw "Property 'Tasks.Upload.$_' not found" }
+                )
                 
-                @('Path', 'Option') | 
-                Where-Object { -not $task.Upload.$_ } |
-                ForEach-Object {
-                    throw "Property 'Tasks.Upload.$_' not found"
-                }
+                @('To', 'When').Where(
+                    { -not $task.SendMail.$_ }
+                ).foreach(
+                    { throw "Property 'Tasks.SendMail.$_' not found" }
+                )
                 
-                @('To', 'When') | 
-                Where-Object { -not $task.SendMail.$_ } |
-                ForEach-Object {
-                    throw "Property 'Tasks.SendMail.$_' not found"
-                }
-                
-                @('When') | 
-                Where-Object { -not $task.ExportExcelFile.$_ } |
-                ForEach-Object {
-                    throw "Property 'Tasks.ExportExcelFile.$_' not found"
-                }
+                @('When').Where(
+                    { -not $task.ExportExcelFile.$_ }
+                ).foreach(
+                    { throw "Property 'Tasks.ExportExcelFile.$_' not found" }
+                )
 
                 #region Test boolean values
                 foreach (
