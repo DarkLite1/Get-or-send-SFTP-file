@@ -306,7 +306,7 @@ Begin {
 
 Process {
     Try {
-        #region Start jobs to upload files        
+        #region Start jobs to upload files
         foreach ($task in $Tasks) {
             $task | Add-Member -NotePropertyMembers @{
                 Job = @{
