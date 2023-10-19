@@ -567,10 +567,20 @@ End {
                 To        = $task.SendMail.To
                 Message   = "
                         $systemErrorsHtmlList
-                        <p>Uploaded <b>{0} file{1}</b> to the SFTP server below.</p>
-                        $summaryHtmlTable" -f $counter.Uploaded, $(
+                        <p>Uploaded <b>{0} file{1}</b> to the SFTP server below{2}.</p>
+                        $summaryHtmlTable" -f 
+                $counter.Uploaded, 
+                $(
                     if ($counter.Uploaded -ne 1) { 's' }
+                ),
+                $(
+                    if ($counter.TotalErrors) {
+                        ' and found <b>{0} error{1}</b>' -f 
+                        $counter.TotalErrors,
+                        $(if ($counter.TotalErrors -ne 1) { 's' })
+                    }
                 )
+                
                 LogFolder = $LogParams.LogFolder
                 Header    = $ScriptName
                 Save      = $LogFile + ' - Mail.html'
