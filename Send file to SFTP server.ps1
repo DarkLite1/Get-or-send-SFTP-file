@@ -536,10 +536,8 @@ End {
                     <td>$($task.Sftp.Credential.UserName)</td>
                 </tr>
                 <tr>
-                    <td colspan=`"2`">Upload path</td>
-                </tr>
-                <tr>
-                    <td colspan=`"2`">
+                    <td>Upload path</td>
+                    <td>
                         <ul>
                             $(
                                 $task.Upload.Path | ForEach-Object {
@@ -549,8 +547,8 @@ End {
                     </td>
                 </tr>
                 <tr>
-                    <td colspan=`"2`">Options</td>
-                    <td colspan=`"2`">
+                    <td>Options</td>
+                    <td>
                         <ul>
                             <li>Overwrite file on SFTP server: $($task.Upload.Option.OverwriteFileOnSftpServer)</li>
                             <li>Remove file after upload: $($task.Upload.Option.RemoveFileAfterUpload)</li>
