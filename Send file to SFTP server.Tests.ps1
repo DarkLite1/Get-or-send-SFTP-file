@@ -560,7 +560,7 @@ Describe 'when the SFTP script runs successfully' {
             ($Priority -eq 'Normal') -and
             ($Subject -eq '2 items uploaded') -and
             ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*$($testInputFile.Tasks[0].Task.Name)*SFTP server details*$($testInputFile.Tasks[0].Sftp.ComputerName)*$($testInputFile.Tasks[0].Sftp.Path)*bobUserName*Upload path*$($testInputFile.Tasks[0].Upload.Path[0])*$($testInputFile.Tasks[0].Upload.Path[1])*Options*Overwrite file on SFTP server*")
+            ($Message -like "*table*$($testInputFile.Tasks[0].Task.Name)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*SFTP Path*$($testInputFile.Tasks[0].Sftp.Path)*SFTP User name*bobUserName*Upload path*$($testInputFile.Tasks[0].Upload.Path[0])*$($testInputFile.Tasks[0].Upload.Path[1])*Options*Overwrite file on SFTP server*")
             }
         }
     }

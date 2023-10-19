@@ -521,22 +521,19 @@ End {
                     <th colspan=`"2`">$($task.Task.Name)</th>
                 </tr>
                 <tr>
-                    <td colspan=`"2`">SFTP server details</td>
-                </tr>
-                <tr>
-                    <td>Computer name</td>
+                    <th>SFTP Server</td>
                     <td>$($task.Sftp.ComputerName)</td>
                 </tr>
                 <tr>
-                    <td>Path</td>
+                    <th>SFTP Path</td>
                     <td>$($task.Sftp.Path)</td>
                 </tr>
                 <tr>
-                    <td>User name</td>
+                    <th>SFTP User name</td>
                     <td>$($task.Sftp.Credential.UserName)</td>
                 </tr>
                 <tr>
-                    <td>Upload path</td>
+                    <th>Upload path</td>
                     <td>
                         <ul>
                             $(
@@ -547,7 +544,7 @@ End {
                     </td>
                 </tr>
                 <tr>
-                    <td>Options</td>
+                    <th>Options</td>
                     <td>
                         <ul>
                             <li>Overwrite file on SFTP server: $($task.Upload.Option.OverwriteFileOnSftpServer)</li>
