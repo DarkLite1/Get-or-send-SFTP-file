@@ -450,7 +450,10 @@ End {
                 $task.Job.Results.Count, $excelParams.WorksheetName
                 Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
             
-                $task.Job.Results | Select-Object Path, 
+                $task.Job.Results | Select-Object @{
+                    Name       = 'Path'
+                    Expression = { $_.Path -join ', ' }
+                }, 
                 UploadedOn, @{
                     Name       = 'Action'
                     Expression = { $_.Action -join ', ' }
