@@ -50,16 +50,18 @@ BeforeAll {
 
     $testData = @(
         [PSCustomObject]@{
-            Path       = $testInputFile.Tasks[0].Upload.Path[0]
-            UploadedOn = Get-Date
-            Action     = @('file uploaded', 'file removed')
-            Error      = $null
+            Path     = $testInputFile.Tasks[0].Upload.Path[0]
+            DateTime = Get-Date
+            Uploaded = $true
+            Action   = @('file uploaded', 'file removed')
+            Error    = $null
         }     
         [PSCustomObject]@{
-            Path       = $testInputFile.Tasks[0].Upload.Path[1]
-            UploadedOn = Get-Date
-            Action     = @('file uploaded', 'file removed')
-            Error      = $null
+            Path     = $testInputFile.Tasks[0].Upload.Path[1]
+            DateTime = Get-Date
+            Uploaded = $true
+            Action   = @('file uploaded', 'file removed')
+            Error    = $null
         }
     )
 
@@ -526,7 +528,7 @@ Describe 'when the SFTP script runs successfully' {
     Context 'create an Excel file' {
         BeforeAll {
             $testExportedExcelRows = $testData | 
-            Select-Object Path, UploadedOn, @{
+            Select-Object Path, DateTime, @{
                 Name       = 'Action'
                 Expression = { $_.Action -join ', ' }
             }, Error
@@ -546,8 +548,8 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow = $actual | Where-Object {
                     $_.Path -eq $testRow.Path
                 }
-                $actualRow.UploadedOn.ToString('yyyyMMdd') | 
-                Should -Be $testRow.UploadedOn.ToString('yyyyMMdd')
+                $actualRow.DateTime.ToString('yyyyMMdd') | 
+                Should -Be $testRow.DateTime.ToString('yyyyMMdd')
                 $actualRow.Action | Should -Be $testRow.Action
                 $actualRow.Error | Should -Be $testRow.Error
             }
@@ -615,10 +617,10 @@ Describe 'ExportExcelFile.When' {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
-                        Path       = 'a'
-                        UploadedOn = Get-Date
-                        Action     = @()
-                        Error      = 'oops'
+                        Path     = 'a'
+                        DateTime = Get-Date
+                        Action   = @()
+                        Error    = 'oops'
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
             }
@@ -638,10 +640,11 @@ Describe 'ExportExcelFile.When' {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
-                        Path       = 'a'
-                        UploadedOn = Get-Date
-                        Action     = @('upload')
-                        Error      = $null
+                        Path     = 'a'
+                        DateTime = Get-Date
+                        Uploaded = $true
+                        Action   = @('upload')
+                        Error    = $null
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
             }
@@ -661,10 +664,11 @@ Describe 'ExportExcelFile.When' {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
-                        Path       = 'a'
-                        UploadedOn = Get-Date
-                        Action     = @()
-                        Error      = 'oops'
+                        Path     = 'a'
+                        Uploaded = $false
+                        DateTime = Get-Date
+                        Action   = @()
+                        Error    = 'oops'
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
             }
@@ -734,10 +738,10 @@ Describe 'SendMail.When' {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
-                        Path       = 'a'
-                        UploadedOn = Get-Date
-                        Action     = @()
-                        Error      = 'oops'
+                        Path     = 'a'
+                        DateTime = Get-Date
+                        Action   = @()
+                        Error    = 'oops'
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
             }
@@ -756,10 +760,11 @@ Describe 'SendMail.When' {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
-                        Path       = 'a'
-                        UploadedOn = Get-Date
-                        Action     = @('upload')
-                        Error      = $null
+                        Path     = 'a'
+                        DateTime = Get-Date
+                        Uploaded = $true
+                        Action   = @('upload')
+                        Error    = $null
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
             }
@@ -778,10 +783,10 @@ Describe 'SendMail.When' {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
-                        Path       = 'a'
-                        UploadedOn = Get-Date
-                        Action     = @()
-                        Error      = 'oops'
+                        Path     = 'a'
+                        DateTime = Get-Date
+                        Action   = @()
+                        Error    = 'oops'
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
             }

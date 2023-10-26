@@ -150,13 +150,16 @@ Begin {
                 throw "Property 'Tasks' not found"
             }
 
-            if (-not ($MaxConcurrentJobs = $file.MaxConcurrentJobs)) {
+            if (-not $file.MaxConcurrentJobs) {
                 throw "Property 'MaxConcurrentJobs' not found"
             }
 
             #region Test integer value
-            if (-not ($MaxConcurrentJobs -is [int])) {
-                throw "Property 'MaxConcurrentJobs' needs to be a number, the value '$MaxConcurrentJobs' is not supported."
+            try {
+                [int]$MaxConcurrentJobs = $file.MaxConcurrentJobs
+            }
+            catch {
+                throw "Property 'MaxConcurrentJobs' needs to be a number, the value '$($file.MaxConcurrentJobs)' is not supported."
             }
             #endregion
 
@@ -391,7 +394,7 @@ End {
             #region Counters
             $counter = @{
                 Uploaded     = $task.Job.Results.Where(
-                    { $_.UploadedOn }).Count
+                    { $_.Uploaded }).Count
                 UploadErrors = $task.Job.Results.Where(
                     { $_.Error }).Count
                 SystemErrors = (
@@ -451,16 +454,18 @@ End {
                 Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
             
                 $task.Job.Results | Select-Object @{
+                    Name       = 'ComputerName'
+                    Expression = { $_.PSComputerName }
+                },
+                DateTime, 
+                @{
                     Name       = 'Path'
                     Expression = { $_.Path -join ', ' }
                 }, 
-                UploadedOn, @{
+                @{
                     Name       = 'Action'
                     Expression = { $_.Action -join ', ' }
-                }, Error, @{
-                    Name       = 'ExecutedOn'
-                    Expression = { $_.PSComputerName }
-                } | Export-Excel @excelParams
+                }, Error | Export-Excel @excelParams
 
                 $mailParams.Attachments = $excelParams.Path
             }

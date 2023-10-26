@@ -75,10 +75,11 @@ try {
         }
         catch {
             [PSCustomObject]@{
-                Path       = $P
-                UploadedOn = $null
-                Action     = $null
-                Error      = $_
+                Path     = $P
+                DateTime = Get-Date
+                Uploaded = $false
+                Action   = $null
+                Error    = $_
             }
             Write-Warning $_
             $Error.RemoveAt(0)        
@@ -142,10 +143,11 @@ try {
             Write-Verbose "Upload file '$file'"
 
             $uploadResult = [PSCustomObject]@{
-                Path       = $file
-                UploadedOn = $null
-                Action     = @()
-                Error      = $null
+                DateTime = Get-Date
+                Path     = $file
+                Uploaded = $false
+                Action   = @()
+                Error    = $null
             }   
     
             #region Upload data to SFTP server
@@ -161,7 +163,7 @@ try {
             Set-SFTPItem @sessionParams @params
 
             $uploadResult.Action += 'file uploaded'
-            $uploadResult.UploadedOn = Get-Date
+            $uploadResult.Uploaded = $true
             #endregion
     
             #region Remove source file
@@ -184,10 +186,11 @@ try {
 }
 catch {
     [PSCustomObject]@{
-        Path       = $Path
-        UploadedOn = $null
-        Action     = $null
-        Error      = $_
+        DateTime = Get-Date
+        Path     = $Path
+        Uploaded = $false
+        Action   = $null
+        Error    = $_
     }
     Write-Warning $_
     $Error.RemoveAt(0)
