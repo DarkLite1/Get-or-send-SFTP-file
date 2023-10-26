@@ -526,36 +526,27 @@ End {
                     <th colspan=`"2`">$($task.Task.Name)</th>
                 </tr>
                 <tr>
-                    <th>SFTP Server</td>
+                    <td>SFTP Server</td>
                     <td>$($task.Sftp.ComputerName)</td>
                 </tr>
                 <tr>
-                    <th>SFTP Path</td>
+                    <td>SFTP Path</td>
                     <td>$($task.Sftp.Path)</td>
                 </tr>
                 <tr>
-                    <th>SFTP User name</td>
+                    <td>SFTP User name</td>
                     <td>$($task.Sftp.Credential.UserName)</td>
                 </tr>
                 <tr>
-                    <th>Upload path</td>
-                    <td>
-                        <ul>
-                            $(
-                                $task.Upload.Path | ForEach-Object {
-                                '<li>' + $_ + '</li>'}
-                            )
-                        </ul>
-                    </td>
+                    <td>Upload path</td>
+                    <td>$($task.Upload.Path -join '<br>')</td>
                 </tr>
                 <tr>
-                    <th>Options</td>
+                    <td>Options</td>
                     <td>
-                        <ul>
-                            <li>Overwrite file on SFTP server: $($task.Upload.Option.OverwriteFileOnSftpServer)</li>
-                            <li>Remove file after upload: $($task.Upload.Option.RemoveFileAfterUpload)</li>
-                            <li>Error when upload path is not found: $($task.Upload.Option.ErrorWhen.UploadPathIsNotFound)</li>
-                        </ul>
+                        Overwrite file on SFTP server: $($task.Upload.Option.OverwriteFileOnSftpServer)<br>
+                        Remove file after upload: $($task.Upload.Option.RemoveFileAfterUpload)<br>
+                        Error when upload path is not found: $($task.Upload.Option.ErrorWhen.UploadPathIsNotFound)<br>
                     </td>
                 </tr>
             </table>
