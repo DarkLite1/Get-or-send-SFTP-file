@@ -85,7 +85,9 @@ Param (
     [String]$ScriptName,
     [Parameter(Mandatory)]
     [String]$ImportFile,
-    [string]$SftpScriptPath = "$PSScriptRoot\Send to SFTP.ps1",
+    [HashTable]$Path = @{
+        UploadScript = "$PSScriptRoot\Send to SFTP.ps1"
+    },
     [String]$LogFolder = "$env:POWERSHELL_LOG_FOLDER\File or folder\Send file to SFTP server\$ScriptName",
     [String[]]$ScriptAdmin = @(
         $env:POWERSHELL_SCRIPT_ADMIN,
@@ -107,17 +109,21 @@ Begin {
         Import-EventLogParamsHC -Source $ScriptName
         Write-EventLog @EventStartParams
         $Error.Clear()
-        
+
+        $pathItem = @{
+            UploadScript = $null
+        }
+
         #region Test SFTP script path exits
         try {
             $params = @{
-                Path        = $SftpScriptPath
+                Path        = $Path.UploadScript
                 ErrorAction = 'Stop'
             }
-            $SftpScriptPathItem = (Get-Item @params).FullName
+            $PathItem.UploadScript = (Get-Item @params).FullName
         }
         catch {
-            throw "SftpScriptPath '$SftpScriptPath' not found"
+            throw "Path.UploadScript '$($Path.UploadScript)' not found"
         }
         #endregion
 
@@ -319,7 +325,7 @@ Process {
             }
 
             $invokeParams = @{
-                FilePath     = $SftpScriptPathItem
+                FilePath     = $PathItem.UploadScript
                 ArgumentList = $task.Upload.Path, 
                 $task.Sftp.ComputerName, 
                 $task.Sftp.Path, 

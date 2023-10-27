@@ -72,11 +72,13 @@ BeforeAll {
 
     $testScript = $PSCommandPath.Replace('.Tests.ps1', '.ps1')
     $testParams = @{
-        ScriptName     = 'Test (Brecht)'
-        ImportFile     = $testOutParams.FilePath
-        SftpScriptPath = (New-Item 'TestDrive:/s.ps1' -ItemType 'File').FullName
-        LogFolder      = New-Item 'TestDrive:/log' -ItemType Directory
-        ScriptAdmin    = 'admin@contoso.com'
+        ScriptName  = 'Test (Brecht)'
+        ImportFile  = $testOutParams.FilePath
+        Path        = @{
+            UploadScript = (New-Item 'TestDrive:/s.ps1' -ItemType 'File').FullName
+        }
+        LogFolder   = (New-Item 'TestDrive:/log' -ItemType Directory).FullName
+        ScriptAdmin = 'admin@contoso.com'
     }
 
     Function Get-EnvironmentVariableValueHC {
@@ -128,7 +130,7 @@ Describe 'send an e-mail to the admin when' {
         }    
     }
     It 'the log folder cannot be created' {
-        $testNewParams = $testParams.clone()
+        $testNewParams = Copy-ObjectHC $testParams
         $testNewParams.LogFolder = 'xxx:://notExistingLocation'
 
         .$testScript @testNewParams
@@ -138,9 +140,25 @@ Describe 'send an e-mail to the admin when' {
             ($Message -like '*Failed creating the log folder*')
         }
     }
+    It 'the SFTP script is not found' {
+        $testNewParams = Copy-ObjectHC $testParams
+        $testNewParams.Path.UploadScript = 'c:\doesNotExist.ps1'
+        
+        $testInputFile | ConvertTo-Json -Depth 5 | 
+        Out-File @testOutParams
+
+        .$testScript @testNewParams
+
+        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                (&$MailAdminParams) -and ($Message -like "*Path.UploadScript 'c:\doesNotExist.ps1' not found*")
+        }
+        Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+            $EntryType -eq 'Error'
+        }
+    }
     Context 'the ImportFile' {
         It 'is not found' {
-            $testNewParams = $testParams.clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.ImportFile = 'nonExisting.json'
     
             .$testScript @testNewParams
@@ -462,28 +480,12 @@ Describe 'send an e-mail to the admin when' {
                 $EntryType -eq 'Error'
             }
         }
-        It 'the SFTP script is not found' {
-            $testNewParams = $testParams.Clone()
-            $testNewParams.SftpScriptPath = 'c:\doesNotExist.ps1'
-            
-            $testInputFile | ConvertTo-Json -Depth 5 | 
-            Out-File @testOutParams
-
-            .$testScript @testNewParams
-    
-            Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                    (&$MailAdminParams) -and ($Message -like "*SftpScriptPath 'c:\doesNotExist.ps1' not found*")
-            }
-            Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                $EntryType -eq 'Error'
-            }
-        }
     }
 }
 Describe 'execute the SFTP script' {
     BeforeAll {
         $testJobArguments = {
-            ($FilePath -eq $testParams.SftpScriptPath) -and
+            ($FilePath -eq $testParams.Path.UploadScript) -and
             ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Upload.Path[0]) -and
             ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Upload.Path[1]) -and
             ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
