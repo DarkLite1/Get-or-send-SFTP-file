@@ -3,27 +3,49 @@
   "Tasks": [
     {
       "Task": {
-        "Name": "Upload app x",
-        "ExecuteOnComputerName": "localhost",
+        "Name": "Application x"
       },
       "Sftp": {
-        "ComputerName": "ftp.appx.be",
-        "Path": "/reports/",
+        "ComputerName": "ftp.application-x.be",
         "Credential": {
           "UserName": "APP_X_SFTP_USERNAME",
           "Password": "APP_X_SFTP_PASSWORD"
         }
       },
-      "Upload": {
-        "Path": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
-        "Option": {
-          "OverwriteFileOnSftpServer": false,
-          "RemoveFileAfterUpload": false,
-          "ErrorWhen": {
-            "UploadPathIsNotFound": false
+      "Actions": [
+        {
+          "Type": "Upload",
+          "Parameter": {
+            "SftpPath": "/reports/",
+            "ComputerName": "localhost",
+            "Path": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
+            "Option": {
+              "OverwriteFileOnSftpServer": false,
+              "RemoveFileAfterUpload": false,
+              "ErrorWhen": {
+                "UploadPathIsNotFound": false
+              }
+            },
+            "?": "Type: Upload | Download"
+          }
+        },
+        {
+          "Type": "Download",
+          "Parameter": {
+            "SftpPath": "/data/",
+            "ComputerName": "localhost",
+            "Path": "C:\\Folder",
+            "Option": {
+              "OverwriteExistingFile": false,
+              "RemoveFileAfterDownload": true,
+              "ErrorWhen": {
+                "DownloadPathIsNotFound": true
+              }
+            },
+            "?": "Type: Upload | Download"
           }
         }
-      },
+      ],
       "SendMail": {
         "To": ["bob@contoso.com"],
         "When": "Always",
