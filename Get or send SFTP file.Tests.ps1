@@ -75,7 +75,8 @@ BeforeAll {
         ScriptName  = 'Test (Brecht)'
         ImportFile  = $testOutParams.FilePath
         Path        = @{
-            UploadScript = (New-Item 'TestDrive:/s.ps1' -ItemType 'File').FullName
+            UploadScript   = (New-Item 'TestDrive:/u.ps1' -ItemType 'File').FullName
+            DownloadScript = (New-Item 'TestDrive:/d.ps1' -ItemType 'File').FullName
         }
         LogFolder   = (New-Item 'TestDrive:/log' -ItemType Directory).FullName
         ScriptAdmin = 'admin@contoso.com'
@@ -140,22 +141,40 @@ Describe 'send an e-mail to the admin when' {
             ($Message -like '*Failed creating the log folder*')
         }
     }
-    It 'the SFTP script is not found' {
-        $testNewParams = Copy-ObjectHC $testParams
-        $testNewParams.Path.UploadScript = 'c:\doesNotExist.ps1'
-        
-        $testInputFile | ConvertTo-Json -Depth 5 | 
-        Out-File @testOutParams
-
-        .$testScript @testNewParams
-
-        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                (&$MailAdminParams) -and ($Message -like "*Path.UploadScript 'c:\doesNotExist.ps1' not found*")
+    Context 'the file is not found' {
+        It 'Path.UploadScript' {
+            $testNewParams = Copy-ObjectHC $testParams
+            $testNewParams.Path.UploadScript = 'c:\upDoesNotExist.ps1'
+            
+            $testInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testNewParams
+    
+            Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                    (&$MailAdminParams) -and ($Message -like "*Path.UploadScript 'c:\upDoesNotExist.ps1' not found*")
+            }
+            Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                $EntryType -eq 'Error'
+            }
         }
-        Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-            $EntryType -eq 'Error'
+        It 'Path.DownloadScript' {
+            $testNewParams = Copy-ObjectHC $testParams
+            $testNewParams.Path.DownloadScript = 'c:\downDoesNotExist.ps1'
+            
+            $testInputFile | ConvertTo-Json -Depth 5 | 
+            Out-File @testOutParams
+    
+            .$testScript @testNewParams
+    
+            Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                    (&$MailAdminParams) -and ($Message -like "*Path.DownloadScript 'c:\downDoesNotExist.ps1' not found*")
+            }
+            Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                $EntryType -eq 'Error'
+            }
         }
-    }
+    } -Tag test
     Context 'the ImportFile' {
         It 'is not found' {
             $testNewParams = Copy-ObjectHC $testParams

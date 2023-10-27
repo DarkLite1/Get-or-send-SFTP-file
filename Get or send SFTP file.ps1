@@ -86,7 +86,8 @@ Param (
     [Parameter(Mandatory)]
     [String]$ImportFile,
     [HashTable]$Path = @{
-        UploadScript = "$PSScriptRoot\Send to SFTP.ps1"
+        UploadScript   = "$PSScriptRoot\Send to SFTP.ps1"
+        DownloadScript = "$PSScriptRoot\Get SFTP file.ps1"
     },
     [String]$LogFolder = "$env:POWERSHELL_LOG_FOLDER\File or folder\Send file to SFTP server\$ScriptName",
     [String[]]$ScriptAdmin = @(
@@ -110,21 +111,26 @@ Begin {
         Write-EventLog @EventStartParams
         $Error.Clear()
 
-        $pathItem = @{
-            UploadScript = $null
-        }
+        #region Test script path exits
+        $pathItem = @{}
 
-        #region Test SFTP script path exits
-        try {
-            $params = @{
-                Path        = $Path.UploadScript
-                ErrorAction = 'Stop'
+        $Path.GetEnumerator().ForEach(
+            {
+                try {
+                    $key = $_.Key
+                    $value = $_.Value
+
+                    $params = @{
+                        Path        = $value
+                        ErrorAction = 'Stop'
+                    }
+                    $PathItem[$key] = (Get-Item @params).FullName
+                }
+                catch {
+                    throw "Path.$key '$value' not found"
+                }
             }
-            $PathItem.UploadScript = (Get-Item @params).FullName
-        }
-        catch {
-            throw "Path.UploadScript '$($Path.UploadScript)' not found"
-        }
+        )
         #endregion
 
         #region Create log folder
