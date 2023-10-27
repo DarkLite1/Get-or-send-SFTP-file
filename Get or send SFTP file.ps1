@@ -111,7 +111,7 @@ Begin {
         Write-EventLog @EventStartParams
         $Error.Clear()
 
-        #region Test script path exits
+        #region Test path exists
         $pathItem = @{}
 
         $Path.GetEnumerator().ForEach(
