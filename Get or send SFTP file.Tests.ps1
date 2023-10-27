@@ -42,7 +42,7 @@ BeforeAll {
                     When = 'Always'
                 }
                 ExportExcelFile = @{
-                    When = 'OnlyOnErrorOrUpload'
+                    When = 'OnlyOnErrorOrAction'
                 }
             }
         )
@@ -409,7 +409,7 @@ Describe 'send an e-mail to the admin when' {
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Tasks.ExportExcelFile.When' with value 'wrong' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
+                        ($Message -like "*$ImportFile*Property 'Tasks.ExportExcelFile.When' with value 'wrong' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
@@ -426,7 +426,7 @@ Describe 'send an e-mail to the admin when' {
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Tasks.SendMail.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'*")
+                        ($Message -like "*$ImportFile*Property 'Tasks.SendMail.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
@@ -614,7 +614,7 @@ Describe 'ExportExcelFile.When' {
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -BeNullOrEmpty
         }
-        It "'OnlyOnErrorOrUpload' and there are no errors and no uploads" {
+        It "'OnlyOnErrorOrAction' and there are no errors and no uploads" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                    
@@ -622,7 +622,7 @@ Describe 'ExportExcelFile.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrUpload'
+            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrAction'
     
             $testNewInputFile | ConvertTo-Json -Depth 5 | 
             Out-File @testOutParams
@@ -657,7 +657,7 @@ Describe 'ExportExcelFile.When' {
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -Not -BeNullOrEmpty
         }
-        It "'OnlyOnErrorOrUpload' and there are uploads but no errors" {
+        It "'OnlyOnErrorOrAction' and there are uploads but no errors" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
@@ -671,7 +671,7 @@ Describe 'ExportExcelFile.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrUpload'
+            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrAction'
     
             $testNewInputFile | ConvertTo-Json -Depth 5 | 
             Out-File @testOutParams
@@ -681,7 +681,7 @@ Describe 'ExportExcelFile.When' {
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -Not -BeNullOrEmpty
         }
-        It "'OnlyOnErrorOrUpload' and there are errors but no uploads" {
+        It "'OnlyOnErrorOrAction' and there are errors but no uploads" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
@@ -695,7 +695,7 @@ Describe 'ExportExcelFile.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrUpload'
+            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrAction'
     
             $testNewInputFile | ConvertTo-Json -Depth 5 | 
             Out-File @testOutParams
@@ -736,7 +736,7 @@ Describe 'SendMail.When' {
     
             Should -Not -Invoke Send-MailHC
         }
-        It "'OnlyOnErrorOrUpload' and there are no errors and no uploads" {
+        It "'OnlyOnErrorOrAction' and there are no errors and no uploads" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                    
@@ -744,7 +744,7 @@ Describe 'SendMail.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrUpload'
+            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrAction'
     
             $testNewInputFile | ConvertTo-Json -Depth 5 | 
             Out-File @testOutParams
@@ -777,7 +777,7 @@ Describe 'SendMail.When' {
     
             Should -Invoke Send-MailHC @testParamFilter
         }
-        It "'OnlyOnErrorOrUpload' and there are uploads but no errors" {
+        It "'OnlyOnErrorOrAction' and there are uploads but no errors" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
@@ -791,7 +791,7 @@ Describe 'SendMail.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrUpload'
+            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrAction'
     
             $testNewInputFile | ConvertTo-Json -Depth 5 | 
             Out-File @testOutParams
@@ -800,7 +800,7 @@ Describe 'SendMail.When' {
     
             Should -Invoke Send-MailHC @testParamFilter
         }
-        It "'OnlyOnErrorOrUpload' and there are errors but no uploads" {
+        It "'OnlyOnErrorOrAction' and there are errors but no uploads" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
@@ -813,7 +813,7 @@ Describe 'SendMail.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrUpload'
+            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrAction'
     
             $testNewInputFile | ConvertTo-Json -Depth 5 | 
             Out-File @testOutParams

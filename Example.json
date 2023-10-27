@@ -4,7 +4,7 @@
     {
       "Task": {
         "Name": "Upload app x",
-        "ExecuteOnComputerName": "localhost"
+        "ExecuteOnComputerName": "localhost",
       },
       "Sftp": {
         "ComputerName": "ftp.appx.be",
@@ -27,11 +27,11 @@
       "SendMail": {
         "To": ["bob@contoso.com"],
         "When": "Always",
-        "?": "When: Never | OnlyOnError | OnlyOnErrorOrUpload | Always"
+        "?": "When: Never | OnlyOnError | OnlyOnErrorOrAction | Always"
       },
       "ExportExcelFile": {
-        "When": "OnlyOnErrorOrUpload",
-        "?": "When: Never | OnlyOnError | OnlyOnErrorOrUpload"
+        "When": "OnlyOnErrorOrAction",
+        "?": "When: Never | OnlyOnError | OnlyOnErrorOrAction"
       }
     }
   ]

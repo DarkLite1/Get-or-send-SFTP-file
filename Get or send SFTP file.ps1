@@ -65,7 +65,7 @@
     - Always              : Always sent an e-mail
     - Never               : Never sent an e-mail
     - OnlyOnError         : Only sent an e-mail when errors where detected
-    - OnlyOnErrorOrUpload : Only sent an e-mail when errors where detected or
+    - OnlyOnErrorOrAction : Only sent an e-mail when errors where detected or
                             when items were uploaded
 
 .PARAMETER ExportExcelFile.When
@@ -75,7 +75,7 @@
     - Never               : Never create an Excel log file
     - OnlyOnError         : Only create an Excel log file when 
                             errors where detected
-    - OnlyOnErrorOrUpload : Only create an Excel log file when 
+    - OnlyOnErrorOrAction : Only create an Excel log file when 
                             errors where detected or when items were uploaded
 #>
 
@@ -253,12 +253,12 @@ Begin {
 
                 #region Test When is valid
                 if ($file.SendMail.When -ne 'Never') {   
-                    if ($task.SendMail.When -notMatch '^Always$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
-                        throw "Property 'Tasks.SendMail.When' with value '$($task.SendMail.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
+                    if ($task.SendMail.When -notMatch '^Always$|^OnlyOnError$|^OnlyOnErrorOrAction$') {
+                        throw "Property 'Tasks.SendMail.When' with value '$($task.SendMail.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'"
                     }
 
-                    if ($task.ExportExcelFile.When -notMatch '^Always$|^OnlyOnError$|^OnlyOnErrorOrUpload$') {
-                        throw "Property 'Tasks.ExportExcelFile.When' with value '$($task.ExportExcelFile.When)' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrUpload'"
+                    if ($task.ExportExcelFile.When -notMatch '^Always$|^OnlyOnError$|^OnlyOnErrorOrAction$') {
+                        throw "Property 'Tasks.ExportExcelFile.When' with value '$($task.ExportExcelFile.When)' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'"
                     }
                 }
                 #endregion
@@ -430,7 +430,7 @@ End {
                     ($counter.UploadErrors -ne 0)
                 ) -or
                 (   
-                    ($task.ExportExcelFile.When -eq 'OnlyOnErrorOrUpload') -and 
+                    ($task.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and 
                     (
                         ($counter.UploadErrors -ne 0) -or 
                         ($counter.Uploaded -ne 0)
@@ -508,7 +508,7 @@ End {
                     ($counter.TotalErrors)
                 ) -or
                 (   
-                    ($task.SendMail.When -eq 'OnlyOnErrorOrUpload') -and 
+                    ($task.SendMail.When -eq 'OnlyOnErrorOrAction') -and 
                     (
                         ($counter.Uploaded) -or ($counter.TotalErrors)
                     )
