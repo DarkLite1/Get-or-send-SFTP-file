@@ -2,9 +2,7 @@
   "MaxConcurrentJobs": 5,
   "Tasks": [
     {
-      "Task": {
-        "Name": "Application x"
-      },
+      "TaskName": "Application x",
       "Sftp": {
         "ComputerName": "ftp.application-x.be",
         "Credential": {

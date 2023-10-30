@@ -20,7 +20,7 @@
     Each task in Tasks represents a job that needs to be executed. Multiple
     SFTP jobs are supported.
 
-.PARAMETER Task.Name
+.PARAMETER TaskName
     Name of the task. This name is used for naming the Excel log file and for
     naming the tasks in the e-mail sent to the user.
 
@@ -177,18 +177,16 @@ Begin {
 
             foreach ($task in $Tasks) {
                 @(
-                    'Task', 'Sftp', 'Actions', 'SendMail', 'ExportExcelFile'
+                    'TaskName', 'Sftp', 'Actions', 'SendMail', 'ExportExcelFile'
                 ).where(
                     { -not $task.$_ }
                 ).foreach(
                     { throw "Property 'Tasks.$_' not found" }
                 )
                 
-                @('Name').where(
-                    { -not $task.Task.$_ }
-                ).foreach(
-                    { throw "Property 'Tasks.Task.$_' not found" }
-                )
+                if (-not $task.TaskName) {
+                     throw "Property 'Tasks.TaskName' not found" 
+                }
 
                 @('ComputerName', 'Credential').where(
                     { -not $task.Sftp.$_ }
@@ -288,11 +286,11 @@ Begin {
                 #endregion
             }
 
-            #region Test unique Task.Name
-            $Tasks.Task.Name | Group-Object | Where-Object {
+            #region Test unique TaskName
+            $Tasks.TaskName | Group-Object | Where-Object {
                 $_.Count -gt 1
             } | ForEach-Object {
-                throw "Property 'Tasks.Task.Name' with value '$($_.Name)' is not unique. Each task name needs to be unique."
+                throw "Property 'Tasks.TaskName' with value '$($_.Name)' is not unique. Each task name needs to be unique."
             }
             #endregion
         }
@@ -345,72 +343,101 @@ Begin {
 
 Process {
     Try {
-        #region Start jobs to upload files
         foreach ($task in $Tasks) {
-            $task | Add-Member -NotePropertyMembers @{
-                Job = @{
-                    Object  = $null
-                    Results = @()
-                }
-            }
+            foreach ($action in $task.Actions) {
+                #region Create job parameters
+                switch ($action.Type) {
+                    'Upload' {  
+                        $invokeParams = @{
+                            FilePath     = $PathItem.UploadScript
+                            ArgumentList = $task.Upload.Path, 
+                            $task.Sftp.ComputerName, 
+                            $action.Parameter.SftpPath, 
+                            $task.Sftp.Credential.UserName, 
+                            $task.Sftp.Credential.Password, 
+                            $action.Parameter.Option.OverwriteFileOnSftpServer, 
+                            $action.Parameter.Option.RemoveFileAfterUpload,
+                            $action.Parameter.Option.ErrorWhen.UploadPathIsNotFound
+                        }
+                
+                        $M = "Start job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' Sftp.Path '{3}' Sftp.UserName '{4}' Option.OverwriteFileOnSftpServer '{5}' Option.RemoveFileAfterUpload '{6}' Option.ErrorWhen.UploadPathIsNotFound '{7}' Upload.Path '{8}'" -f 
+                        $task.TaskName, 
+                        $action.Parameter.ComputerName,
+                        $invokeParams.ArgumentList[1], 
+                        $invokeParams.ArgumentList[2], 
+                        $invokeParams.ArgumentList[3], 
+                        $invokeParams.ArgumentList[5],
+                        $invokeParams.ArgumentList[6], 
+                        $invokeParams.ArgumentList[7],
+                        $($invokeParams.ArgumentList[0] -join "', '")
+                        Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
 
-            $invokeParams = @{
-                FilePath     = $PathItem.UploadScript
-                ArgumentList = $task.Upload.Path, 
-                $task.Sftp.ComputerName, 
-                $task.Sftp.Path, 
-                $task.Sftp.Credential.UserName, 
-                $task.Sftp.Credential.Password, 
-                $task.Upload.Option.OverwriteFileOnSftpServer, 
-                $task.Upload.Option.RemoveFileAfterUpload,
-                $task.Upload.Option.ErrorWhen.UploadPathIsNotFound
+                        break
+                    }
+                    'Download' {  
+
+                        break
+                    }
+                    Default {
+                        throw "Tasks.Actions.Type '$_' not supported."
+                    }
+                }
+                #endregion
+
+                $action | Add-Member -NotePropertyMembers @{
+                    Job = @{
+                        Object  = $null
+                        Results = @()
+                    }
+                }
+          
+                #region Start job
+                $computerName = $action.Parameter.ComputerName 
+
+                $action.Job.Object = if (
+                    ($computerName) -and
+                    ($computerName -ne 'localhost') -and
+                    ($computerName -ne $ENV:COMPUTERNAME) -and
+                    ($computerName -ne "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
+                ) {
+                    $invokeParams.ComputerName = $computerName
+                    $invokeParams.AsJob = $true
+                    Invoke-Command @invokeParams
+                }
+                else {
+                    $action.Parameter.ComputerName = $ENV:COMPUTERNAME
+                    Start-Job @invokeParams
+                }
+                #endregion
+        
+                #region Wait for max running jobs
+                $params = @{
+                    Name       = $Tasks.Actions.Job.Object | Where-Object { $_ }
+                    MaxThreads = $MaxConcurrentJobs     
+                }
+                Wait-MaxRunningJobsHC @params
+                #endregion
             }
-    
-            $M = "Start job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' Sftp.Path '{3}' Sftp.UserName '{4}' Option.OverwriteFileOnSftpServer '{5}' Option.RemoveFileAfterUpload '{6}' Option.ErrorWhen.UploadPathIsNotFound '{7}' Upload.Path '{8}'" -f $task.Task.Name, $task.Task.ExecuteOnComputerName,
-            $invokeParams.ArgumentList[1], $invokeParams.ArgumentList[2], 
-            $invokeParams.ArgumentList[3], $invokeParams.ArgumentList[5],
-            $invokeParams.ArgumentList[6], $invokeParams.ArgumentList[7],
-            $($invokeParams.ArgumentList[0] -join "', '")
-            Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-      
-            $task.Job.Object = if (
-                ($task.Task.ExecuteOnComputerName) -and
-                ($task.Task.ExecuteOnComputerName -ne 'localhost') -and
-                ($task.Task.ExecuteOnComputerName -ne $ENV:COMPUTERNAME) -and
-                ($task.Task.ExecuteOnComputerName -ne "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
-            ) {
-                $invokeParams.ComputerName = $task.Task.ExecuteOnComputerName
-                $invokeParams.AsJob = $true
-                Invoke-Command @invokeParams
-            }
-            else {
-                $task.Task.ExecuteOnComputerName = $ENV:COMPUTERNAME
-                Start-Job @invokeParams
-            }
-    
-            $params = @{
-                Name       = $Tasks.Job.Object | Where-Object { $_ }
-                MaxThreads = $MaxConcurrentJobs     
-            }
-            Wait-MaxRunningJobsHC @params
         }
-        #endregion
 
         #region Wait for all jobs to finish
         Write-Verbose 'Wait for all jobs to finish'
         
-        $null = $Tasks.Job.Object | Wait-Job
+        $null = $Tasks.Actions.Job.Object | Wait-Job
         #endregion
 
         #region Get job results
         foreach ($task in $Tasks) {
-            $task.Job.Results += Receive-Job -Job $task.Job.Object
-
-            $M = "Received '{0}' job result{1} for task '{2}'" -f 
-            $task.Job.Results.Count,
-            $(if ($task.Job.Results.Count -ne 1) { 's' }),
-            $task.Task.Name
-            Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
+            foreach ($action in $task.Actions) {
+                $action.Job.Results += Receive-Job -Job $action.Job.Object
+                
+                $M = "Task '{0}' type '{1}' {2} job result{3}" -f 
+                $task.TaskName,
+                $action.Type,
+                $action.Job.Results.Count,
+                $(if ($action.Job.Results.Count -ne 1) { 's' })
+                Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
+            }
         }
         #endregion
     }
@@ -469,7 +496,7 @@ End {
                 $excelFileLogParams = @{
                     LogFolder    = $logParams.LogFolder
                     Format       = 'yyyy-MM-dd'
-                    Name         = "$ScriptName - $($task.Task.Name) - Log.xlsx"
+                    Name         = "$ScriptName - $($task.TaskName) - Log.xlsx"
                     Date         = 'ScriptStartTime'
                     NoFormatting = $true
                 }
@@ -559,7 +586,7 @@ End {
             $summaryHtmlTable = "
             <table>
                 <tr>
-                    <th colspan=`"2`">$($task.Task.Name)</th>
+                    <th colspan=`"2`">$($task.TaskName)</th>
                 </tr>
                 <tr>
                     <td>SFTP Server</td>

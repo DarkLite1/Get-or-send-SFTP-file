@@ -12,9 +12,7 @@ BeforeAll {
         MaxConcurrentJobs = 1
         Tasks             = @(
             @{
-                Task            = @{
-                    Name = 'App x'
-                }
+                TaskName        = 'App x'
                 Sftp            = @{
                     ComputerName = 'PC1'
                     Credential   = @{
@@ -232,7 +230,7 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
             It 'Tasks.<_> not found' -ForEach @(
-                'Task', 'Sftp', 'Actions', 'SendMail', 'ExportExcelFile'
+                'TaskName', 'Sftp', 'Actions', 'SendMail', 'ExportExcelFile'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].$_ = $null
@@ -250,11 +248,9 @@ Describe 'send an e-mail to the admin when' {
                     $EntryType -eq 'Error'
                 }
             }
-            It 'Tasks.Task.<_> not found' -ForEach @(
-                'Name'
-            ) {
+            It 'Tasks.TaskName not found' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Tasks[0].Task.$_ = $null
+                $testNewInputFile.Tasks[0].TaskName = $null
     
                 $testNewInputFile | ConvertTo-Json -Depth 7 | 
                 Out-File @testOutParams
@@ -263,10 +259,7 @@ Describe 'send an e-mail to the admin when' {
                     
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Tasks.Task.$_' not found*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
+                        ($Message -like "*$ImportFile*Property 'Tasks.TaskName' not found*")
                 }
             }
             It 'Tasks.Sftp.<_> not found' -ForEach @(
@@ -461,8 +454,8 @@ Describe 'send an e-mail to the admin when' {
                     $testInputFile.Tasks[0]
                     $testInputFile.Tasks[0]
                 )
-                $testNewInputFile.Tasks[0].Task.Name = 'Name1'
-                $testNewInputFile.Tasks[1].Task.Name = 'Name1'
+                $testNewInputFile.Tasks[0].TaskName = 'Name1'
+                $testNewInputFile.Tasks[1].TaskName = 'Name1'
     
                 $testNewInputFile | ConvertTo-Json -Depth 7 | 
                 Out-File @testOutParams
@@ -471,10 +464,7 @@ Describe 'send an e-mail to the admin when' {
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Tasks.Task.Name' with value 'Name1' is not unique*")
-                }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
+                        ($Message -like "*$ImportFile*Property 'Tasks.TaskName' with value 'Name1' is not unique*")
                 }
             }
         }
@@ -523,7 +513,7 @@ Describe 'send an e-mail to the admin when' {
             }
         }
     }
-}  -tag test
+}  -Tag test
 Describe 'execute the SFTP script' {
     BeforeAll {
         $testJobArguments = {
@@ -539,9 +529,9 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.UploadPathIsNotFound)
         }
     }
-    It 'with Invoke-Command when ExecuteOnComputerName is not the localhost' {
+    It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
         $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Tasks[0].Task.ExecuteOnComputerName = 'PC1'
+        $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'PC1'
 
         $testNewInputFile | ConvertTo-Json -Depth 7 | 
         Out-File @testOutParams
@@ -552,7 +542,7 @@ Describe 'execute the SFTP script' {
     }
     It 'with Start-Job when ExecuteOnComputerName is the localhost' {
         $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Tasks[0].Task.ExecuteOnComputerName = 'localhost'
+        $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
 
         $testNewInputFile | ConvertTo-Json -Depth 7 | 
         Out-File @testOutParams
@@ -577,7 +567,7 @@ Describe 'when the SFTP script runs successfully' {
                 Expression = { $_.Action -join ', ' }
             }, Error
 
-            $testExcelLogFile = Get-ChildItem $testParams.LogFolder -File -Recurse -Filter "* - $($testInputFile.Tasks[0].Task.Name) - Log.xlsx"
+            $testExcelLogFile = Get-ChildItem $testParams.LogFolder -File -Recurse -Filter "* - $($testInputFile.Tasks[0].TaskName) - Log.xlsx"
 
             $actual = Import-Excel -Path $testExcelLogFile.FullName -WorksheetName 'Overview'
         }
@@ -606,7 +596,7 @@ Describe 'when the SFTP script runs successfully' {
             ($Priority -eq 'Normal') -and
             ($Subject -eq '2 items uploaded') -and
             ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*$($testInputFile.Tasks[0].Task.Name)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*SFTP Path*$($testInputFile.Tasks[0].Sftp.Path)*SFTP User name*bobUserName*Upload path*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[1])*Options*Overwrite file on SFTP server*")
+            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*SFTP Path*$($testInputFile.Tasks[0].Sftp.Path)*SFTP User name*bobUserName*Upload path*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[1])*Options*Overwrite file on SFTP server*")
             }
         }
     }
