@@ -177,20 +177,20 @@ Begin {
 
             foreach ($task in $Tasks) {
                 @(
-                    'Task', 'Sftp', 'Upload', 'SendMail', 'ExportExcelFile'
+                    'Task', 'Sftp', 'Actions', 'SendMail', 'ExportExcelFile'
                 ).where(
                     { -not $task.$_ }
                 ).foreach(
                     { throw "Property 'Tasks.$_' not found" }
                 )
                 
-                @('Name', 'ExecuteOnComputerName').where(
+                @('Name').where(
                     { -not $task.Task.$_ }
                 ).foreach(
                     { throw "Property 'Tasks.Task.$_' not found" }
                 )
 
-                @('ComputerName', 'Path', 'Credential').where(
+                @('ComputerName', 'Credential').where(
                     { -not $task.Sftp.$_ }
                 ).foreach(
                     { throw "Property 'Tasks.Sftp.$_' not found" }
@@ -201,12 +201,67 @@ Begin {
                 ).foreach(
                     { throw "Property 'Tasks.Sftp.Credential.$_' not found" }
                 )
+
+                foreach ($action in $task.Actions) {
+                    @('Type', 'Parameter').Where(
+                        { -not $action.$_ }
+                    ).foreach(
+                        { throw "Property 'Tasks.Actions.$_' not found" }
+                    )
+
+                    switch ($action.Type) {
+                        'Download' {
+
+                            break
+                        }
+                        'Upload' {
+                            @(
+                                'SftpPath', 'ComputerName', 
+                                'Path', 'Option'
+                            ).Where(
+                                { -not $action.Parameter.$_ }
+                            ).foreach(
+                                { throw "Property 'Tasks.Actions.Parameter.$_' not found" }
+                            )
+
+                            #region Test boolean values
+                            foreach (
+                                $boolean in 
+                                @(
+                                    'OverwriteFileOnSftpServer', 
+                                    'RemoveFileAfterUpload'
+                                )
+                            ) {
+                                try {
+                                    $null = [Boolean]::Parse($action.Parameter.Option.$boolean)
+                                }
+                                catch {
+                                    throw "Property 'Tasks.Actions.Parameter.Option.$boolean' is not a boolean value"
+                                }
+                            }
+
+                            foreach (
+                                $boolean in 
+                                @(
+                                    'UploadPathIsNotFound'
+                                )
+                            ) {
+                                try {
+                                    $null = [Boolean]::Parse($action.Parameter.Option.ErrorWhen.$boolean)
+                                }
+                                catch {
+                                    throw "Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$boolean' is not a boolean value"
+                                }
+                            }
+                            #endregion
                 
-                @('Path', 'Option').Where(
-                    { -not $task.Upload.$_ }
-                ).foreach(
-                    { throw "Property 'Tasks.Upload.$_' not found" }
-                )
+                            break
+                        }
+                        Default {
+                            throw "Tasks.Actions.Type '$_' not supported. Only the values 'Upload' or 'Download' are supported."
+                        }
+                    }
+                }
                 
                 @('To', 'When').Where(
                     { -not $task.SendMail.$_ }
@@ -219,37 +274,6 @@ Begin {
                 ).foreach(
                     { throw "Property 'Tasks.ExportExcelFile.$_' not found" }
                 )
-
-                #region Test boolean values
-                foreach (
-                    $boolean in 
-                    @(
-                        'OverwriteFileOnSftpServer', 
-                        'RemoveFileAfterUpload'
-                    )
-                ) {
-                    try {
-                        $null = [Boolean]::Parse($task.Upload.Option.$boolean)
-                    }
-                    catch {
-                        throw "Property 'Tasks.Upload.Option.$boolean' is not a boolean value"
-                    }
-                }
-
-                foreach (
-                    $boolean in 
-                    @(
-                        'UploadPathIsNotFound'
-                    )
-                ) {
-                    try {
-                        $null = [Boolean]::Parse($task.Upload.Option.ErrorWhen.$boolean)
-                    }
-                    catch {
-                        throw "Property 'Tasks.Upload.Option.ErrorWhen.$boolean' is not a boolean value"
-                    }
-                }
-                #endregion
 
                 #region Test When is valid
                 if ($file.SendMail.When -ne 'Never') {   
