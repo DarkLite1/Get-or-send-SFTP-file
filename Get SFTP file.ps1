@@ -121,40 +121,54 @@ try {
 
     foreach ($file in $sftpFiles) {
         try {
-            Write-Verbose "Download file '$file'"
-
             $downloadResult = [PSCustomObject]@{
                 DateTime   = Get-Date
                 Path       = $file.FullName
                 Downloaded = $false
                 Action     = @()
                 Error      = $null
-            }   
+            }
+
+            Write-Verbose "Download file '$($downloadResult.Path)'"
     
             #region Download file from SFTP server
-            $params = @{
-                Path        = $file.FullName
-                Destination = $downloadPathItem.FullName
-            }
+            try {
+                $params = @{
+                    Path        = $downloadResult.Path
+                    Destination = $downloadPathItem.FullName
+                }
     
-            if ($OverwriteFile) {
-                $params.Force = $true
-            }
+                if ($OverwriteFile) {
+                    $params.Force = $true
+                }
     
-            Get-SFTPItem @sessionParams @params
+                Get-SFTPItem @sessionParams @params
 
-            $downloadResult.Action += 'file downloaded'
-            $downloadResult.Downloaded = $true
+                $downloadResult.Action += 'file downloaded'
+                $downloadResult.Downloaded = $true
+            }
+            catch {
+                $M = "Failed downloading file: $_"
+                $Error.RemoveAt(0)
+                throw $M
+            }
             #endregion
     
             #region Remove file after download
             if ($RemoveFileAfterDownload) {
-                $M = "Remove file '{0}' from SFTP server" -f $file.FullName 
-                Write-Verbose $M
-
-                Remove-SFTPItem @sessionParams -Path $file.FullName
+                try {
+                    $M = "Remove file '{0}' from SFTP server" -f $downloadResult.Path
+                    Write-Verbose $M
     
-                $downloadResult.Action += 'file removed'
+                    Remove-SFTPItem @sessionParams -Path $downloadResult.Path
+        
+                    $downloadResult.Action += 'file removed'    
+                }
+                catch {
+                    $M = "Failed removing downloaded file: $_"
+                    $Error.RemoveAt(0)
+                    throw $M
+                }
             }
             #endregion
         }
