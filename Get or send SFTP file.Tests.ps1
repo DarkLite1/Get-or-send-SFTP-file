@@ -40,6 +40,22 @@ BeforeAll {
                             }
                         }
                     }
+                    @{
+                        Type      = 'Download'
+                        Parameter = @{
+                            SftpPath     = '/SFTP/folder/'
+                            ComputerName = 'localhost'
+                            Path         = (New-Item 'TestDrive:\d' -ItemType Directory).FullName
+                            Option       = @{
+                                OverwriteFile        = $false
+                                RemoveFileAfterwards = $false
+                                ErrorWhen            = @{
+                                    PathIsNotFound     = $true
+                                    SftpPathIsNotFound = $false
+                                }
+                            }
+                        }
+                    }
                 )
                 SendMail        = @{
                     To   = 'bob@contoso.com'
@@ -66,6 +82,13 @@ BeforeAll {
             Uploaded = $true
             Action   = @('file uploaded', 'file removed')
             Error    = $null
+        }
+        [PSCustomObject]@{
+            Path       = 'sftp file.txt'
+            DateTime   = Get-Date
+            Downloaded = $true
+            Action     = @('file downloaded', 'file removed')
+            Error      = $null
         }
     )
 
@@ -109,8 +132,18 @@ BeforeAll {
     }
     Mock Start-Job {
         & $realCmdLet.InvokeCommand -Scriptblock { 
-            $using:testData
+            $using:testData[0]
+            $using:testData[1]
         } -AsJob -ComputerName $env:COMPUTERNAME
+    } -ParameterFilter {
+        $FilePath -eq $testParams.Path.UploadScript
+    }
+    Mock Start-Job {
+        & $realCmdLet.InvokeCommand -Scriptblock { 
+            $using:testData[2]
+        } -AsJob -ComputerName $env:COMPUTERNAME
+    } -ParameterFilter {
+        $FilePath -eq $testParams.Path.DownloadScript
     }
     Mock Invoke-Command {
         & $realCmdLet.InvokeCommand -Scriptblock { 
@@ -318,6 +351,64 @@ Describe 'send an e-mail to the admin when' {
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
+                }
+            }
+            Context "Tasks.Actions.Type is 'Download'" {
+                It 'Tasks.Actions.Parameter.<_> not found' -ForEach @(
+                    'SftpPath', 'ComputerName', 'Path', 'Option'
+                ) {
+                    $testNewInputFile = Copy-ObjectHC $testInputFile
+                    $testNewInputFile.Tasks[0].Actions[1].Parameter.$_ = $null
+    
+                    $testNewInputFile | ConvertTo-Json -Depth 7 | 
+                    Out-File @testOutParams
+                    
+                    .$testScript @testParams
+                    
+                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.$_' not found*")
+                    }
+                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                        $EntryType -eq 'Error'
+                    }
+                }
+                It 'Tasks.Actions.Parameter.Option.<_> not a boolean' -ForEach @(
+                    'OverwriteFile', 
+                    'RemoveFileAfterwards'
+                ) {
+                    $testNewInputFile = Copy-ObjectHC $testInputFile
+                    $testNewInputFile.Tasks[0].Actions[1].Parameter.Option.$_ = $null
+    
+                    $testNewInputFile | ConvertTo-Json -Depth 7 | 
+                    Out-File @testOutParams
+                    
+                    .$testScript @testParams
+                    
+                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.Option.$_' is not a boolean value*")
+                    }
+                }
+                It 'Tasks.Actions.Parameter.Option.ErrorWhen.<_> not a boolean' -ForEach @(
+                    'PathIsNotFound',
+                    'SftpPathIsNotFound'
+                ) {
+                    $testNewInputFile = Copy-ObjectHC $testInputFile
+                    $testNewInputFile.Tasks[0].Actions[1].Parameter.Option.ErrorWhen.$_ = $null
+    
+                    $testNewInputFile | ConvertTo-Json -Depth 7 | 
+                    Out-File @testOutParams
+                    
+                    .$testScript @testParams
+                    
+                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$_' is not a boolean value*")
+                    }
+                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                        $EntryType -eq 'Error'
+                    }
                 }
             }
             Context "Tasks.Actions.Type is 'Upload'" {
@@ -542,7 +633,7 @@ Describe 'execute the SFTP script' {
 
         Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments
     }
-    It 'with Start-Job when ExecuteOnComputerName is the localhost' {
+    It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
         $testNewInputFile = Copy-ObjectHC $testInputFile
         $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
 
@@ -597,9 +688,9 @@ Describe 'when the SFTP script runs successfully' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
             ($To -eq $testInputFile.Tasks[0].SendMail.To) -and
             ($Priority -eq 'Normal') -and
-            ($Subject -eq '2 uploaded') -and
+            ($Subject -eq '2 uploaded, 1 downloaded') -and
             ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*SFTP User name*bobUserName*Total files uploaded*2*UPLOAD FILES TO THE SFTP SERVER*SFTP path*$($testInputFile.Tasks[0].Actions[0].SftpPath)*$($testInputFile.Tasks[0].Actions[0].ComputerName)*Path*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[1])*")
+            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*SFTP User name*bobUserName*Total files uploaded*2*UPLOAD FILES TO THE SFTP SERVER*SFTP path*$($testInputFile.Tasks[0].Actions[0].SftpPath)*$($testInputFile.Tasks[0].Actions[0].ComputerName)*Path*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[1])*DOWNLOAD FILES FROM THE SFTP SERVER*")
             }
         }
     }
@@ -630,11 +721,14 @@ Describe 'ExportExcelFile.When' {
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -BeNullOrEmpty
         }
-        It "'OnlyOnErrorOrAction' and there are no errors and no uploads" {
+        It "'OnlyOnErrorOrAction' and there are no errors and no actions" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                    
                 } -AsJob -ComputerName $env:COMPUTERNAME
+            } -ParameterFilter {
+                ($FilePath -eq $testParams.Path.DownloadScript) -or
+                ($FilePath -eq $testParams.Path.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -647,7 +741,7 @@ Describe 'ExportExcelFile.When' {
     
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -BeNullOrEmpty
-        } 
+        }
     }
     Context 'create an Excel file' {
         It "'OnlyOnError' and there are errors" {
@@ -660,6 +754,9 @@ Describe 'ExportExcelFile.When' {
                         Error    = 'oops'
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
+            } -ParameterFilter {
+                ($FilePath -eq $testParams.Path.DownloadScript) -or
+                ($FilePath -eq $testParams.Path.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -673,7 +770,7 @@ Describe 'ExportExcelFile.When' {
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -Not -BeNullOrEmpty
         }
-        It "'OnlyOnErrorOrAction' and there are uploads but no errors" {
+        It "'OnlyOnErrorOrAction' and there are actions but no errors" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
@@ -684,6 +781,9 @@ Describe 'ExportExcelFile.When' {
                         Error    = $null
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
+            } -ParameterFilter {
+                ($FilePath -eq $testParams.Path.DownloadScript) -or
+                ($FilePath -eq $testParams.Path.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -697,7 +797,7 @@ Describe 'ExportExcelFile.When' {
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -Not -BeNullOrEmpty
         }
-        It "'OnlyOnErrorOrAction' and there are errors but no uploads" {
+        It "'OnlyOnErrorOrAction' and there are errors but no actions" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
@@ -708,6 +808,9 @@ Describe 'ExportExcelFile.When' {
                         Error    = 'oops'
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
+            } -ParameterFilter {
+                ($FilePath -eq $testParams.Path.DownloadScript) -or
+                ($FilePath -eq $testParams.Path.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -752,11 +855,14 @@ Describe 'SendMail.When' {
     
             Should -Not -Invoke Send-MailHC
         }
-        It "'OnlyOnErrorOrAction' and there are no errors and no uploads" {
+        It "'OnlyOnErrorOrAction' and there are no errors and no actions" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                    
                 } -AsJob -ComputerName $env:COMPUTERNAME
+            } -ParameterFilter {
+                ($FilePath -eq $testParams.Path.DownloadScript) -or
+                ($FilePath -eq $testParams.Path.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -781,6 +887,9 @@ Describe 'SendMail.When' {
                         Error    = 'oops'
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
+            } -ParameterFilter {
+                ($FilePath -eq $testParams.Path.DownloadScript) -or
+                ($FilePath -eq $testParams.Path.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -793,7 +902,7 @@ Describe 'SendMail.When' {
     
             Should -Invoke Send-MailHC @testParamFilter
         }
-        It "'OnlyOnErrorOrAction' and there are uploads but no errors" {
+        It "'OnlyOnErrorOrAction' and there are actions but no errors" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
@@ -804,6 +913,9 @@ Describe 'SendMail.When' {
                         Error    = $null
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
+            } -ParameterFilter {
+                ($FilePath -eq $testParams.Path.DownloadScript) -or
+                ($FilePath -eq $testParams.Path.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -816,7 +928,7 @@ Describe 'SendMail.When' {
     
             Should -Invoke Send-MailHC @testParamFilter
         }
-        It "'OnlyOnErrorOrAction' and there are errors but no uploads" {
+        It "'OnlyOnErrorOrAction' and there are errors but no actions" {
             Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock { 
                     [PSCustomObject]@{
@@ -826,6 +938,9 @@ Describe 'SendMail.When' {
                         Error    = 'oops'
                     }     
                 } -AsJob -ComputerName $env:COMPUTERNAME
+            } -ParameterFilter {
+                ($FilePath -eq $testParams.Path.DownloadScript) -or
+                ($FilePath -eq $testParams.Path.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile

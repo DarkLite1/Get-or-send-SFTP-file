@@ -213,7 +213,46 @@ Begin {
 
                     switch ($action.Type) {
                         'Download' {
+                            @(
+                                'SftpPath', 'ComputerName', 
+                                'Path', 'Option'
+                            ).Where(
+                                { -not $action.Parameter.$_ }
+                            ).foreach(
+                                { throw "Property 'Tasks.Actions.Parameter.$_' not found" }
+                            )
 
+                            #region Test boolean values
+                            foreach (
+                                $boolean in 
+                                @(
+                                    'OverwriteFile', 
+                                    'RemoveFileAfterwards'
+                                )
+                            ) {
+                                try {
+                                    $null = [Boolean]::Parse($action.Parameter.Option.$boolean)
+                                }
+                                catch {
+                                    throw "Property 'Tasks.Actions.Parameter.Option.$boolean' is not a boolean value"
+                                }
+                            }
+
+                            foreach (
+                                $boolean in 
+                                @(
+                                    'PathIsNotFound',
+                                    'SftpPathIsNotFound'
+                                )
+                            ) {
+                                try {
+                                    $null = [Boolean]::Parse($action.Parameter.Option.ErrorWhen.$boolean)
+                                }
+                                catch {
+                                    throw "Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$boolean' is not a boolean value"
+                                }
+                            }
+                            #endregion
                             break
                         }
                         'Upload' {
@@ -365,7 +404,7 @@ Process {
                             $action.Parameter.Option.ErrorWhen.PathIsNotFound
                         }
                 
-                        $M = "Start job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' Option.OverwriteFile '{5}' Option.RemoveFileAfterwards '{6}' Option.ErrorWhen.PathIsNotFound '{7}' Path '{8}'" -f 
+                        $M = "Start SFTP upload job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' Option.OverwriteFile '{5}' Option.RemoveFileAfterwards '{6}' Option.ErrorWhen.PathIsNotFound '{7}' Path '{8}'" -f 
                         $task.TaskName, 
                         $action.Parameter.ComputerName,
                         $invokeParams.ArgumentList[1], 
@@ -381,6 +420,30 @@ Process {
                         break
                     }
                     'Download' {  
+                        $invokeParams = @{
+                            FilePath     = $PathItem.DownloadScript
+                            ArgumentList = $action.Parameter.Path, 
+                            $task.Sftp.ComputerName, 
+                            $action.Parameter.SftpPath, 
+                            $task.Sftp.Credential.UserName, 
+                            $task.Sftp.Credential.Password, 
+                            $action.Parameter.Option.OverwriteFile, 
+                            $action.Parameter.Option.RemoveFileAfterwards,
+                            $action.Parameter.Option.ErrorWhen.PathIsNotFound
+                        }
+                
+                        $M = "Start SFTP download job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' Option.OverwriteFile '{5}' Option.RemoveFileAfterwards '{6}' Option.ErrorWhen.PathIsNotFound '{7}' Path '{8}'" -f 
+                        $task.TaskName, 
+                        $action.Parameter.ComputerName,
+                        $invokeParams.ArgumentList[1], 
+                        $invokeParams.ArgumentList[2], 
+                        $invokeParams.ArgumentList[3], 
+                        $invokeParams.ArgumentList[5],
+                        $invokeParams.ArgumentList[6], 
+                        $invokeParams.ArgumentList[7],
+                        $($invokeParams.ArgumentList[0] -join "', '")
+                        Write-Verbose $M; 
+                        Write-EventLog @EventVerboseParams -Message $M
 
                         break
                     }
@@ -495,7 +558,7 @@ End {
 
             $htmlTableActions = @()
             $exportToExcel = @()
-            
+
             foreach ($action in $task.Actions) {
                 #region Update counters
                 $counter.Action.UploadedFiles = $action.Job.Results.Where(
@@ -609,7 +672,6 @@ End {
             ) {
                 $createExcelFile = $true
             }
-
 
             if ($createExcelFile) {
                 $excelFileLogParams = @{
