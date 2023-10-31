@@ -8,7 +8,7 @@
 .DESCRIPTION
     Download files from an SFTP server.
 
-.PARAMETER DownloadFolder
+.PARAMETER Path
     Folder where the downloaded files will be saved.
 
 .PARAMETER SftpPath
@@ -30,7 +30,7 @@
 [CmdLetBinding()]
 Param (
     [Parameter(Mandatory)]
-    [String]$DownloadFolder,
+    [String]$Path,
     [Parameter(Mandatory)]
     [String]$SftpComputerName,
     [Parameter(Mandatory)]
@@ -45,55 +45,22 @@ Param (
 )
 
 try {
-    #region Get files to upload
-    $filesToUpload = @()
-
-    foreach ($P in $Path) {
-        try {
-            Write-Verbose "Test path '$P'"
-            $item = Get-Item -LiteralPath $P -ErrorAction 'Ignore'
+    Write-Verbose "Test download path '$Path'"
+    $downloadPathItem = Get-Item -LiteralPath $Path -ErrorAction 'Ignore'
       
-            #region Test Path exists
-            if (-not $item) {
-                $M = "Path '$P' not found"
-                if ($ErrorWhenUploadPathIsNotFound) {
-                    throw $M
-                }
-
-                Write-Verbose $M
-                Continue
-            }
-            #endregion
-
-            #region Get files
-            $filesToUpload += if ($item.PSIsContainer) {
-                Write-Verbose "Get files in folder '$P'"
-                (Get-ChildItem -LiteralPath $item.FullName -File).FullName
-            }
-            else {
-                $item.FullName
-            }
-            #endregion
+    #region Test Path exists
+    if (-not $downloadPathItem) {
+        $M = "Download path '$Path' not found"
+        if ($ErrorWhenPathIsNotFound) {
+            throw $M
         }
-        catch {
-            [PSCustomObject]@{
-                Path     = $P
-                DateTime = Get-Date
-                Uploaded = $false
-                Action   = $null
-                Error    = $_
-            }
-            Write-Warning $_
-            $Error.RemoveAt(0)        
-        }
+
+        Write-Verbose $M
+
+        $downloadPathItem = New-Item -Path $Path -ItemType Directory -ErrorAction 'Stop'
     }
     #endregion
     
-    if (-not $filesToUpload) {
-        Write-Verbose 'No files to upload'
-        Exit
-    }
-
     #region Create SFTP credential
     try {
         Write-Verbose 'Create SFTP credential'
@@ -140,59 +107,74 @@ try {
     }    
     #endregion
 
-    foreach ($file in $filesToUpload) {
-        try {
-            Write-Verbose "Upload file '$file'"
+    #region Get SFTP file list
+    try {
+        $M = "Get SFTP file list in path '{0}'" -f $SftpPath
+        Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
 
-            $uploadResult = [PSCustomObject]@{
-                DateTime = Get-Date
-                Path     = $file
-                Uploaded = $false
-                Action   = @()
-                Error    = $null
+        $sftpFiles = Get-SFTPChildItem @sftpSessionParams
+    }
+    catch {
+        throw "Failed retrieving the SFTP file list from '$SftpComputerName' in path '$SftpPath': $_"
+    }
+    #endregion
+
+    foreach ($file in $sftpFiles) {
+        try {
+            Write-Verbose "Download file '$file'"
+
+            $downloadResult = [PSCustomObject]@{
+                DateTime   = Get-Date
+                Path       = $file.FullName
+                Downloaded = $false
+                Action     = @()
+                Error      = $null
             }   
     
-            #region Upload data to SFTP server
+            #region Download file from SFTP server
             $params = @{
-                Path        = $file
-                Destination = $SftpPath
+                Path        = $file.FullName
+                Destination = $downloadPathItem.FullName
             }
     
-            if ($OverwriteFileOnSftpServer) {
+            if ($OverwriteFile) {
                 $params.Force = $true
             }
     
-            Set-SFTPItem @sessionParams @params
+            Get-SFTPItem @sessionParams @params
 
-            $uploadResult.Action += 'file uploaded'
-            $uploadResult.Uploaded = $true
+            $downloadResult.Action += 'file downloaded'
+            $downloadResult.Downloaded = $true
             #endregion
     
-            #region Remove source file
-            if ($RemoveFileAfterUpload) {
-                $file | Remove-Item -Force -ErrorAction 'Stop'
+            #region Remove file after download
+            if ($RemoveFileAfterDownload) {
+                $M = "Remove file '{0}' from SFTP server" -f $file.FullName 
+                Write-Verbose $M
+
+                Remove-SFTPItem @sessionParams -Path $file.FullName
     
-                $uploadResult.Action += 'file removed'
+                $downloadResult.Action += 'file removed'
             }
             #endregion
         }
         catch {
-            $uploadResult.Error = $_
+            $downloadResult.Error = $_
             Write-Warning $_
             $Error.RemoveAt(0)        
         }
         finally {
-            $uploadResult
+            $downloadResult
         }
     }
 }
 catch {
     [PSCustomObject]@{
-        DateTime = Get-Date
-        Path     = $Path
-        Uploaded = $false
-        Action   = $null
-        Error    = $_
+        DateTime   = Get-Date
+        Path       = $Path
+        Downloaded = $false
+        Action     = $null
+        Error      = $_
     }
     Write-Warning $_
     $Error.RemoveAt(0)
