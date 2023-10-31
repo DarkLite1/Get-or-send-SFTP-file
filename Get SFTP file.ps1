@@ -3,32 +3,34 @@
 
 <#
 .SYNOPSIS
-    Upload files to an SFTP server.
+    Download files from an SFTP server.
 
 .DESCRIPTION
-    Send one or more files to an SFTP server.
+    Download files from an SFTP server.
 
-.PARAMETER Path
-    Full path to the files to upload or to the folder containing the files to 
-    upload. Only files are uploaded subfolders are not.
+.PARAMETER DownloadFolder
+    Folder where the downloaded files will be saved.
+
+.PARAMETER SftpPath
+    Path on the SFTP server where the files are located.
     
 .PARAMETER SftpComputerName
     The URL where the SFTP server can be reached.
-
-.PARAMETER SftpPath
-    Path on the SFTP server where the uploaded files will be saved.
 
 .PARAMETER SftpUserName
     The user name used to authenticate to the SFTP server.
 
 .PARAMETER SftpPassword
     The password used to authenticate to the SFTP server.
+
+.PARAMETER RemoveFileAfterDownload
+    When the file is correctly downloaded, remove it from the SFTP server.
 #>
 
 [CmdLetBinding()]
 Param (
     [Parameter(Mandatory)]
-    [String[]]$Path,
+    [String]$DownloadFolder,
     [Parameter(Mandatory)]
     [String]$SftpComputerName,
     [Parameter(Mandatory)]
@@ -37,9 +39,9 @@ Param (
     [String]$SftpUserName,
     [Parameter(Mandatory)]
     [SecureString]$SftpPassword,
-    [Boolean]$OverwriteFileOnSftpServer,
-    [Boolean]$RemoveFileAfterUpload,
-    [Boolean]$ErrorWhenUploadPathIsNotFound
+    [Boolean]$OverwriteFile,
+    [Boolean]$RemoveFileAfterDownload,
+    [Boolean]$ErrorWhenPathIsNotFound
 )
 
 try {
