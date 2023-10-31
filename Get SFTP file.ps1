@@ -121,7 +121,7 @@ try {
 
     foreach ($file in $sftpFiles) {
         try {
-            $downloadResult = [PSCustomObject]@{
+            $result = [PSCustomObject]@{
                 DateTime   = Get-Date
                 Path       = $file.FullName
                 Downloaded = $false
@@ -129,12 +129,12 @@ try {
                 Error      = $null
             }
 
-            Write-Verbose "Download file '$($downloadResult.Path)'"
+            Write-Verbose "Download file '$($result.Path)'"
     
             #region Download file from SFTP server
             try {
                 $params = @{
-                    Path        = $downloadResult.Path
+                    Path        = $result.Path
                     Destination = $downloadPathItem.FullName
                 }
     
@@ -144,8 +144,8 @@ try {
     
                 Get-SFTPItem @sessionParams @params
 
-                $downloadResult.Action += 'file downloaded'
-                $downloadResult.Downloaded = $true
+                $result.Action += 'file downloaded'
+                $result.Downloaded = $true
             }
             catch {
                 $M = "Failed downloading file: $_"
@@ -157,12 +157,12 @@ try {
             #region Remove file after download
             if ($RemoveFileAfterDownload) {
                 try {
-                    $M = "Remove file '{0}' from SFTP server" -f $downloadResult.Path
+                    $M = "Remove file '{0}' from SFTP server" -f $result.Path
                     Write-Verbose $M
     
-                    Remove-SFTPItem @sessionParams -Path $downloadResult.Path
+                    Remove-SFTPItem @sessionParams -Path $result.Path
         
-                    $downloadResult.Action += 'file removed'    
+                    $result.Action += 'file removed'    
                 }
                 catch {
                     $M = "Failed removing downloaded file: $_"
@@ -173,12 +173,12 @@ try {
             #endregion
         }
         catch {
-            $downloadResult.Error = $_
+            $result.Error = $_
             Write-Warning $_
             $Error.RemoveAt(0)        
         }
         finally {
-            $downloadResult
+            $result
         }
     }
 }
