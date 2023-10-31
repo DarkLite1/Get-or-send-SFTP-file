@@ -5,10 +5,7 @@
 BeforeAll {
     $testScript = $PSCommandPath.Replace('.Tests.ps1', '.ps1')
     $testParams = @{
-        Path             = @(
-            (New-Item 'TestDrive:/a.txt' -ItemType 'File').FullName
-            (New-Item 'TestDrive:/b.txt' -ItemType 'File').FullName
-        )
+        Path             = (New-Item 'TestDrive:/a.txt' -ItemType 'Directory').FullName
         SftpComputerName = 'PC1'
         SftpPath         = '/out'
         SftpUserName     = 'bob'
@@ -57,15 +54,15 @@ Describe 'generate an error when' {
 
         $testResult.Error | Should -Be "Path '$($testParams.SftpPath)' not found on SFTP server"
     }
-    It 'Path does not exist and ErrorWhenUploadPathIsNotFound is true' {      
+    It 'Path does not exist and ErrorWhenPathIsNotFound is true' {      
         $testNewParams = $testParams.Clone()
         $testNewParams.Path = 'c:\doesNotExist'
-        $testNewParams.ErrorWhenUploadPathIsNotFound = $true
+        $testNewParams.ErrorWhenPathIsNotFound = $true
 
         $testResult = .$testScript @testNewParams
 
         $testResult.Error | 
-        Should -Be "Path '$($testNewParams.Path)' not found"
+        Should -Be "Download folder '$($testNewParams.Path)' not found"
     }
     It 'the upload fails' {
         Mock Set-SFTPItem {
@@ -89,13 +86,13 @@ Describe 'do not start an SFTP sessions when' {
 
         $testNewParams = $testParams.Clone()
         $testNewParams.Path = 'c:\doesNotExist.txt'
-        $testNewParams.ErrorWhenUploadPathIsNotFound = $true
+        $testNewParams.ErrorWhenPathIsNotFound = $true
 
         .$testScript @testNewParams
 
         $testNewParams = $testParams.Clone()
         $testNewParams.Path = 'c:\doesNotExist.txt'
-        $testNewParams.ErrorWhenUploadPathIsNotFound = $false
+        $testNewParams.ErrorWhenPathIsNotFound = $false
 
         .$testScript @testNewParams
 

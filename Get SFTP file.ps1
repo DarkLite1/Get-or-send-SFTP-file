@@ -25,6 +25,11 @@
 
 .PARAMETER RemoveFileAfterDownload
     When the file is correctly downloaded, remove it from the SFTP server.
+
+.PARAMETER ErrorWhenPathIsNotFound
+    When ErrorWhenPathIsNotFound is TRUE and download folder does not exist, 
+    an error is thrown. When ErrorWhenPathIsNotFound is FALSE and the download
+    folder does not exist, the folder is created.
 #>
 
 [CmdLetBinding()]
@@ -50,14 +55,19 @@ try {
       
     #region Test Path exists
     if (-not $downloadPathItem) {
-        $M = "Download path '$Path' not found"
+        $M = "Download folder '$Path' not found"
         if ($ErrorWhenPathIsNotFound) {
             throw $M
         }
 
         Write-Verbose $M
 
-        $downloadPathItem = New-Item -Path $Path -ItemType Directory -ErrorAction 'Stop'
+        try {
+            $downloadPathItem = New-Item -Path $Path -ItemType Directory -ErrorAction 'Stop'
+        }
+        catch {
+            throw "Failed creating download folder '$Path': $_"
+        }
     }
     #endregion
     
