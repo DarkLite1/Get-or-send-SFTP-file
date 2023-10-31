@@ -603,7 +603,7 @@ Describe 'when the SFTP script runs successfully' {
             }
         }
     }
-} -Tag test
+}
 Describe 'ExportExcelFile.When' {
     Context 'create no Excel file' {
         It "'Never'" {
