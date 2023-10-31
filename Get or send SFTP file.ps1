@@ -494,7 +494,8 @@ End {
             #endregion
 
             $htmlTableActions = @()
-
+            $exportToExcel = @()
+            
             foreach ($action in $task.Actions) {
                 #region Update counters
                 $counter.Action.UploadedFiles = $action.Job.Results.Where(
@@ -569,7 +570,7 @@ End {
                 #endregion
 
                 #region Create Excel objects
-                $exportToExcel = $action.Job.Results | Select-Object @{
+                $exportToExcel += $action.Job.Results | Select-Object @{
                     Name       = 'Type'
                     Expression = { $action.Type }
                 }, @{
