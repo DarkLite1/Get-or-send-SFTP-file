@@ -200,6 +200,10 @@ Begin {
                     { throw "Property 'Tasks.Sftp.Credential.$_' not found" }
                 )
 
+                if (-not $task.Actions) {
+                    throw 'Tasks.Actions is missing'
+                }
+
                 foreach ($action in $task.Actions) {
                     @('Type', 'Parameter').Where(
                         { -not $action.$_ }
@@ -479,6 +483,7 @@ End {
                     Errors          = $countSystemErrors
                     UploadedFiles   = 0
                     DownloadedFiles = 0
+                    Actions         = 0
                 }
                 Action = @{
                     Errors          = 0
@@ -487,6 +492,8 @@ End {
                 }
             }
             #endregion
+
+            $htmlTableActions = @()
 
             foreach ($action in $task.Actions) {
                 #region Update counters
@@ -500,124 +507,80 @@ End {
                 $counter.Total.Errors += $counter.Action.Errors
                 $counter.Total.UploadedFiles += $counter.Action.UploadedFiles
                 $counter.Total.DownloadedFiles += $counter.Action.DownloadedFiles
+                $counter.Total.Actions += $counter.Action.UploadedFiles
+                $counter.Total.Actions += $counter.Action.DownloadedFiles
                 #endregion
 
                 #region Create HTML table
-                $htmlTableTasks += "
-            <table>
-            <tr>
-                <th colspan=`"2`">$($action.Type)</th>
-            </tr>
-            <tr>
-                <td>Upload path</td>
-                <td>$($task.Upload.Path -join '<br>')</td>
-            </tr>
-            <tr>
-                <td>Options</td>
-                <td>
-                    Overwrite file on SFTP server: $($task.Upload.Option.OverwriteFile)<br>
-                    Remove file after upload: $($task.Upload.Option.RemoveFileAfterwards)<br>
-                    Error when upload path is not found: $($task.Upload.Option.ErrorWhen.PathIsNotFound)<br>
-                </td>
-            </tr>
-
-            <tr>
-                <td>Details</td>
-                <td>
-                    <a href=`"$($inputFile.ExcelFile.OutputFolder)`">Output folder</a>
-                </td>
-            </tr>
-            <tr>
-                <td>$($counter.RowsInExcel)</td>
-                <td>Files to download</td>
-            </tr>
-            <tr>
-                <td>$($counter.DownloadedFiles)</td>
-                <td>Files successfully downloaded</td>
-            </tr>
-            $(
-                if ($counter.Errors.InExcelFile) {
-                    "<tr>
-                        <td style=``"background-color: red``">$($counter.Errors.InExcelFile)</td>
-                        <td style=``"background-color: red``">Error{0} in the Excel file</td>
-                    </tr>" -f $(if ($counter.Errors.InExcelFile -ne 1) {'s'})
-                }
-            )
-            $(
-                if ($counter.Errors.DownloadingFiles) {
-                    "<tr>
-                        <td style=``"background-color: red``">$($counter.Errors.DownloadingFiles)</td>
-                        <td style=``"background-color: red``">File{0} failed to download</td>
-                    </tr>" -f $(if ($counter.Errors.DownloadingFiles -ne 1) {'s'})
-                }
-            )
-            $(
-                if ($counter.Errors.Other) {
-                    "<tr>
-                        <td style=``"background-color: red``">$($counter.Errors.Other)</td>
-                        <td style=``"background-color: red``">Error{0} found:<br>{1}</td>
-                    </tr>" -f $(
-                        if ($counter.Errors.Other -ne 1) {'s'}
-                    ),
-                    (
-                        '- ' + $($inputFile.Error -join '<br> - ')
-                    )
-                }
-            )
-            $(
-                if($inputFile.Tasks) {
-                    "<tr>
-                        <th colspan=``"2``">Downloads per folder</th>
-                    </tr>"
-                }
-            )
-            $(
-                foreach (
-                    $task in 
-                    (
-                        $inputFile.Tasks | 
-                        Sort-Object {$_.DownloadFolder.Name}
-                    )
-                ) {
-                    $errorCount = $task.Job.Result.Where(
-                        {$_.Error}).Count
-
-                    $template = if ($errorCount) {
-                        "<tr>
-                        <td style=``"background-color: red``">{0}/{1}</td>
-                        <td style=``"background-color: red``">{2}{3}</td>
-                        </tr>"     
-                    } else {
-                        "<tr>
-                            <td>{0}/{1}</td>
-                            <td>{2}{3}</td>
-                        </tr>" 
-                    }
-
-                    $template -f 
+                $htmlTableActions += "
+                <table>
+                    <tr>
+                        <th colspan=`"2`">
+                            <h3>$($action.Type.ToUpper())</h3>
+                        </th>
+                    </tr>
+                    <tr>
+                        <td>SFTP path</td>
+                        <td>$($action.Parameter.SftpPath)</td>
+                    </tr>
+                    <tr>
+                        <td>Computer name</td>
+                        <td>$($action.Parameter.ComputerName)</td>
+                    </tr>
+                    <tr>
+                        <td>Path</td>
+                        <td>$($action.Parameter.Path -join '<br>')</td>
+                    </tr>
                     $(
-                        $task.Job.Result.Where({$_.DownloadedOn}).Count
-                    ),
-                    $(
-                        ($task.ItemsToDownload | Measure-Object).Count
-                    ),
-                    $(
-                        $task.DownloadFolder.Name
-                    ),
-                    $(
-                        if ($errorCount) {
-                            ' ({0} error{1})' -f 
-                            $errorCount, $(if ($errorCount -ne 1) {'s'})
+                        if ($counter.Action.Errors) {
+                            "<tr>
+                                <td style=``"background-color: red``">Errors</td>
+                                <td style=``"background-color: red``">$($counter.Action.Errors)</td>
+                            </tr>"
                         }
                     )
-                }
-            )
-        </table>
-        "
+                    $(
+                        if ($action.Type -eq 'Upload') {
+                            "<tr>
+                                <td>Files uploaded</td>
+                                <td>$($counter.Action.UploadedFiles)</td>
+                            </tr>"
+                        }
+                    )
+                    $(
+                        if ($action.Type -eq 'Download') {
+                            "<tr>
+                                <td>Files downloaded</td>
+                                <td>$($counter.Action.DownloadedFiles)</td>
+                            </tr>"
+                        }
+                    )
+                </table>
+                "
+                #endregion
+
+                #region Create Excel objects
+                $exportToExcel = $action.Job.Results | Select-Object @{
+                    Name       = 'Type'
+                    Expression = { $action.Type }
+                }, @{
+                    Name       = 'ComputerName'
+                    Expression = { $_.PSComputerName }
+                },
+                DateTime, 
+                @{
+                    Name       = 'Path'
+                    Expression = { $_.Path -join ', ' }
+                }, 
+                @{
+                    Name       = 'Action'
+                    Expression = { $_.Action -join ', ' }
+                }, 
+                Error
                 #endregion
             }
 
-            $htmlTableTasks = $htmlTableTasks -join '<br>'
+            $htmlTableActions = $htmlTableActions -join '<br>'
        
             #region Create Excel worksheet Overview
             $createExcelFile = $false
@@ -625,13 +588,12 @@ End {
             if (
                 (   
                     ($task.ExportExcelFile.When -eq 'OnlyOnError') -and 
-                    ($counter.UploadErrors -ne 0)
+                    ($counter.Total.Errors)
                 ) -or
                 (   
                     ($task.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and 
                     (
-                        ($counter.UploadErrors -ne 0) -or 
-                        ($counter.Uploaded -ne 0)
+                        ($counter.Total.Errors) -or ($counter.Total.Actions)
                     )
                 )
             ) {
@@ -649,33 +611,20 @@ End {
                 }
 
                 $excelParams = @{
-                    Path         = New-LogFileNameHC @excelFileLogParams
-                    Append       = $true
-                    AutoSize     = $true
-                    FreezeTopRow = $true
-                    Verbose      = $false
+                    Path          = New-LogFileNameHC @excelFileLogParams
+                    Append        = $true
+                    AutoSize      = $true
+                    FreezeTopRow  = $true
+                    WorksheetName = 'Overview'
+                    TableName     = 'Overview'
+                    Verbose       = $false
                 }
 
-                $excelParams.WorksheetName = 'Overview'
-                $excelParams.TableName = 'Overview'
-
                 $M = "Export {0} rows to Excel sheet '{1}'" -f 
-                $task.Job.Results.Count, $excelParams.WorksheetName
+                $exportToExcel, $excelParams.WorksheetName
                 Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
             
-                $task.Job.Results | Select-Object @{
-                    Name       = 'ComputerName'
-                    Expression = { $_.PSComputerName }
-                },
-                DateTime, 
-                @{
-                    Name       = 'Path'
-                    Expression = { $_.Path -join ', ' }
-                }, 
-                @{
-                    Name       = 'Action'
-                    Expression = { $_.Action -join ', ' }
-                }, Error | Export-Excel @excelParams
+                $exportToExcel | Export-Excel @excelParams
 
                 $mailParams.Attachments = $excelParams.Path
             }
@@ -684,7 +633,7 @@ End {
             #region Mail subject and priority
             $mailParams.Priority = 'Normal'
             $mailParams.Subject = '{0} item{1} uploaded' -f 
-            $counter.Uploaded, $(if ($counter.Uploaded -ne 1) { 's' })
+            $counter.UploadedFiles, $(if ($counter.UploadedFiles -ne 1) { 's' })
 
             if ($counter.TotalErrors) {
                 $mailParams.Priority = 'High'
@@ -708,7 +657,7 @@ End {
                 (   
                     ($task.SendMail.When -eq 'OnlyOnErrorOrAction') -and 
                     (
-                        ($counter.Uploaded) -or ($counter.TotalErrors)
+                        ($counter.UploadedFiles) -or ($counter.TotalErrors)
                     )
                 )
             ) {
@@ -740,9 +689,9 @@ End {
                         $systemErrorsHtmlList
                         <p>Uploaded <b>{0} file{1}</b> to the SFTP server below{2}.</p>
                         $summaryHtmlTable" -f 
-                $counter.Uploaded, 
+                $counter.UploadedFiles, 
                 $(
-                    if ($counter.Uploaded -ne 1) { 's' }
+                    if ($counter.UploadedFiles -ne 1) { 's' }
                 ),
                 $(
                     if ($counter.TotalErrors) {

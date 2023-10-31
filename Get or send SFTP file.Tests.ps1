@@ -515,7 +515,7 @@ Describe 'send an e-mail to the admin when' {
             }
         }
     }
-} -Tag test
+}
 Describe 'execute the SFTP script' {
     BeforeAll {
         $testJobArguments = {
@@ -602,7 +602,7 @@ Describe 'when the SFTP script runs successfully' {
             }
         }
     }
-}
+} -Tag test
 Describe 'ExportExcelFile.When' {
     Context 'create no Excel file' {
         It "'Never'" {
