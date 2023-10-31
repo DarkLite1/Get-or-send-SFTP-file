@@ -23,6 +23,16 @@
 
 .PARAMETER SftpPassword
     The password used to authenticate to the SFTP server.
+
+.PARAMETER OverwriteFileOnSftpServer
+    Overwrite the file on the SFTP server in case it already exists.
+
+.PARAMETER RemoveFileAfterUpload
+    Remove the source file after a successful upload.
+
+.PARAMETER ErrorWhenUploadPathIsNotFound
+    Create an error in the returned object when the SFTP path is not found 
+    on the SFTP server.
 #>
 
 [CmdLetBinding()]
