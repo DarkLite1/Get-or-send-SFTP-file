@@ -632,14 +632,14 @@ End {
 
             #region Mail subject and priority
             $mailParams.Priority = 'Normal'
-            $mailParams.Subject = '{0} item{1} uploaded' -f 
-            $counter.UploadedFiles, $(if ($counter.UploadedFiles -ne 1) { 's' })
+            $mailParams.Subject = '{0} item{1}' -f 
+            $counter.Total.Actions, $(if ($counter.Total.Actions -ne 1) { 's' })
 
-            if ($counter.TotalErrors) {
+            if ($counter.Total.Errors) {
                 $mailParams.Priority = 'High'
                 $mailParams.Subject += ",{0} error{1}" -f 
-                $counter.TotalErrors,
-                $(if ($counter.TotalErrors -ne 1) { 's' })
+                $counter.Total.Errors,
+                $(if ($counter.Total.Errors -ne 1) { 's' })
             }
             #endregion
 
@@ -652,12 +652,12 @@ End {
                 ) -or
                 (   
                     ($task.SendMail.When -eq 'OnlyOnError') -and 
-                    ($counter.TotalErrors)
+                    ($counter.Total.Errors)
                 ) -or
                 (   
                     ($task.SendMail.When -eq 'OnlyOnErrorOrAction') -and 
                     (
-                        ($counter.UploadedFiles) -or ($counter.TotalErrors)
+                        ($counter.Total.Actions) -or ($counter.Total.Errors)
                     )
                 )
             ) {
@@ -687,19 +687,35 @@ End {
                 To        = $task.SendMail.To
                 Message   = "
                         $systemErrorsHtmlList
-                        <p>Uploaded <b>{0} file{1}</b> to the SFTP server below{2}.</p>
-                        $summaryHtmlTable" -f 
-                $counter.UploadedFiles, 
-                $(
-                    if ($counter.UploadedFiles -ne 1) { 's' }
-                ),
-                $(
-                    if ($counter.TotalErrors) {
-                        ' and found <b>{0} error{1}</b>' -f 
-                        $counter.TotalErrors,
-                        $(if ($counter.TotalErrors -ne 1) { 's' })
-                    }
-                )
+                        Summary:
+                        <table>
+                            $(
+                                if ($task.Actions.Type -contains 'Upload') {
+                                    "<tr>
+                                        <td>Total files uploaded</td>
+                                        <td>$($counter.Total.UploadedFiles)</td>
+                                    </tr>"
+                                }
+                            )
+                            $(
+                                if ($task.Actions.Type -contains 'Download') {
+                                    "<tr>
+                                        <td>Total files downloaded</td>
+                                        <td>$($counter.Total.DownloadedFiles)</td>
+                                    </tr>"
+                                }
+                            )
+                            $(
+                                if ($counter.Total.Errors) {
+                                    "<tr>
+                                        <td style=``"background-color: red``">Total errors</td>
+                                        <td style=``"background-color: red``">$($counter.Total.Errors)</td>
+                                    </tr>"
+                                }
+                            )
+                        </table>
+                        </p>
+                        $summaryHtmlTable"
                 
                 LogFolder = $LogParams.LogFolder
                 Header    = $ScriptName
@@ -716,7 +732,7 @@ End {
             if ($sendMailToUser) {
                 Write-Verbose 'Send e-mail to the user'
 
-                if ($counter.TotalErrors) {
+                if ($counter.Total.Errors) {
                     $mailParams.Bcc = $ScriptAdmin
                 }
                 Send-MailHC @mailParams
@@ -724,7 +740,7 @@ End {
             else {
                 Write-Verbose 'Send no e-mail to the user'
 
-                if ($counter.TotalErrors) {
+                if ($counter.Total.Errors) {
                     Write-Verbose 'Send e-mail to admin only with errors'
                     
                     $mailParams.To = $ScriptAdmin
