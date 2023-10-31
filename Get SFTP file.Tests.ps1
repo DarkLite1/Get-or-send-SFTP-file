@@ -3,6 +3,13 @@
 #Requires -Version 5.1
 
 BeforeAll {
+    $testData = @(
+        [PSCustomObject]@{
+            Name     = 'file b.pdf'
+            FullName = '/folder/file b.pdf'
+        }
+    )
+
     $testScript = $PSCommandPath.Replace('.Tests.ps1', '.ps1')
     $testParams = @{
         Path             = (New-Item 'TestDrive:/a.txt' -ItemType 'Directory').FullName
@@ -12,7 +19,6 @@ BeforeAll {
         SftpPassword     = 'pass' | ConvertTo-SecureString -AsPlainText -Force
     }
 
-    Mock Set-SFTPItem
     Mock New-SFTPSession {
         [PSCustomObject]@{
             SessionID = 1
@@ -22,6 +28,8 @@ BeforeAll {
         $true
     }
     Mock Remove-SFTPSession
+    Mock Get-SFTPChildItem
+    Mock Get-SFTPItem
 }
 Describe 'the mandatory parameters are' {
     It '<_>' -ForEach @(
@@ -73,7 +81,21 @@ Describe 'generate an error when' {
 
         $testResult.Error | 
         Should -BeLike "Failed retrieving the SFTP file list*"
+    }
+    It 'the SFTP file cannot be downloaded' {
+        Mock Get-SFTPChildItem {
+            $testData
+        }
+        Mock Get-SFTPItem {
+            throw 'oops'
+        }
+
+        $testResult = .$testScript @testParams
+
+        $testResult.Error | 
+        Should -Be "Failed downloading file: oops"
     } -Tag test
+    
 }
 Describe 'do not start an SFTP sessions when' {
     It 'there is nothing to upload' {
