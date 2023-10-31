@@ -123,18 +123,20 @@ try {
         try {
             $result = [PSCustomObject]@{
                 DateTime   = Get-Date
-                Path       = $file.FullName
+                LocalPath  = $Path
+                SftpPath   = $SftpPath
+                FileName   = $file.Name
                 Downloaded = $false
                 Action     = @()
                 Error      = $null
             }
 
-            Write-Verbose "Download file '$($result.Path)'"
+            Write-Verbose "Download file '$($result.FileName)'"
     
             #region Download file from SFTP server
             try {
                 $params = @{
-                    Path        = $result.Path
+                    Path        = $file.FullName
                     Destination = $downloadPathItem.FullName
                 }
     
@@ -157,10 +159,10 @@ try {
             #region Remove file after download
             if ($RemoveFileAfterDownload) {
                 try {
-                    $M = "Remove file '{0}' from SFTP server" -f $result.Path
+                    $M = "Remove file '{0}' from SFTP server" -f $file.FullName
                     Write-Verbose $M
     
-                    Remove-SFTPItem @sessionParams -Path $result.Path
+                    Remove-SFTPItem @sessionParams -Path $file.FullName
         
                     $result.Action += 'file removed'    
                 }
@@ -185,7 +187,9 @@ try {
 catch {
     [PSCustomObject]@{
         DateTime   = Get-Date
-        Path       = $Path
+        LocalPath  = $Path
+        SftpPath   = $SftpPath
+        FileName   = $null
         Downloaded = $false
         Action     = $null
         Error      = $_
