@@ -70,21 +70,27 @@ BeforeAll {
 
     $testData = @(
         [PSCustomObject]@{
-            Path     = $testInputFile.Tasks[0].Actions[0].Parameter.Path[0]
-            DateTime = Get-Date
-            Uploaded = $true
-            Action   = @('file uploaded', 'file removed')
-            Error    = $null
+            LocalPath = $testInputFile.Tasks[0].Actions[0].Parameter.Path[0]
+            SftpPath  = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
+            FileName  = $testInputFile.Tasks[0].Actions[0].Parameter.Path[0] | Split-Path -Leaf
+            DateTime  = Get-Date
+            Uploaded  = $true
+            Action    = @('file uploaded', 'file removed')
+            Error     = $null
         }     
         [PSCustomObject]@{
-            Path     = $testInputFile.Tasks[0].Actions[0].Parameter.Path[1]
+            LocalPath = $testInputFile.Tasks[0].Actions[0].Parameter.Path[1]
+            SftpPath  = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
+            FileName  = $testInputFile.Tasks[0].Actions[0].Parameter.Path[1] | Split-Path -Leaf
             DateTime = Get-Date
             Uploaded = $true
             Action   = @('file uploaded', 'file removed')
             Error    = $null
         }
         [PSCustomObject]@{
-            Path       = 'sftp file.txt'
+            LocalPath = $testInputFile.Tasks[0].Actions[1].Parameter.Path
+            SftpPath  = $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath
+            FileName  = 'sftp file.txt'
             DateTime   = Get-Date
             Downloaded = $true
             Action     = @('file downloaded', 'file removed')
@@ -655,7 +661,7 @@ Describe 'when the SFTP script runs successfully' {
     Context 'create an Excel file' {
         BeforeAll {
             $testExportedExcelRows = $testData | 
-            Select-Object Path, DateTime, @{
+            Select-Object LocalPath, SftpPath, FileName, DateTime, @{
                 Name       = 'Action'
                 Expression = { $_.Action -join ', ' }
             }, Error
@@ -673,15 +679,17 @@ Describe 'when the SFTP script runs successfully' {
         It 'with the correct data in the rows' {
             foreach ($testRow in $testExportedExcelRows) {
                 $actualRow = $actual | Where-Object {
-                    $_.Path -eq $testRow.Path
+                    $_.LocalPath -eq $testRow.LocalPath
                 }
                 $actualRow.DateTime.ToString('yyyyMMdd') | 
                 Should -Be $testRow.DateTime.ToString('yyyyMMdd')
                 $actualRow.Action | Should -Be $testRow.Action
                 $actualRow.Error | Should -Be $testRow.Error
                 $actualRow.Type | Should -Match 'Upload|Download'
+                $actualRow.SftpPath | Should -be $testRow.SftpPath
+                $actualRow.FileName | Should -be $testRow.FileName
             }
-        }
+        } -Tag test
     }
     Context 'send an e-mail' {
         It 'with attachment to the user' {

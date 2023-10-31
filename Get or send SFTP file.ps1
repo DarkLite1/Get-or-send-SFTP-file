@@ -664,9 +664,11 @@ End {
                 },
                 DateTime, 
                 @{
-                    Name       = 'Path'
-                    Expression = { $_.Path -join ', ' }
+                    Name       = 'LocalPath'
+                    Expression = { $_.LocalPath -join ', ' }
                 }, 
+                'SftpPath', 
+                'FileName',
                 @{
                     Name       = 'Action'
                     Expression = { $_.Action -join ', ' }
