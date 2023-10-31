@@ -28,6 +28,7 @@ BeforeAll {
         $true
     }
     Mock Remove-SFTPSession
+    Mock Remove-SFTPItem
     Mock Get-SFTPChildItem
     Mock Get-SFTPItem
 }
@@ -123,59 +124,43 @@ Describe 'OverwriteFile' {
         }
     }
 }
-Describe 'RemoveFileAfterDownload ' {
+Describe 'RemoveFileAfterDownload' {
+    BeforeAll {
+        Mock Get-SFTPChildItem {
+            $testData
+        }
+    }
     Context 'when false' {
         BeforeAll {
             $testNewParams = $testParams.Clone()
-            $testNewParams.RemoveFileAfterUpload = $false
+            $testNewParams.RemoveFileAfterDownload = $false
     
             $testResults = .$testScript @testNewParams
         }
-        It 'the uploaded file is not removed' {
-            $testNewParams.Path | ForEach-Object {
-                Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                    ($Path -eq $_) -and
-                    ($Destination -eq $testNewParams.SftpPath) -and
-                    ($SessionId -eq 1)
-                } -Scope 'Context'
-    
-                $_ | Should -Exist
-            }
-        }
-        It 'return an object with results' {
-            $testResults | ForEach-Object {
-                $_.Path | Should -Not -BeNullOrEmpty
-                $_.Uploaded | Should -BeTrue
-                $_.DateTime | Should -Not -BeNullOrEmpty
-                $_.Action | Should -Be 'file uploaded'
-                $_.Error | Should -BeNullOrEmpty
-            }
+        It ' the file on the SFTP server is not removed' {
+            Should -Not -Invoke Remove-SFTPItem -Scope 'Context'
         }
     }
     Context 'when true' {
         BeforeAll {
             $testNewParams = $testParams.Clone()
-            $testNewParams.RemoveFileAfterUpload = $true
+            $testNewParams.RemoveFileAfterDownload = $true
     
             $testResults = .$testScript @testNewParams
         }
-        It 'the uploaded file is removed' {
-            $testNewParams.Path | ForEach-Object {
-                Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                    ($Path -eq $_) -and
-                    ($Destination -eq $testNewParams.SftpPath) -and
-                    ($SessionId -eq 1)
-                } -Scope 'Context'
-    
-                $_ | Should -Not -Exist
+        It 'the file on the SFTP server is removed' {
+            Should -Invoke Remove-SFTPItem -Times 1 -Exactly -Scope 'Context' -ParameterFilter {
+                $path -eq $testData[0].FullName
             }
         }
         It 'return an object with results' {
             $testResults | ForEach-Object {
-                $_.Path | Should -Not -BeNullOrEmpty
-                $_.Uploaded | Should -BeTrue
                 $_.DateTime | Should -Not -BeNullOrEmpty
-                $_.Action[0] | Should -Be 'file uploaded'
+                $_.LocalPath | Should -Not -BeNullOrEmpty
+                $_.SftpPath | Should -Not -BeNullOrEmpty
+                $_.FileName | Should -Be $testData[0].Name
+                $_.Downloaded | Should -BeTrue
+                $_.Action[0] | Should -Be 'file downloaded'
                 $_.Action[1] | Should -Be 'file removed'
                 $_.Error | Should -BeNullOrEmpty
             }
