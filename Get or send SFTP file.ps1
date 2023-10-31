@@ -3,12 +3,15 @@
 
 <#
 .SYNOPSIS
-    Upload files to an SFTP server.
+    Download files from an SFTP server or upload files to an SFTP server.
 
 .DESCRIPTION
-    Upload all files in a folder or a single file to an SFTP server. Send an 
-    e-mail to the user when needed, but always send an e-mail to the admin on 
-    errors.
+    Read an input file that contains all the required parameters for this 
+    script. Then based on the action, a file is uploaded or downloaded.
+    
+    Based on the input file parameters a summary e-mail is sent to the user or 
+    not. In any case, when there is an error, there's always an e-mail sent to 
+    the admin.
 
     The computer that is running the SFTP code should have the module 'Posh-SSH'
     installed.
@@ -17,48 +20,67 @@
     A .JSON file that contains all the parameters used by the script.
 
 .PARAMETER Tasks
-    Each task in Tasks represents a job that needs to be executed. Multiple
-    SFTP jobs are supported.
+    Each task is a collection of upload or download actions. The exported Excel
+    file is created based on the TaskName and is unique to a single task. 
 
-.PARAMETER TaskName
-    Name of the task. This name is used for naming the Excel log file and for
-    naming the tasks in the e-mail sent to the user.
+    If different Excel log files or e-mails are required, use separate tasks 
+    with a unique TaskName.
 
-.PARAMETER Task.ExecuteOnComputerName
-    Defines on which machine the SFTP commands are executed. Can be the 
-    localhost or a remote computer name.
+.PARAMETER Tasks.TaskName
+    Name of the task. This name is used for naming the Excel log file and to 
+    identify a task in the e-mail sent to the user.
 
-.PARAMETER Sftp.ComputerName
+.PARAMETER Tasks.Sftp.ComputerName
     The URL where the SFTP server can be reached.
-    
-.PARAMETER Sftp.Path
-    Path on the SFTP server where the uploaded files will be saved.
 
-.PARAMETER Sftp.Credential.UserName
+.PARAMETER Tasks.Sftp.Credential.UserName
     The user name used to authenticate to the SFTP server. This is an 
     environment variable on the client running the script.
     
-.PARAMETER Sftp.Credential.Password
+.PARAMETER Tasks.Sftp.Credential.Password
     The password used to authenticate to the SFTP server. This is an 
     environment variable on the client running the script.
     
-.PARAMETER Upload.Path
-    One ore more full paths to a file or folder. When Path is a folder, the files within that folder will be uploaded.
+.PARAMETER Tasks.Actions
+    Each action represents a job that will either upload of download files
+    to or from an SFTP server.
 
-.PARAMETER Upload.Option.OverwriteFile
+.PARAMETER Tasks.Actions.Type
+    Indicate wether to upload or download files.
+
+    Valid values:
+    - Upload   : Upload files to the SFTP server
+    - Download : Download files from the SFTP server
+
+.PARAMETER Tasks.Actions.Parameter
+    Parameters specific to the upload or download action.
+
+.PARAMETER Tasks.Actions.Parameter.ComputerName
+    The client where the SFTP code will be executed. This machine needs to 
+    have the module 'Posh-SSH' installed.
+
+.PARAMETER Tasks.Actions.Parameter.Path
+    Type 'Upload':
+    - One ore more full paths to a file or folder. When Path is a folder, 
+      the files within that folder will be uploaded.
+
+    Type 'Download':
+    - A single folder on the machine defined in Tasks.Actions.Parameter.ComputerName where the files will be downloaded to.
+
+.PARAMETER Tasks.Actions.Parameter.Option.OverwriteFile
     Overwrite a file on the SFTP server when it already exists.
 
-.PARAMETER Upload.Option.RemoveFileAfterwards
+.PARAMETER Tasks.Actions.Parameter.Option.RemoveFileAfterwards
     Remove a file after it was successfully uploaded to the SFTP server.
 
-.PARAMETER Upload.Option.ErrorWhen.PathIsNotFound
+.PARAMETER Tasks.Actions.Parameter.Option.ErrorWhen.PathIsNotFound
     Throw an error when the file to upload is not found. When Path is a folder
     this option is ignored, because a folder can be empty.
 
-.PARAMETER SendMail.To
+.PARAMETER Tasks.SendMail.To
     E-mail addresses of users where to send the summary e-mail.
 
-.PARAMETER SendMail.When
+.PARAMETER Tasks.SendMail.When
     Indicate when an e-mail will be sent to the user.
 
     Valid values:
@@ -68,7 +90,7 @@
     - OnlyOnErrorOrAction : Only sent an e-mail when errors where detected or
                             when items were uploaded
 
-.PARAMETER ExportExcelFile.When
+.PARAMETER Tasks.ExportExcelFile.When
     Indicate when an Excel file will be created containing the log data.
 
     Valid values:
