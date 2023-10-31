@@ -150,7 +150,9 @@ Describe 'upload to the SFTP server' {
         $testResults | Should -HaveCount $testFiles.Count
 
         $testResults | ForEach-Object {
-            $_.Path | Should -Not -BeNullOrEmpty
+            $_.LocalPath | Should -Not -BeNullOrEmpty
+            $_.SftpPath | Should -Be $testNewParams.SftpPath
+            $_.FileName | Should -Not -BeNullOrEmpty
             $_.Uploaded | Should -BeTrue
             $_.DateTime | Should -Not -BeNullOrEmpty
             $_.Action | Should -Be 'file uploaded'
@@ -217,7 +219,9 @@ Describe 'RemoveFileAfterUpload ' {
         }
         It 'return an object with results' {
             $testResults | ForEach-Object {
-                $_.Path | Should -Not -BeNullOrEmpty
+                $_.LocalPath | Should -Not -BeNullOrEmpty
+                $_.SftpPath | Should -Be $testNewParams.SftpPath
+                $_.FileName | Should -Not -BeNullOrEmpty
                 $_.Uploaded | Should -BeTrue
                 $_.DateTime | Should -Not -BeNullOrEmpty
                 $_.Action | Should -Be 'file uploaded'
@@ -245,7 +249,9 @@ Describe 'RemoveFileAfterUpload ' {
         }
         It 'return an object with results' {
             $testResults | ForEach-Object {
-                $_.Path | Should -Not -BeNullOrEmpty
+                $_.LocalPath | Should -Not -BeNullOrEmpty
+                $_.SftpPath | Should -Be $testNewParams.SftpPath
+                $_.FileName | Should -Not -BeNullOrEmpty
                 $_.Uploaded | Should -BeTrue
                 $_.DateTime | Should -Not -BeNullOrEmpty
                 $_.Action[0] | Should -Be 'file uploaded'

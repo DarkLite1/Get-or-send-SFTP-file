@@ -76,20 +76,22 @@ try {
             #region Get files
             $filesToUpload += if ($item.PSIsContainer) {
                 Write-Verbose "Get files in folder '$P'"
-                (Get-ChildItem -LiteralPath $item.FullName -File).FullName
+                Get-ChildItem -LiteralPath $item.FullName -File
             }
             else {
-                $item.FullName
+                $item
             }
             #endregion
         }
         catch {
             [PSCustomObject]@{
-                Path     = $P
-                DateTime = Get-Date
-                Uploaded = $false
-                Action   = $null
-                Error    = $_
+                DateTime  = Get-Date
+                LocalPath = $P
+                SftpPath  = $SftpPath
+                FileName  = $null
+                Uploaded  = $false
+                Action    = $null
+                Error     = $_
             }
             Write-Warning $_
             $Error.RemoveAt(0)        
@@ -150,19 +152,21 @@ try {
 
     foreach ($file in $filesToUpload) {
         try {
-            Write-Verbose "Upload file '$file'"
+            Write-Verbose "Upload file '$($file.FullName)'"
 
             $uploadResult = [PSCustomObject]@{
-                DateTime = Get-Date
-                Path     = $file
-                Uploaded = $false
-                Action   = @()
-                Error    = $null
+                DateTime  = Get-Date
+                LocalPath = $file.PSParentPath
+                SftpPath  = $SftpPath
+                FileName  = $file.Name
+                Uploaded  = $false
+                Action    = @()
+                Error     = $null
             }   
     
             #region Upload data to SFTP server
             $params = @{
-                Path        = $file
+                Path        = $file.FullName
                 Destination = $SftpPath
             }
     
@@ -196,11 +200,13 @@ try {
 }
 catch {
     [PSCustomObject]@{
-        DateTime = Get-Date
-        Path     = $Path
-        Uploaded = $false
-        Action   = $null
-        Error    = $_
+        DateTime  = Get-Date
+        LocalPath = $Path
+        SftpPath  = $SftpPath
+        FileName  = $null
+        Uploaded  = $false
+        Action    = $null
+        Error     = $_
     }
     Write-Warning $_
     $Error.RemoveAt(0)
