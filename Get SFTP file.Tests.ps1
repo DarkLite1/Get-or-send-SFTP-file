@@ -94,126 +94,36 @@ Describe 'generate an error when' {
 
         $testResult.Error | 
         Should -Be "Failed downloading file: oops"
-    } -Tag test
-    
-}
-Describe 'do not start an SFTP sessions when' {
-    It 'there is nothing to upload' {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = (New-Item 'TestDrive:/f' -ItemType 'Directory').FullName
-
-        .$testScript @testNewParams
-
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = 'c:\doesNotExist.txt'
-        $testNewParams.ErrorWhenPathIsNotFound = $true
-
-        .$testScript @testNewParams
-
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = 'c:\doesNotExist.txt'
-        $testNewParams.ErrorWhenPathIsNotFound = $false
-
-        .$testScript @testNewParams
-
-        Should -Not -Invoke Set-SFTPItem
-        Should -Not -Invoke New-SFTPSession
-        Should -Not -Invoke Test-SFTPPath
-        Should -Not -Invoke Remove-SFTPSession
     }
 }
-Describe 'upload to the SFTP server' {
+Describe 'OverwriteFile' {
     BeforeAll {
-        $testFolder = (New-Item 'TestDrive:/a' -ItemType 'Directory').FullName
-
-        $testFiles = @('file1.txt', 'file2.txt', 'file3.txt') | ForEach-Object {
-            (New-Item "$testFolder\$_" -ItemType 'File').FullName
+        Mock Get-SFTPChildItem {
+            $testData
         }
     }
-    It 'all files in a folder when Path is a folder' {
+    It 'when true the file is overwritten' {
         $testNewParams = $testParams.Clone()
-        $testNewParams.Path = $testFolder
-
+        $testNewParams.OverwriteFile = $true
+    
         .$testScript @testNewParams
 
-        $testFiles | ForEach-Object {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -eq $_) -and
-                ($Destination -eq $testNewParams.SftpPath) -and
-                ($SessionId -eq 1)
-            }
+        Should -Invoke Get-SFTPItem -Times 1 -Exactly -ParameterFilter {
+            $Force -eq $true
         }
     }
-    It 'all files defined in Path' {
+    It 'when false the file is not overwritten' {
         $testNewParams = $testParams.Clone()
-        $testNewParams.Path = $testFiles
-
+        $testNewParams.OverwriteFile = $false
+    
         .$testScript @testNewParams
 
-        $testFiles | ForEach-Object {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -eq $_) -and
-                ($Destination -eq $testNewParams.SftpPath) -and
-                ($SessionId -eq 1)
-            }
-        }
-    }
-    It 'Return an object with results' {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = $testFiles
-
-        $testResults = .$testScript @testNewParams
-
-        $testResults | Should -HaveCount $testFiles.Count
-
-        $testResults | ForEach-Object {
-            $_.Path | Should -Not -BeNullOrEmpty
-            $_.Uploaded | Should -BeTrue
-            $_.DateTime | Should -Not -BeNullOrEmpty
-            $_.Action | Should -Be 'file uploaded'
-            $_.Error | Should -BeNullOrEmpty
+        Should -Invoke Get-SFTPItem -Times 1 -Exactly -ParameterFilter {
+            (-not $Force)
         }
     }
 }
-Describe 'OverwriteFileOnSftpServer' {
-    Context 'when true' {
-        BeforeAll {
-            $testNewParams = $testParams.Clone()
-            $testNewParams.OverwriteFileOnSftpServer = $true
-
-            .$testScript @testNewParams
-        }
-        It 'the file on the SFTP server is overwritten' {
-            $testNewParams.Path | ForEach-Object {
-                Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -eq $_) -and
-                ($Destination -eq $testNewParams.SftpPath) -and
-                ($SessionId -eq 1) -and
-                ($Force )
-                } -Scope 'Context'
-            }
-        }
-    }
-    Context 'when false' {
-        BeforeAll {
-            $testNewParams = $testParams.Clone()
-            $testNewParams.OverwriteFileOnSftpServer = $false
-
-            .$testScript @testNewParams
-        }
-        It 'the file on the SFTP server is not overwritten' {
-            $testNewParams.Path | ForEach-Object {
-                Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -eq $_) -and
-                ($Destination -eq $testNewParams.SftpPath) -and
-                ($SessionId -eq 1) -and
-                (-not $Force)
-                } -Scope 'Context'
-            }
-        }
-    }
-}
-Describe 'RemoveFileAfterUpload ' {
+Describe 'RemoveFileAfterDownload ' {
     Context 'when false' {
         BeforeAll {
             $testNewParams = $testParams.Clone()

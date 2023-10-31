@@ -23,6 +23,10 @@
 .PARAMETER SftpPassword
     The password used to authenticate to the SFTP server.
 
+.PARAMETER OverwriteFile
+    When a file that is being downloaded is already present with the same name
+    it will be overwritten when OverwriteFile is TRUE.
+
 .PARAMETER RemoveFileAfterDownload
     When the file is correctly downloaded, remove it from the SFTP server.
 
