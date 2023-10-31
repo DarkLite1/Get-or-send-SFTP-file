@@ -18,10 +18,11 @@
             "ComputerName": "localhost",
             "Path": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
             "Option": {
-              "OverwriteFileOnSftpServer": false,
-              "RemoveFileAfterUpload": false,
+              "OverwriteFile": false,
+              "RemoveFileAfterwards": false,
               "ErrorWhen": {
-                "UploadPathIsNotFound": false
+                "PathIsNotFound": false,
+                "SftpPathIsNotFound": true
               }
             },
             "?": "Type: Upload | Download"
@@ -34,10 +35,11 @@
             "ComputerName": "localhost",
             "Path": "C:\\Folder",
             "Option": {
-              "OverwriteExistingFile": false,
-              "RemoveFileAfterDownload": true,
+              "OverwriteFile": false,
+              "RemoveFileAfterwards": true,
               "ErrorWhen": {
-                "DownloadPathIsNotFound": true
+                "PathIsNotFound": false,
+                "SftpPathIsNotFound": true
               }
             },
             "?": "Type: Upload | Download"

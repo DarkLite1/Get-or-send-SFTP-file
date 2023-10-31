@@ -45,13 +45,13 @@
 .PARAMETER Upload.Path
     One ore more full paths to a file or folder. When Path is a folder, the files within that folder will be uploaded.
 
-.PARAMETER Upload.Option.OverwriteFileOnSftpServer
+.PARAMETER Upload.Option.OverwriteFile
     Overwrite a file on the SFTP server when it already exists.
 
-.PARAMETER Upload.Option.RemoveFileAfterUpload
+.PARAMETER Upload.Option.RemoveFileAfterwards
     Remove a file after it was successfully uploaded to the SFTP server.
 
-.PARAMETER Upload.Option.ErrorWhen.UploadPathIsNotFound
+.PARAMETER Upload.Option.ErrorWhen.PathIsNotFound
     Throw an error when the file to upload is not found. When Path is a folder
     this option is ignored, because a folder can be empty.
 
@@ -185,7 +185,7 @@ Begin {
                 )
                 
                 if (-not $task.TaskName) {
-                     throw "Property 'Tasks.TaskName' not found" 
+                    throw "Property 'Tasks.TaskName' not found" 
                 }
 
                 @('ComputerName', 'Credential').where(
@@ -226,8 +226,8 @@ Begin {
                             foreach (
                                 $boolean in 
                                 @(
-                                    'OverwriteFileOnSftpServer', 
-                                    'RemoveFileAfterUpload'
+                                    'OverwriteFile', 
+                                    'RemoveFileAfterwards'
                                 )
                             ) {
                                 try {
@@ -241,7 +241,8 @@ Begin {
                             foreach (
                                 $boolean in 
                                 @(
-                                    'UploadPathIsNotFound'
+                                    'PathIsNotFound',
+                                    'SftpPathIsNotFound'
                                 )
                             ) {
                                 try {
@@ -350,17 +351,17 @@ Process {
                     'Upload' {  
                         $invokeParams = @{
                             FilePath     = $PathItem.UploadScript
-                            ArgumentList = $task.Upload.Path, 
+                            ArgumentList = $action.Parameter.Path, 
                             $task.Sftp.ComputerName, 
                             $action.Parameter.SftpPath, 
                             $task.Sftp.Credential.UserName, 
                             $task.Sftp.Credential.Password, 
-                            $action.Parameter.Option.OverwriteFileOnSftpServer, 
-                            $action.Parameter.Option.RemoveFileAfterUpload,
-                            $action.Parameter.Option.ErrorWhen.UploadPathIsNotFound
+                            $action.Parameter.Option.OverwriteFile, 
+                            $action.Parameter.Option.RemoveFileAfterwards,
+                            $action.Parameter.Option.ErrorWhen.PathIsNotFound
                         }
                 
-                        $M = "Start job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' Sftp.Path '{3}' Sftp.UserName '{4}' Option.OverwriteFileOnSftpServer '{5}' Option.RemoveFileAfterUpload '{6}' Option.ErrorWhen.UploadPathIsNotFound '{7}' Upload.Path '{8}'" -f 
+                        $M = "Start job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' Option.OverwriteFile '{5}' Option.RemoveFileAfterwards '{6}' Option.ErrorWhen.PathIsNotFound '{7}' Path '{8}'" -f 
                         $task.TaskName, 
                         $action.Parameter.ComputerName,
                         $invokeParams.ArgumentList[1], 
@@ -370,7 +371,8 @@ Process {
                         $invokeParams.ArgumentList[6], 
                         $invokeParams.ArgumentList[7],
                         $($invokeParams.ArgumentList[0] -join "', '")
-                        Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
+                        Write-Verbose $M; 
+                        Write-EventLog @EventVerboseParams -Message $M
 
                         break
                     }
@@ -451,26 +453,171 @@ Process {
 
 End {
     try {
+        $countSystemErrors = (
+            $Error.Exception.Message | Measure-Object
+        ).Count
+        
+        #region Create error html lists
+        $systemErrorsHtmlList = if ($countSystemErrors) {
+            "<p>Detected <b>{0} system error{1}</b>:{2}</p>" -f $countSystemErrors, 
+            $(
+                if ($countSystemErrors -ne 1) { 's' }
+            ),
+            $(
+                $Error.Exception.Message | Where-Object { $_ } | 
+                ConvertTo-HtmlListHC
+            )
+        }
+        #endregion
+
         foreach ($task in $Tasks) {
             $mailParams = @{}
 
-            #region Counters
+            #region Counter
             $counter = @{
-                Uploaded     = $task.Job.Results.Where(
-                    { $_.Uploaded }).Count
-                UploadErrors = $task.Job.Results.Where(
-                    { $_.Error }).Count
-                SystemErrors = (
-                    $Error.Exception.Message | Measure-Object
-                ).Count
-                TotalErrors  = (
-                    $task.Job.Results.Where({ $_.Error }).Count +
-                    (
-                        $Error.Exception.Message | Measure-Object
-                    ).Count
-                )
+                Total  = @{
+                    Errors          = $countSystemErrors
+                    UploadedFiles   = 0
+                    DownloadedFiles = 0
+                }
+                Action = @{
+                    Errors          = 0
+                    UploadedFiles   = 0
+                    DownloadedFiles = 0
+                }
             }
             #endregion
+
+            foreach ($action in $task.Actions) {
+                #region Update counters
+                $counter.Action.UploadedFiles = $action.Job.Results.Where(
+                    { $_.Uploaded }).Count
+                $counter.Action.DownloadedFiles = $action.Job.Results.Where(
+                    { $_.Downloaded }).Count
+                $counter.Action.Errors = $action.Job.Results.Where(
+                    { $_.Error }).Count
+
+                $counter.Total.Errors += $counter.Action.Errors
+                $counter.Total.UploadedFiles += $counter.Action.UploadedFiles
+                $counter.Total.DownloadedFiles += $counter.Action.DownloadedFiles
+                #endregion
+
+                #region Create HTML table
+                $htmlTableTasks += "
+            <table>
+            <tr>
+                <th colspan=`"2`">$($action.Type)</th>
+            </tr>
+            <tr>
+                <td>Upload path</td>
+                <td>$($task.Upload.Path -join '<br>')</td>
+            </tr>
+            <tr>
+                <td>Options</td>
+                <td>
+                    Overwrite file on SFTP server: $($task.Upload.Option.OverwriteFile)<br>
+                    Remove file after upload: $($task.Upload.Option.RemoveFileAfterwards)<br>
+                    Error when upload path is not found: $($task.Upload.Option.ErrorWhen.PathIsNotFound)<br>
+                </td>
+            </tr>
+
+            <tr>
+                <td>Details</td>
+                <td>
+                    <a href=`"$($inputFile.ExcelFile.OutputFolder)`">Output folder</a>
+                </td>
+            </tr>
+            <tr>
+                <td>$($counter.RowsInExcel)</td>
+                <td>Files to download</td>
+            </tr>
+            <tr>
+                <td>$($counter.DownloadedFiles)</td>
+                <td>Files successfully downloaded</td>
+            </tr>
+            $(
+                if ($counter.Errors.InExcelFile) {
+                    "<tr>
+                        <td style=``"background-color: red``">$($counter.Errors.InExcelFile)</td>
+                        <td style=``"background-color: red``">Error{0} in the Excel file</td>
+                    </tr>" -f $(if ($counter.Errors.InExcelFile -ne 1) {'s'})
+                }
+            )
+            $(
+                if ($counter.Errors.DownloadingFiles) {
+                    "<tr>
+                        <td style=``"background-color: red``">$($counter.Errors.DownloadingFiles)</td>
+                        <td style=``"background-color: red``">File{0} failed to download</td>
+                    </tr>" -f $(if ($counter.Errors.DownloadingFiles -ne 1) {'s'})
+                }
+            )
+            $(
+                if ($counter.Errors.Other) {
+                    "<tr>
+                        <td style=``"background-color: red``">$($counter.Errors.Other)</td>
+                        <td style=``"background-color: red``">Error{0} found:<br>{1}</td>
+                    </tr>" -f $(
+                        if ($counter.Errors.Other -ne 1) {'s'}
+                    ),
+                    (
+                        '- ' + $($inputFile.Error -join '<br> - ')
+                    )
+                }
+            )
+            $(
+                if($inputFile.Tasks) {
+                    "<tr>
+                        <th colspan=``"2``">Downloads per folder</th>
+                    </tr>"
+                }
+            )
+            $(
+                foreach (
+                    $task in 
+                    (
+                        $inputFile.Tasks | 
+                        Sort-Object {$_.DownloadFolder.Name}
+                    )
+                ) {
+                    $errorCount = $task.Job.Result.Where(
+                        {$_.Error}).Count
+
+                    $template = if ($errorCount) {
+                        "<tr>
+                        <td style=``"background-color: red``">{0}/{1}</td>
+                        <td style=``"background-color: red``">{2}{3}</td>
+                        </tr>"     
+                    } else {
+                        "<tr>
+                            <td>{0}/{1}</td>
+                            <td>{2}{3}</td>
+                        </tr>" 
+                    }
+
+                    $template -f 
+                    $(
+                        $task.Job.Result.Where({$_.DownloadedOn}).Count
+                    ),
+                    $(
+                        ($task.ItemsToDownload | Measure-Object).Count
+                    ),
+                    $(
+                        $task.DownloadFolder.Name
+                    ),
+                    $(
+                        if ($errorCount) {
+                            ' ({0} error{1})' -f 
+                            $errorCount, $(if ($errorCount -ne 1) {'s'})
+                        }
+                    )
+                }
+            )
+        </table>
+        "
+                #endregion
+            }
+
+            $htmlTableTasks = $htmlTableTasks -join '<br>'
        
             #region Create Excel worksheet Overview
             $createExcelFile = $false
@@ -569,19 +716,6 @@ End {
             }
             #endregion
 
-            #region Create html error list
-            $systemErrorsHtmlList = if ($counter.SystemErrors) {
-                "<p>Detected <b>{0} error{1}</b>:{2}</p>" -f $counter.SystemErrors, 
-                $(
-                    if ($counter.SystemErrors -ne 1) { 's' }
-                ),
-                $(
-                    $Error.Exception.Message | Where-Object { $_ } | 
-                    ConvertTo-HtmlListHC
-                )
-            }
-            #endregion
-
             #region Create html summary table
             $summaryHtmlTable = "
             <table>
@@ -593,27 +727,10 @@ End {
                     <td>$($task.Sftp.ComputerName)</td>
                 </tr>
                 <tr>
-                    <td>SFTP Path</td>
-                    <td>$($task.Sftp.Path)</td>
-                </tr>
-                <tr>
                     <td>SFTP User name</td>
                     <td>$($task.Sftp.Credential.UserName)</td>
                 </tr>
-                <tr>
-                    <td>Upload path</td>
-                    <td>$($task.Upload.Path -join '<br>')</td>
-                </tr>
-                <tr>
-                    <td>Options</td>
-                    <td>
-                        Overwrite file on SFTP server: $($task.Upload.Option.OverwriteFileOnSftpServer)<br>
-                        Remove file after upload: $($task.Upload.Option.RemoveFileAfterUpload)<br>
-                        Error when upload path is not found: $($task.Upload.Option.ErrorWhen.UploadPathIsNotFound)<br>
-                    </td>
-                </tr>
-            </table>
-            " 
+            </table>"
             #endregion
                 
             #region Send mail

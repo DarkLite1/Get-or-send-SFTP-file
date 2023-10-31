@@ -31,10 +31,11 @@ BeforeAll {
                                 (New-Item 'TestDrive:\b.txt').FullName
                             )
                             Option       = @{
-                                OverwriteFileOnSftpServer = $false
-                                RemoveFileAfterUpload     = $false
-                                ErrorWhen                 = @{
-                                    UploadPathIsNotFound = $true
+                                OverwriteFile        = $false
+                                RemoveFileAfterwards = $false
+                                ErrorWhen            = @{
+                                    PathIsNotFound     = $true
+                                    SftpPathIsNotFound = $false
                                 }
                             }
                         }
@@ -340,8 +341,8 @@ Describe 'send an e-mail to the admin when' {
                     }
                 }
                 It 'Tasks.Actions.Parameter.Option.<_> not a boolean' -ForEach @(
-                    'OverwriteFileOnSftpServer', 
-                    'RemoveFileAfterUpload'
+                    'OverwriteFile', 
+                    'RemoveFileAfterwards'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.Option.$_ = $null
@@ -357,7 +358,8 @@ Describe 'send an e-mail to the admin when' {
                     }
                 }
                 It 'Tasks.Actions.Parameter.Option.ErrorWhen.<_> not a boolean' -ForEach @(
-                    'UploadPathIsNotFound'
+                    'PathIsNotFound',
+                    'SftpPathIsNotFound'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.$_ = $null
@@ -513,7 +515,7 @@ Describe 'send an e-mail to the admin when' {
             }
         }
     }
-}  -Tag test
+} -Tag test
 Describe 'execute the SFTP script' {
     BeforeAll {
         $testJobArguments = {
@@ -521,12 +523,12 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path[0]) -and
             ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path[1]) -and
             ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
-            ($ArgumentList[2] -eq $testInputFile.Tasks[0].Sftp.Path) -and
+            ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
             ($ArgumentList[3] -eq 'bobUserName') -and
             ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
-            ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFileOnSftpServer) -and
-            ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFileAfterUpload) -and
-            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.UploadPathIsNotFound)
+            ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
+            ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFileAfterwards) -and
+            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound)
         }
     }
     It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
