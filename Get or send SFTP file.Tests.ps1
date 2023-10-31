@@ -588,6 +588,7 @@ Describe 'when the SFTP script runs successfully' {
                 Should -Be $testRow.DateTime.ToString('yyyyMMdd')
                 $actualRow.Action | Should -Be $testRow.Action
                 $actualRow.Error | Should -Be $testRow.Error
+                $actualRow.Type | Should -Match 'Upload|Download'
             }
         }
     }
