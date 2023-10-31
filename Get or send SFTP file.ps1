@@ -516,7 +516,16 @@ End {
                 <table>
                     <tr>
                         <th colspan=`"2`">
-                            <h3>$($action.Type.ToUpper())</h3>
+                            $(
+                                if ($action.Type -eq 'Upload') {
+                                    'UPLOAD FILES TO THE SFTP SERVER'
+                                }
+                            )
+                            $(
+                                if ($action.Type -eq 'Download') {
+                                    'DOWNLOAD FILES FROM THE SFTP SERVER'
+                                }
+                            )
                         </th>
                     </tr>
                     <tr>
@@ -632,15 +641,23 @@ End {
 
             #region Mail subject and priority
             $mailParams.Priority = 'Normal'
-            $mailParams.Subject = '{0} item{1}' -f 
-            $counter.Total.Actions, $(if ($counter.Total.Actions -ne 1) { 's' })
-
+            $mailParams.Subject = @() 
+            
+            if ($task.Actions.Type -contains 'Upload') {
+                $mailParams.Subject += "$($counter.Total.UploadedFiles) uploaded"
+            }
+            if ($task.Actions.Type -contains 'Download') {
+                $mailParams.Subject += "$($counter.Total.DownloadedFiles) downloaded"
+            }
+            
             if ($counter.Total.Errors) {
                 $mailParams.Priority = 'High'
-                $mailParams.Subject += ",{0} error{1}" -f 
+                $mailParams.Subject += "{0} error{1}" -f 
                 $counter.Total.Errors,
                 $(if ($counter.Total.Errors -ne 1) { 's' })
             }
+
+            $mailParams.Subject = $mailParams.Subject -join ', '
             #endregion
 
             #region Check to send mail to user
@@ -679,6 +696,30 @@ End {
                     <td>SFTP User name</td>
                     <td>$($task.Sftp.Credential.UserName)</td>
                 </tr>
+                $(
+                    if ($task.Actions.Type -contains 'Upload') {
+                        "<tr>
+                            <td>Total files uploaded</td>
+                            <td>$($counter.Total.UploadedFiles)</td>
+                        </tr>"
+                    }
+                )
+                $(
+                    if ($task.Actions.Type -contains 'Download') {
+                        "<tr>
+                            <td>Total files downloaded</td>
+                            <td>$($counter.Total.DownloadedFiles)</td>
+                        </tr>"
+                    }
+                )
+                $(
+                    if ($counter.Total.Errors) {
+                        "<tr>
+                            <td style=``"background-color: red``">Total errors</td>
+                            <td style=``"background-color: red``">$($counter.Total.Errors)</td>
+                        </tr>"
+                    }
+                )
             </table>"
             #endregion
                 
@@ -687,35 +728,10 @@ End {
                 To        = $task.SendMail.To
                 Message   = "
                         $systemErrorsHtmlList
-                        Summary:
-                        <table>
-                            $(
-                                if ($task.Actions.Type -contains 'Upload') {
-                                    "<tr>
-                                        <td>Total files uploaded</td>
-                                        <td>$($counter.Total.UploadedFiles)</td>
-                                    </tr>"
-                                }
-                            )
-                            $(
-                                if ($task.Actions.Type -contains 'Download') {
-                                    "<tr>
-                                        <td>Total files downloaded</td>
-                                        <td>$($counter.Total.DownloadedFiles)</td>
-                                    </tr>"
-                                }
-                            )
-                            $(
-                                if ($counter.Total.Errors) {
-                                    "<tr>
-                                        <td style=``"background-color: red``">Total errors</td>
-                                        <td style=``"background-color: red``">$($counter.Total.Errors)</td>
-                                    </tr>"
-                                }
-                            )
-                        </table>
-                        </p>
-                        $summaryHtmlTable"
+                        <p>Summary of all SFTP actions.</p>
+                        $summaryHtmlTable
+                        <p>Action details.</p>
+                        $htmlTableActions"
                 
                 LogFolder = $LogParams.LogFolder
                 Header    = $ScriptName

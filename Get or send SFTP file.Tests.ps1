@@ -597,9 +597,9 @@ Describe 'when the SFTP script runs successfully' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
             ($To -eq $testInputFile.Tasks[0].SendMail.To) -and
             ($Priority -eq 'Normal') -and
-            ($Subject -eq '2 items uploaded') -and
+            ($Subject -eq '2 uploaded') -and
             ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*SFTP Path*$($testInputFile.Tasks[0].Sftp.Path)*SFTP User name*bobUserName*Upload path*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[1])*Options*Overwrite file on SFTP server*")
+            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*SFTP User name*bobUserName*Total files uploaded*2*UPLOAD FILES TO THE SFTP SERVER*SFTP path*$($testInputFile.Tasks[0].Actions[0].SftpPath)*$($testInputFile.Tasks[0].Actions[0].ComputerName)*Path*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[1])*")
             }
         }
     }
