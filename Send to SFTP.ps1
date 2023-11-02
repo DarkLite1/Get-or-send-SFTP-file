@@ -53,6 +53,8 @@ Param (
 )
 
 try {
+    $ErrorActionPreference = 'Stop'
+
     #region Get files to upload
     $filesToUpload = @()
 
@@ -76,7 +78,7 @@ try {
             #region Get files
             $filesToUpload += if ($item.PSIsContainer) {
                 Write-Verbose "Get files in folder '$P'"
-                Get-ChildItem -LiteralPath $item.FullName -File -ErrorAction 'Stop'
+                Get-ChildItem -LiteralPath $item.FullName -File
             }
             else {
                 $item
@@ -111,7 +113,6 @@ try {
         $params = @{
             TypeName     = 'System.Management.Automation.PSCredential'
             ArgumentList = $SftpUserName, $SftpPassword
-            ErrorAction  = 'Stop'
         }
         $sftpCredential = New-Object @params
     }
@@ -128,7 +129,6 @@ try {
             ComputerName = $SftpComputerName
             Credential   = $sftpCredential
             AcceptKey    = $true
-            ErrorAction  = 'Stop'
         }
         $sftpSession = New-SFTPSession @params
     }
@@ -139,7 +139,6 @@ try {
 
     $sessionParams = @{
         SessionId   = $sftpSession.SessionID
-        ErrorAction = 'Stop'
     }
 
     #region Test SFTP path exists
@@ -182,7 +181,7 @@ try {
     
             #region Remove source file
             if ($RemoveFileAfterUpload) {
-                $file | Remove-Item -Force -ErrorAction 'Stop'
+                $file | Remove-Item -Force
     
                 $result.Action += 'file removed'
             }
