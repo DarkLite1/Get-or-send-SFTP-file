@@ -709,15 +709,15 @@ Describe 'when the SFTP script runs successfully' {
                     $_.Source -eq $testRow.Source
                 }
                 $actualRow.ComputerName | Should -Be $testRow.ComputerName
+                $actualRow.Destination | Should -Be $testRow.Destination
                 $actualRow.DateTime.ToString('yyyyMMdd') | 
                 Should -Be $testRow.DateTime.ToString('yyyyMMdd')
                 $actualRow.Action | Should -Be $testRow.Action
                 $actualRow.Error | Should -Be $testRow.Error
                 $actualRow.Type | Should -Be $testRow.Type
-                $actualRow.Destination | Should -Be $testRow.Destination
                 $actualRow.FileName | Should -Be $testRow.FileName
             }
-        } -Tag test
+        }
     }
     Context 'send an e-mail' {
         It 'with attachment to the user' {
