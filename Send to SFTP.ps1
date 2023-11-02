@@ -156,7 +156,7 @@ try {
 
             $uploadResult = [PSCustomObject]@{
                 DateTime  = Get-Date
-                LocalPath = $file.PSParentPath
+                LocalPath = $file.FullName | Split-Path -Parent
                 SftpPath  = $SftpPath
                 FileName  = $file.Name
                 Uploaded  = $false
