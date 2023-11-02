@@ -76,7 +76,7 @@ try {
             #region Get files
             $filesToUpload += if ($item.PSIsContainer) {
                 Write-Verbose "Get files in folder '$P'"
-                Get-ChildItem -LiteralPath $item.FullName -File
+                Get-ChildItem -LiteralPath $item.FullName -File -ErrorAction 'Stop'
             }
             else {
                 $item
