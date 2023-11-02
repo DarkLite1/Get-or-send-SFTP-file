@@ -66,7 +66,7 @@ Describe 'generate an error when' {
 
         $testResult.Error | 
         Should -Be "Path '$($testNewParams.Path)' not found"
-    } -Tag test
+    }
     It 'the upload fails' {
         Mock Set-SFTPItem {
             throw 'upload failed'
