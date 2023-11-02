@@ -655,19 +655,37 @@ End {
                 #endregion
 
                 #region Create Excel objects
-                $exportToExcel += $action.Job.Results | Select-Object @{
+
+                $exportToExcel += $action.Job.Results | Select-Object DateTime, 
+                @{
                     Name       = 'Type'
                     Expression = { $action.Type }
                 }, @{
                     Name       = 'ComputerName'
                     Expression = { $_.PSComputerName }
                 },
-                DateTime, 
                 @{
-                    Name       = 'LocalPath'
-                    Expression = { $_.LocalPath -join ', ' }
+                    Name       = 'Source'
+                    Expression = { 
+                        if ($action.Type -eq 'Upload') {
+                            $_.LocalPath -join ', ' 
+                        }
+                        else {
+                            $_.SftpPath -join ', '
+                        }
+                    }
                 }, 
-                'SftpPath', 
+                @{
+                    Name       = 'Destination'
+                    Expression = { 
+                        if ($action.Type -eq 'Upload') {
+                            $_.SftpPath -join ', '
+                        }
+                        else {
+                            $_.LocalPath -join ', ' 
+                        }
+                    }
+                }, 
                 'FileName',
                 @{
                     Name       = 'Action'

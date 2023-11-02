@@ -82,19 +82,52 @@ BeforeAll {
             LocalPath = $testInputFile.Tasks[0].Actions[0].Parameter.Path[1]
             SftpPath  = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
             FileName  = $testInputFile.Tasks[0].Actions[0].Parameter.Path[1] | Split-Path -Leaf
-            DateTime = Get-Date
-            Uploaded = $true
-            Action   = @('file uploaded', 'file removed')
-            Error    = $null
+            DateTime  = Get-Date
+            Uploaded  = $true
+            Action    = @('file uploaded', 'file removed')
+            Error     = $null
         }
         [PSCustomObject]@{
-            LocalPath = $testInputFile.Tasks[0].Actions[1].Parameter.Path
-            SftpPath  = $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath
-            FileName  = 'sftp file.txt'
+            LocalPath  = $testInputFile.Tasks[0].Actions[1].Parameter.Path
+            SftpPath   = $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath
+            FileName   = 'sftp file.txt'
             DateTime   = Get-Date
             Downloaded = $true
             Action     = @('file downloaded', 'file removed')
             Error      = $null
+        }
+    )
+
+    $testExportedExcelRows = @(
+        [PSCustomObject]@{
+            ComputerName = $env:COMPUTERNAME
+            Source       = $testData[0].LocalPath
+            Destination  = $testData[0].SftpPath
+            FileName     = $testData[0].FileName
+            DateTime     = $testData[0].DateTime
+            Type         = 'Upload'
+            Action       = $testData[0].Action -join ', '
+            Error        = $null
+        }
+        [PSCustomObject]@{
+            ComputerName = $env:COMPUTERNAME
+            Source       = $testData[1].LocalPath
+            Destination  = $testData[1].SftpPath
+            FileName     = $testData[1].FileName
+            DateTime     = $testData[1].DateTime
+            Type         = 'Upload'
+            Action       = $testData[1].Action -join ', '
+            Error        = $null
+        }
+        [PSCustomObject]@{
+            ComputerName = $env:COMPUTERNAME
+            Source       = $testData[2].SftpPath
+            Destination  = $testData[2].LocalPath
+            FileName     = $testData[2].FileName
+            DateTime     = $testData[2].DateTime
+            Type         = 'Download'
+            Action       = $testData[2].Action -join ', '
+            Error        = $null
         }
     )
 
@@ -660,12 +693,6 @@ Describe 'when the SFTP script runs successfully' {
     }
     Context 'create an Excel file' {
         BeforeAll {
-            $testExportedExcelRows = $testData | 
-            Select-Object LocalPath, SftpPath, FileName, DateTime, @{
-                Name       = 'Action'
-                Expression = { $_.Action -join ', ' }
-            }, Error
-
             $testExcelLogFile = Get-ChildItem $testParams.LogFolder -File -Recurse -Filter "* - $($testInputFile.Tasks[0].TaskName) - Log.xlsx"
 
             $actual = Import-Excel -Path $testExcelLogFile.FullName -WorksheetName 'Overview'
@@ -679,15 +706,16 @@ Describe 'when the SFTP script runs successfully' {
         It 'with the correct data in the rows' {
             foreach ($testRow in $testExportedExcelRows) {
                 $actualRow = $actual | Where-Object {
-                    $_.LocalPath -eq $testRow.LocalPath
+                    $_.Source -eq $testRow.Source
                 }
+                $actualRow.ComputerName | Should -Be $testRow.ComputerName
                 $actualRow.DateTime.ToString('yyyyMMdd') | 
                 Should -Be $testRow.DateTime.ToString('yyyyMMdd')
                 $actualRow.Action | Should -Be $testRow.Action
                 $actualRow.Error | Should -Be $testRow.Error
-                $actualRow.Type | Should -Match 'Upload|Download'
-                $actualRow.SftpPath | Should -be $testRow.SftpPath
-                $actualRow.FileName | Should -be $testRow.FileName
+                $actualRow.Type | Should -Be $testRow.Type
+                $actualRow.Destination | Should -Be $testRow.Destination
+                $actualRow.FileName | Should -Be $testRow.FileName
             }
         } -Tag test
     }
