@@ -154,7 +154,7 @@ try {
         try {
             Write-Verbose "Upload file '$($file.FullName)'"
 
-            $uploadResult = [PSCustomObject]@{
+            $result = [PSCustomObject]@{
                 DateTime  = Get-Date
                 LocalPath = $file.FullName | Split-Path -Parent
                 SftpPath  = $SftpPath
@@ -176,25 +176,25 @@ try {
     
             Set-SFTPItem @sessionParams @params
 
-            $uploadResult.Action += 'file uploaded'
-            $uploadResult.Uploaded = $true
+            $result.Action += 'file uploaded'
+            $result.Uploaded = $true
             #endregion
     
             #region Remove source file
             if ($RemoveFileAfterUpload) {
                 $file | Remove-Item -Force -ErrorAction 'Stop'
     
-                $uploadResult.Action += 'file removed'
+                $result.Action += 'file removed'
             }
             #endregion
         }
         catch {
-            $uploadResult.Error = $_
+            $result.Error = $_
             Write-Warning $_
             $Error.RemoveAt(0)        
         }
         finally {
-            $uploadResult
+            $result
         }
     }
 }
