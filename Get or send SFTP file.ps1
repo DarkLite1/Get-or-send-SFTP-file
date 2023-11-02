@@ -735,7 +735,7 @@ End {
                 }
 
                 $M = "Export {0} rows to Excel sheet '{1}'" -f 
-                $exportToExcel, $excelParams.WorksheetName
+                $exportToExcel.Count, $excelParams.WorksheetName
                 Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
             
                 $exportToExcel | Export-Excel @excelParams
