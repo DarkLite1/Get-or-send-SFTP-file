@@ -46,7 +46,7 @@ Describe 'generate an error when' {
 
         $testResult = .$testScript @testParams
 
-        $testResult.Error | Should -Be "Failed creating an SFTP session to '$($testParams.SftpComputerName)': Failed authenticating"
+        $testResult.Error | Should -Be "General error: Failed creating an SFTP session to '$($testParams.SftpComputerName)': Failed authenticating"
     }
     It 'the upload path on the SFTP server does not exist' {
         Mock Test-SFTPPath {
@@ -55,7 +55,7 @@ Describe 'generate an error when' {
 
         $testResult = .$testScript @testParams
 
-        $testResult.Error | Should -Be "Path '$($testParams.SftpPath)' not found on SFTP server"
+        $testResult.Error | Should -Be "General error: Path '$($testParams.SftpPath)' not found on SFTP server"
     }
     It 'Path does not exist and ErrorWhenUploadPathIsNotFound is true' {      
         $testNewParams = $testParams.Clone()
@@ -66,7 +66,7 @@ Describe 'generate an error when' {
 
         $testResult.Error | 
         Should -Be "Path '$($testNewParams.Path)' not found"
-    }
+    } -Tag test
     It 'the upload fails' {
         Mock Set-SFTPItem {
             throw 'upload failed'

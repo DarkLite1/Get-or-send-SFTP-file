@@ -206,7 +206,7 @@ catch {
         FileName  = $null
         Uploaded  = $false
         Action    = $null
-        Error     = $_
+        Error     = "General error: $_"
     }
     Write-Warning $_
     $Error.RemoveAt(0)
