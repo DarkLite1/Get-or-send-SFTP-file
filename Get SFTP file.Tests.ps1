@@ -137,7 +137,7 @@ Describe 'RemoveFileAfterDownload' {
     
             $testResults = .$testScript @testNewParams
         }
-        It ' the file on the SFTP server is not removed' {
+        It 'the file on the SFTP server is not removed' {
             Should -Not -Invoke Remove-SFTPItem -Scope 'Context'
         }
     }
