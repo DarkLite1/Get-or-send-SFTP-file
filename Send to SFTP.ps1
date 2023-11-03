@@ -6,7 +6,8 @@
     Upload files to an SFTP server.
 
 .DESCRIPTION
-    Send one or more files to an SFTP server.
+    Send one or more files to an SFTP server. After a successful upload the 
+    source file is always removed.
 
     To avoid file locks:
     1. Rename the source file 'a.txt' to 'a.txt.UploadInProgress'
@@ -34,9 +35,6 @@
 .PARAMETER OverwriteFileOnSftpServer
     Overwrite the file on the SFTP server in case it already exists.
 
-.PARAMETER RemoveFileAfterUpload
-    Remove the source file after a successful upload.
-
 .PARAMETER ErrorWhenUploadPathIsNotFound
     Create an error in the returned object when the SFTP path is not found 
     on the SFTP server.
@@ -55,7 +53,6 @@ Param (
     [Parameter(Mandatory)]
     [SecureString]$SftpPassword,
     [Boolean]$OverwriteFileOnSftpServer,
-    [Boolean]$RemoveFileAfterUpload,
     [Boolean]$ErrorWhenUploadPathIsNotFound,
     [Int]$RetryCountOnLockedFiles = 3,
     [Int]$RetryWaitSeconds = 3
@@ -163,15 +160,19 @@ try {
             Write-Verbose "File '$($file.FullName)'"
 
             $result = [PSCustomObject]@{
-                DateTime       = Get-Date
-                LocalPath      = $file.FullName | Split-Path -Parent
-                SftpPath       = $SftpPath
-                FileName       = $file.Name
-                UploadFileName = $file.Name -Replace "\$($file.Extension)", "$($file.Extension).UploadInProgress" 
-                Uploaded       = $false
-                Action         = @()
-                Error          = $null
+                DateTime  = Get-Date
+                LocalPath = $file.FullName | Split-Path -Parent
+                SftpPath  = $SftpPath
+                FileName  = $file.Name
+                Uploaded  = $false
+                Action    = @()
+                Error     = $null
             }
+
+            $tempFile = @{
+                UploadFileName = $file.Name -Replace "\$($file.Extension)", "$($file.Extension).UploadInProgress" 
+            }
+            $tempFile.UploadFilePath = Join-Path $result.LocalPath $tempFile.UploadFileName
 
             #region Rename source file
             $retryCount = 0
@@ -183,7 +184,7 @@ try {
             ) {
                 try {
                     Write-Verbose 'Rename source file'
-                    $file | Rename-Item -NewName $result.UploadFileName
+                    $file | Rename-Item -NewName $tempFile.UploadFileName
                     $fileLocked = $false
                 }
                 catch {
@@ -200,7 +201,7 @@ try {
     
             #region Upload file to SFTP server
             $params = @{
-                Path        = Join-Path $result.LocalPath $result.UploadFileName
+                Path        = $tempFile.UploadFilePath
                 Destination = $SftpPath
             }
             
@@ -216,15 +217,16 @@ try {
             $result.Action += 'file uploaded'
             $result.Uploaded = $true
             #endregion
-    
-            #region Remove source file
-            if ($RemoveFileAfterUpload) {
-                Write-Verbose 'Remove source file'
 
-                $file | Remove-Item -Force
+            #region Rename file on SFTP server
+            
+            #endregion
     
-                $result.Action += 'file removed'
-            }
+            #region Remove file
+            Write-Verbose 'Remove file'
+
+            $tempFile.UploadFilePath | Remove-Item -Force
+            $result.Action += 'file removed'
             #endregion
         }
         catch {

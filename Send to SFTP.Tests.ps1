@@ -10,7 +10,7 @@ BeforeAll {
             (New-Item 'TestDrive:/b.txt' -ItemType 'File').FullName
         )
         SftpComputerName = 'PC1'
-        SftpPath         = '/out'
+        SftpPath         = '/out/'
         SftpUserName     = 'bob'
         SftpPassword     = 'pass' | ConvertTo-SecureString -AsPlainText -Force
     }
@@ -115,7 +115,8 @@ Describe 'when a file needs to be uploaded' {
     }
     It 'it is renamed with extension .UploadInProgress' {
         'TestDrive:/c.txt' | Should -Not -Exist
-        'TestDrive:/c.txt.UploadInProgress' | Should -Exist
+        # removed after successful upload
+        # 'TestDrive:/c.txt.UploadInProgress' | Should -Exist 
     }
     It 'it is uploaded to the SFTP server with extension .UploadInProgress' {
         Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
@@ -126,10 +127,13 @@ Describe 'when a file needs to be uploaded' {
     }
     It 'it is renamed after upload on the SFTP server to its original name' {
         Should -Invoke Rename-SFTPFile -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
-            ($NewName -eq (Get-Item -Path 'TestDrive:/c.txt.UploadInProgress').FullName) -and
-            ($Path  -eq $testNewParams.SftpPath) -and
+            ($NewName -eq (Get-Item -Path 'c.txt').FullName) -and
+            ($Path -eq ($testNewParams.SftpPath + 'c.txt.UploadInProgress')) -and
             ($SessionId -eq 1)
         }
+    }
+    It 'the temp file is removed' {
+
     }
 }  -Tag test
 Describe 'upload to the SFTP server' {
