@@ -217,7 +217,6 @@ try {
     
                 Write-Verbose 'File uploaded'
                 $result.Action += 'file uploaded'
-                $result.Uploaded = $true    
             }
             catch {
                 throw "Failed to upload file '$($tempFile.UploadFilePath)': $_"
@@ -250,6 +249,8 @@ try {
                 throw "Failed to rename the file '$($tempFile.UploadFileName)' to '$($result.FileName)' on the SFTP server: $_"
             }
             #endregion
+
+            $result.Uploaded = $true
         }
         catch {
             $result.Error = $_
