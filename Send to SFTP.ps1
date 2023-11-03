@@ -174,7 +174,7 @@ try {
             }
             $tempFile.UploadFilePath = Join-Path $result.LocalPath $tempFile.UploadFileName
 
-            #region Rename source file
+            #region Rename source file to temp file
             $retryCount = 0
             $fileLocked = $true
 
@@ -186,6 +186,7 @@ try {
                     Write-Verbose 'Rename source file'
                     $file | Rename-Item -NewName $tempFile.UploadFileName
                     $fileLocked = $false
+                    $result.Action += 'file renamed'
                 }
                 catch {
                     $retryCount++
@@ -199,40 +200,55 @@ try {
             }
             #endregion
     
-            #region Upload file to SFTP server
-            $params = @{
-                Path        = $tempFile.UploadFilePath
-                Destination = $SftpPath
+            #region Upload temp file to SFTP server
+            try {
+                $params = @{
+                    Path        = $tempFile.UploadFilePath
+                    Destination = $SftpPath
+                }
+                
+                if ($OverwriteFileOnSftpServer) {
+                    Write-Verbose 'Overwrite file on SFTP server'
+                    $params.Force = $true
+                }
+                
+                Write-Verbose "Upload file '$($params.Path)'"
+                Set-SFTPItem @sessionParams @params
+    
+                Write-Verbose 'File uploaded'
+                $result.Action += 'file uploaded'
+                $result.Uploaded = $true    
             }
-            
-            if ($OverwriteFileOnSftpServer) {
-                Write-Verbose 'Overwrite file on SFTP server'
-                $params.Force = $true
+            catch {
+                throw "Failed to upload file '$($tempFile.UploadFilePath)': $_"
             }
-            
-            Write-Verbose "Upload file '$($params.Path)'"
-            Set-SFTPItem @sessionParams @params
-
-            Write-Verbose 'File uploaded'
-            $result.Action += 'file uploaded'
-            $result.Uploaded = $true
             #endregion
     
             #region Remove file
-            Write-Verbose 'Remove file'
+            try {
+                Write-Verbose 'Remove file'
 
-            $tempFile.UploadFilePath | Remove-Item -Force
-            $result.Action += 'file removed'
+                $tempFile.UploadFilePath | Remove-Item -Force
+                $result.Action += 'file removed'    
+            }
+            catch {
+                throw "Failed to remove file '$($tempFile.UploadFilePath)': $_"
+            }
             #endregion
             
             #region Rename file on SFTP server
-            $params = @{
-                Path    = $SftpPath + $tempFile.UploadFileName
-                NewName = $result.FileName
+            try {
+                $params = @{
+                    Path    = $SftpPath + $tempFile.UploadFileName
+                    NewName = $result.FileName
+                }
+                Rename-SFTPFile @sessionParams @params
+    
+                $result.Action += 'file renamed on SFTP server'    
             }
-            Rename-SFTPFile @sessionParams @params
-
-            $result.Action += 'file renamed'
+            catch {
+                throw "Failed to rename the file '$($tempFile.UploadFileName)' to '$($result.FileName)' on the SFTP server: $_"
+            }
             #endregion
         }
         catch {
