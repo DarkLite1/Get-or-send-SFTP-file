@@ -111,10 +111,11 @@ Describe 'when a file is uploaded it is' {
         $testNewParams = $testParams.Clone()
         $testNewParams.Path = (New-Item 'TestDrive:/c.txt' -ItemType 'File').FullName
 
-        .$testScript @testNewParams
+        $testResults = .$testScript @testNewParams
     }
     It 'renamed to extension .UploadInProgress' {
         'TestDrive:/c.txt' | Should -Not -Exist
+        $testResults.Action | Should -Contain 'temp file created'
     }
     It 'uploaded to the SFTP server with extension .UploadInProgress' {
         Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
@@ -122,16 +123,23 @@ Describe 'when a file is uploaded it is' {
             ($Destination -eq $testNewParams.SftpPath) -and
             ($SessionId -eq 1)
         }
+        $testResults.Action | Should -Contain 'temp file uploaded'
     }
-    It 'renamed after upload on the SFTP server to its original name' {
+    It 'renamed on the SFTP server to its original name' {
         Should -Invoke Rename-SFTPFile -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
             ($NewName -eq 'c.txt') -and
             ($Path -eq ($testNewParams.SftpPath + 'c.txt.UploadInProgress')) -and
             ($SessionId -eq 1)
         }
+        $testResults.Action | Should -Contain 'temp file renamed on SFTP server'
     }
     It 'removed after a successful upload' {
         'TestDrive:/c.txt.UploadInProgress' | Should -Not -Exist 
+        $testResults.Action | Should -Contain 'temp file removed'
+    }
+    It 'reports a successful upload' {
+        $testResults.Uploaded | Should -BeTrue
+        $testResults.Action | Should -Contain 'file successfully uploaded'
     }
 }  -Tag test
 Describe 'upload to the SFTP server' {
