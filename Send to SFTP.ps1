@@ -217,16 +217,22 @@ try {
             $result.Action += 'file uploaded'
             $result.Uploaded = $true
             #endregion
-
-            #region Rename file on SFTP server
-            
-            #endregion
     
             #region Remove file
             Write-Verbose 'Remove file'
 
             $tempFile.UploadFilePath | Remove-Item -Force
             $result.Action += 'file removed'
+            #endregion
+            
+            #region Rename file on SFTP server
+            $params = @{
+                Path    = $SftpPath + $tempFile.UploadFileName
+                NewName = $result.FileName
+            }
+            Rename-SFTPFile @sessionParams @params
+
+            $result.Action += 'file renamed'
             #endregion
         }
         catch {
