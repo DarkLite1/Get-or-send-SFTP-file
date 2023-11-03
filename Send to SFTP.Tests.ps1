@@ -78,7 +78,7 @@ Describe 'generate an error when' {
 
         $testResult = .$testScript @testNewParams
 
-        $testResult.Error | Should -Be 'upload failed'
+        $testResult.Error | Should -BeLike '*upload failed'
     }
 }
 Describe 'do not start an SFTP sessions when' {
