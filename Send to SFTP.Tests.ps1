@@ -202,39 +202,38 @@ Describe 'upload to the SFTP server' {
     }
 }
 Describe 'OverwriteFileOnSftpServer' {
-    Context 'when true' {
-        BeforeAll {
-            $testNewParams = $testParams.Clone()
-            $testNewParams.OverwriteFileOnSftpServer = $true
-
-            .$testScript @testNewParams
+    BeforeEach {
+        $testParams.Path | ForEach-Object {
+            New-Item $_ -ItemType 'File' -ErrorAction Ignore
         }
-        It 'the file on the SFTP server is overwritten' {
-            $testNewParams.Path | ForEach-Object {
-                Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -like '*.UploadInProgress') -and
+    }
+    It 'when true the file on the SFTP server is overwritten' {
+        $testNewParams = $testParams.Clone()
+        $testNewParams.OverwriteFileOnSftpServer = $true
+
+        .$testScript @testNewParams
+
+        $testNewParams.Path | ForEach-Object {
+            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
+                ($Path -like "$_.UploadInProgress") -and
                 ($Destination -eq $testNewParams.SftpPath) -and
                 ($SessionId -eq 1) -and
                 ($Force)
-                } -Scope 'Context'
             }
         }
-    }  -Tag test
-    Context 'when false' {
-        BeforeAll {
-            $testNewParams = $testParams.Clone()
-            $testNewParams.OverwriteFileOnSftpServer = $false
+    }
+    It 'when false the file on the SFTP server is not overwritten' {
+        $testNewParams = $testParams.Clone()
+        $testNewParams.OverwriteFileOnSftpServer = $false
 
-            .$testScript @testNewParams
-        }
-        It 'the file on the SFTP server is not overwritten' {
-            $testNewParams.Path | ForEach-Object {
-                Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -eq $_) -and
+        .$testScript @testNewParams
+
+        $testNewParams.Path | ForEach-Object {
+            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
+                ($Path -like "$_.UploadInProgress") -and
                 ($Destination -eq $testNewParams.SftpPath) -and
                 ($SessionId -eq 1) -and
                 (-not $Force)
-                } -Scope 'Context'
             }
         }
     }
