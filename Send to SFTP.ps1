@@ -170,7 +170,7 @@ try {
                 Error     = $null
             }   
     
-            #region Upload data to SFTP server
+            #region Upload file to SFTP server
             $params = @{
                 Path        = $file.FullName
                 Destination = $SftpPath
