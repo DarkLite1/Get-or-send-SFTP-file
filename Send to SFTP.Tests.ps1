@@ -15,6 +15,7 @@ BeforeAll {
         SftpPassword     = 'pass' | ConvertTo-SecureString -AsPlainText -Force
     }
 
+    Mock Get-SFTPChildItem
     Mock Set-SFTPItem
     Mock Rename-SFTPFile
     Mock New-SFTPSession {
