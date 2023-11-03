@@ -56,7 +56,9 @@ Param (
     [SecureString]$SftpPassword,
     [Boolean]$OverwriteFileOnSftpServer,
     [Boolean]$RemoveFileAfterUpload,
-    [Boolean]$ErrorWhenUploadPathIsNotFound
+    [Boolean]$ErrorWhenUploadPathIsNotFound,
+    [Int]$RetryCountOnLockedFiles = 3,
+    [Int]$RetryWaitSeconds = 3
 )
 
 try {
@@ -145,7 +147,7 @@ try {
     #endregion
 
     $sessionParams = @{
-        SessionId   = $sftpSession.SessionID
+        SessionId = $sftpSession.SessionID
     }
 
     #region Test SFTP path exists
@@ -158,36 +160,67 @@ try {
 
     foreach ($file in $filesToUpload) {
         try {
-            Write-Verbose "Upload file '$($file.FullName)'"
+            Write-Verbose "File '$($file.FullName)'"
 
             $result = [PSCustomObject]@{
-                DateTime  = Get-Date
-                LocalPath = $file.FullName | Split-Path -Parent
-                SftpPath  = $SftpPath
-                FileName  = $file.Name
-                Uploaded  = $false
-                Action    = @()
-                Error     = $null
-            }   
+                DateTime       = Get-Date
+                LocalPath      = $file.FullName | Split-Path -Parent
+                SftpPath       = $SftpPath
+                FileName       = $file.Name
+                UploadFileName = $file.Name -Replace "\$($file.Extension)", "$($file.Extension).UploadInProgress" 
+                Uploaded       = $false
+                Action         = @()
+                Error          = $null
+            }
+
+            #region Rename source file
+            $retryCount = 0
+            $fileLocked = $true
+
+            while (
+                ($fileLocked) -and
+                ($retryCount -lt $RetryCountOnLockedFiles)
+            ) {
+                try {
+                    Write-Verbose 'Rename source file'
+                    $file | Rename-Item -NewName $result.UploadFileName
+                    $fileLocked = $false
+                }
+                catch {
+                    $retryCount++
+                    Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
+                    Start-Sleep -Seconds $RetryWaitSeconds
+                }
+            }
+
+            if ($fileLocked) {
+                throw "File in use by another process. Waited for $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds without success."
+            }
+            #endregion
     
             #region Upload file to SFTP server
             $params = @{
-                Path        = $file.FullName
+                Path        = Join-Path $result.LocalPath $result.UploadFileName
                 Destination = $SftpPath
             }
-    
+            
             if ($OverwriteFileOnSftpServer) {
+                Write-Verbose 'Overwrite file on SFTP server'
                 $params.Force = $true
             }
-    
+            
+            Write-Verbose "Upload file '$($params.Path)'"
             Set-SFTPItem @sessionParams @params
 
+            Write-Verbose 'File uploaded'
             $result.Action += 'file uploaded'
             $result.Uploaded = $true
             #endregion
     
             #region Remove source file
             if ($RemoveFileAfterUpload) {
+                Write-Verbose 'Remove source file'
+
                 $file | Remove-Item -Force
     
                 $result.Action += 'file removed'

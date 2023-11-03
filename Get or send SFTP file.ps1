@@ -393,6 +393,14 @@ Begin {
 
                 $task.Sftp.Credential.UserName = $params.String
                 #endregion
+
+                #region Convert SFTP path to '/path/'
+                foreach ($action in $task.Actions) {
+                    $action.Parameter.SftpPath = $action.Parameter.SftpPath -replace '\\', '/'
+                    $action.Parameter.SftpPath = $action.Parameter.SftpPath.TrimEnd('/') + '/'
+                    $action.Parameter.SftpPath = '/' + $action.Parameter.SftpPath.TrimStart('/') 
+                }
+                #endregion
             }
         }
         catch {

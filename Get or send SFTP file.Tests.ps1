@@ -646,6 +646,21 @@ Describe 'send an e-mail to the admin when' {
         }
     }
 }
+Describe 'correct the import file' {
+    It 'add trailing slashes to SFTP path when they are not there' {
+        $testNewInputFile = Copy-ObjectHC $testInputFile
+        $testNewInputFile.Tasks[0].Actions[0].Parameter.SftpPath = '/a'
+        $testNewInputFile.Tasks[0].Actions[1].Parameter.SftpPath = '\b/'
+    
+        $testNewInputFile | ConvertTo-Json -Depth 7 | 
+        Out-File @testOutParams
+    
+        .$testScript @testParams
+
+        $Tasks[0].Actions[0].Parameter.SftpPath | Should -Be '/a/'
+        $Tasks[0].Actions[1].Parameter.SftpPath | Should -Be '/b/'
+    }
+} -Tag test
 Describe 'execute the SFTP script' {
     BeforeAll {
         $testJobArguments = {

@@ -16,6 +16,7 @@ BeforeAll {
     }
 
     Mock Set-SFTPItem
+    Mock Rename-SFTPFile
     Mock New-SFTPSession {
         [PSCustomObject]@{
             SessionID = 1
@@ -105,9 +106,39 @@ Describe 'do not start an SFTP sessions when' {
         Should -Not -Invoke Remove-SFTPSession
     }
 }
+Describe 'when a file needs to be uploaded' {
+    BeforeAll {
+        $testNewParams = $testParams.Clone()
+        $testNewParams.Path = (New-Item 'TestDrive:/c.txt' -ItemType 'File').FullName
+
+        .$testScript @testNewParams
+    }
+    It 'it is renamed with extension .UploadInProgress' {
+        'TestDrive:/c.txt' | Should -Not -Exist
+        'TestDrive:/c.txt.UploadInProgress' | Should -Exist
+    }
+    It 'it is uploaded to the SFTP server with extension .UploadInProgress' {
+        Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
+            ($Path -eq (Get-Item -Path 'TestDrive:/c.txt.UploadInProgress').FullName) -and
+            ($Destination -eq $testNewParams.SftpPath) -and
+            ($SessionId -eq 1)
+        }
+    }
+    It 'it is renamed after upload on the SFTP server to its original name' {
+        Should -Invoke Rename-SFTPFile -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
+            ($NewName -eq (Get-Item -Path 'TestDrive:/c.txt.UploadInProgress').FullName) -and
+            ($Path  -eq $testNewParams.SftpPath) -and
+            ($SessionId -eq 1)
+        }
+    }
+}  -Tag test
 Describe 'upload to the SFTP server' {
     BeforeAll {
-        $testFolder = (New-Item 'TestDrive:/a' -ItemType 'Directory').FullName
+    }
+    BeforeEach {
+        $testFolder = 'TestDrive:/a'
+        Remove-Item $testFolder -Recurse -ErrorAction Ignore
+        $null = New-Item $testFolder -ItemType 'Directory' 
 
         $testFiles = @('file1.txt', 'file2.txt', 'file3.txt') | ForEach-Object {
             (New-Item "$testFolder\$_" -ItemType 'File').FullName
