@@ -8,6 +8,13 @@
 .DESCRIPTION
     Send one or more files to an SFTP server.
 
+    To avoid file locks:
+    1. Rename the source file 'a.txt' to 'a.txt.UploadInProgress'
+        > when a file can't be renamed it is locked
+        > then we wait a few seconds for an unlock and try again
+    2. Upload 'a.txt.UploadInProgress' to the SFTP server
+    3. On the SFTP server rename 'a.txt.UploadInProgress' to 'a.txt'
+
 .PARAMETER Path
     Full path to the files to upload or to the folder containing the files to 
     upload. Only files are uploaded subfolders are not.
