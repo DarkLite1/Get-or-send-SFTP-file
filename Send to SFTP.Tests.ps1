@@ -212,10 +212,10 @@ Describe 'OverwriteFileOnSftpServer' {
         It 'the file on the SFTP server is overwritten' {
             $testNewParams.Path | ForEach-Object {
                 Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -eq $_) -and
+                ($Path -like '*.UploadInProgress') -and
                 ($Destination -eq $testNewParams.SftpPath) -and
                 ($SessionId -eq 1) -and
-                ($Force )
+                ($Force)
                 } -Scope 'Context'
             }
         }
