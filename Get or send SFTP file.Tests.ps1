@@ -660,7 +660,7 @@ Describe 'correct the import file' {
         $Tasks[0].Actions[0].Parameter.SftpPath | Should -Be '/a/'
         $Tasks[0].Actions[1].Parameter.SftpPath | Should -Be '/b/'
     }
-} -Tag test
+}
 Describe 'execute the SFTP script' {
     BeforeAll {
         $testJobArguments = {
