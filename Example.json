@@ -19,7 +19,6 @@
             "Path": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
             "Option": {
               "OverwriteFile": false,
-              "RemoveFileAfterwards": false,
               "ErrorWhen": {
                 "PathIsNotFound": false,
                 "SftpPathIsNotFound": true

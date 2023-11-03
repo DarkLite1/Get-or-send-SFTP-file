@@ -71,7 +71,9 @@
     Overwrite a file on the SFTP server when it already exists.
 
 .PARAMETER Tasks.Actions.Parameter.Option.RemoveFileAfterwards
-    Remove a file after it was successfully uploaded to the SFTP server.
+    Remove a the file after a successful download from the SFTP server when type
+    is 'Download'. For type 'Upload' the source file is always removed after a
+    successful upload.
 
 .PARAMETER Tasks.Actions.Parameter.Option.ErrorWhen.PathIsNotFound
     Throw an error when the file to upload is not found. When Path is a folder
@@ -291,8 +293,7 @@ Begin {
                             foreach (
                                 $boolean in 
                                 @(
-                                    'OverwriteFile', 
-                                    'RemoveFileAfterwards'
+                                    'OverwriteFile'
                                 )
                             ) {
                                 try {
@@ -430,11 +431,10 @@ Process {
                             $task.Sftp.Credential.UserName, 
                             $task.Sftp.Credential.Password, 
                             $action.Parameter.Option.OverwriteFile, 
-                            $action.Parameter.Option.RemoveFileAfterwards,
                             $action.Parameter.Option.ErrorWhen.PathIsNotFound
                         }
                 
-                        $M = "Start SFTP upload job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' Option.OverwriteFile '{5}' Option.RemoveFileAfterwards '{6}' Option.ErrorWhen.PathIsNotFound '{7}' Path '{8}'" -f 
+                        $M = "Start SFTP upload job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' Option.OverwriteFile '{5}' Option.ErrorWhen.PathIsNotFound '{6}' Path '{7}'" -f 
                         $task.TaskName, 
                         $action.Parameter.ComputerName,
                         $invokeParams.ArgumentList[1], 
@@ -442,7 +442,6 @@ Process {
                         $invokeParams.ArgumentList[3], 
                         $invokeParams.ArgumentList[5],
                         $invokeParams.ArgumentList[6], 
-                        $invokeParams.ArgumentList[7],
                         $($invokeParams.ArgumentList[0] -join "', '")
                         Write-Verbose $M; 
                         Write-EventLog @EventVerboseParams -Message $M

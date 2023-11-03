@@ -32,7 +32,6 @@ BeforeAll {
                             )
                             Option       = @{
                                 OverwriteFile        = $false
-                                RemoveFileAfterwards = $false
                                 ErrorWhen            = @{
                                     PathIsNotFound     = $true
                                     SftpPathIsNotFound = $false
@@ -471,8 +470,7 @@ Describe 'send an e-mail to the admin when' {
                     }
                 }
                 It 'Tasks.Actions.Parameter.Option.<_> not a boolean' -ForEach @(
-                    'OverwriteFile', 
-                    'RemoveFileAfterwards'
+                    'OverwriteFile'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.Option.$_ = $null
@@ -672,8 +670,7 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[3] -eq 'bobUserName') -and
             ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
             ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
-            ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFileAfterwards) -and
-            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound)
+            ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound)
         }
     }
     It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
