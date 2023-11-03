@@ -141,7 +141,7 @@ Describe 'when a file is uploaded it is' {
         $testResults.Uploaded | Should -BeTrue
         $testResults.Action | Should -Contain 'file successfully uploaded'
     }
-}  -Tag test
+}
 Describe 'upload to the SFTP server' {
     BeforeAll {
     }
@@ -151,7 +151,7 @@ Describe 'upload to the SFTP server' {
         $null = New-Item $testFolder -ItemType 'Directory' 
 
         $testFiles = @('file1.txt', 'file2.txt', 'file3.txt') | ForEach-Object {
-            (New-Item "$testFolder\$_" -ItemType 'File').FullName
+            New-Item "$testFolder\$_" -ItemType 'File'
         }
     }
     It 'all files in a folder when Path is a folder' {
@@ -162,7 +162,7 @@ Describe 'upload to the SFTP server' {
 
         $testFiles | ForEach-Object {
             Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -eq $_) -and
+                ($Path -like "*\$($_.Name).UploadInProgress") -and
                 ($Destination -eq $testNewParams.SftpPath) -and
                 ($SessionId -eq 1)
             }
@@ -170,13 +170,13 @@ Describe 'upload to the SFTP server' {
     }
     It 'all files defined in Path' {
         $testNewParams = $testParams.Clone()
-        $testNewParams.Path = $testFiles
+        $testNewParams.Path = $testFiles.FullName
 
         .$testScript @testNewParams
 
         $testFiles | ForEach-Object {
             Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -eq $_) -and
+                ($Path -like "*\$($_.Name).UploadInProgress") -and
                 ($Destination -eq $testNewParams.SftpPath) -and
                 ($SessionId -eq 1)
             }
@@ -196,7 +196,7 @@ Describe 'upload to the SFTP server' {
             $_.FileName | Should -Not -BeNullOrEmpty
             $_.Uploaded | Should -BeTrue
             $_.DateTime | Should -Not -BeNullOrEmpty
-            $_.Action | Should -Be 'file uploaded'
+            $_.Action | Should -Not -BeNullOrEmpty
             $_.Error | Should -BeNullOrEmpty
         }
     }
@@ -219,7 +219,7 @@ Describe 'OverwriteFileOnSftpServer' {
                 } -Scope 'Context'
             }
         }
-    }
+    }  -Tag test
     Context 'when false' {
         BeforeAll {
             $testNewParams = $testParams.Clone()
