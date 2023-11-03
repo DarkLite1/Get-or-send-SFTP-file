@@ -20,8 +20,7 @@
             "Option": {
               "OverwriteFile": false,
               "ErrorWhen": {
-                "PathIsNotFound": false,
-                "SftpPathIsNotFound": true
+                "PathIsNotFound": false
               }
             },
             "?": "Type: Upload | Download"
