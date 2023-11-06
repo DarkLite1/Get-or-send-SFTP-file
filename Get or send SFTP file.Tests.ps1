@@ -32,8 +32,9 @@ BeforeAll {
                             )
                             PartialFileExtension = 'UploadInProgress'
                             Option               = @{
-                                OverwriteFile = $false
-                                ErrorWhen     = @{
+                                OverwriteFile            = $false
+                                RemoveFailedPartialFiles = $false
+                                ErrorWhen                = @{
                                     PathIsNotFound     = $true
                                     SftpPathIsNotFound = $false
                                 }
@@ -471,7 +472,8 @@ Describe 'send an e-mail to the admin when' {
                     }
                 }
                 It 'Tasks.Actions.Parameter.Option.<_> not a boolean' -ForEach @(
-                    'OverwriteFile'
+                    'OverwriteFile',
+                    'RemoveFailedPartialFiles'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.Option.$_ = $null
@@ -672,7 +674,8 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
             ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
             ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
-            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound)
+            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound) -and
+            ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles)
         }
     }
     It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
@@ -697,7 +700,7 @@ Describe 'execute the SFTP script' {
 
         Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments
     }
-}
+} -Tag test
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 7 | 

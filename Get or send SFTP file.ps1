@@ -88,6 +88,17 @@
     Throw an error when the file to upload is not found. When Path is a folder
     this option is ignored, because a folder can be empty.
 
+.PARAMETER Tasks.Actions.Parameter.Option.ErrorWhen.RemoveFailedPartialFiles
+    When the upload process is interrupted, it is possible that files are not 
+    completely uploaded and that there are sill partial files present on the 
+    SFTP server or in the local folder.
+
+    When RemoveFailedPartialFiles is TRUE these partial files will be removed
+    before the script starts. When RemoveFailedPartialFiles is FALSE, manual
+    intervention will be required to decide to still upload the partial file
+    found in the local folder, to rename the partial file on the SFTP server,
+    or to simply remove the partial file(s).
+
 .PARAMETER Tasks.SendMail.To
     E-mail addresses of users where to send the summary e-mail.
 
@@ -302,7 +313,8 @@ Begin {
                             foreach (
                                 $boolean in 
                                 @(
-                                    'OverwriteFile'
+                                    'OverwriteFile',
+                                    'RemoveFailedPartialFiles'
                                 )
                             ) {
                                 try {
@@ -441,10 +453,11 @@ Process {
                             $task.Sftp.Credential.Password, 
                             $action.Parameter.PartialFileExtension,
                             $action.Parameter.Option.OverwriteFile, 
-                            $action.Parameter.Option.ErrorWhen.PathIsNotFound
+                            $action.Parameter.Option.ErrorWhen.PathIsNotFound,
+                            $action.Parameter.Option.RemoveFailedPartialFiles
                         }
                 
-                        $M = "Start SFTP upload job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' Path '{8}'" -f 
+                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Path '{9}'" -f 
                         $task.TaskName, 
                         $action.Parameter.ComputerName,
                         $invokeParams.ArgumentList[1], 
@@ -453,7 +466,9 @@ Process {
                         $invokeParams.ArgumentList[5],
                         $invokeParams.ArgumentList[6], 
                         $invokeParams.ArgumentList[7], 
-                        $($invokeParams.ArgumentList[0] -join "', '")
+                        $invokeParams.ArgumentList[8], 
+                        $($invokeParams.ArgumentList[0] -join "', '"),
+                        $invokeParams.FilePath
                         Write-Verbose $M; 
                         Write-EventLog @EventVerboseParams -Message $M
 
@@ -472,7 +487,7 @@ Process {
                             $action.Parameter.Option.ErrorWhen.PathIsNotFound
                         }
                 
-                        $M = "Start SFTP download job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' Option.OverwriteFile '{5}' Option.RemoveFileAfterwards '{6}' Option.ErrorWhen.PathIsNotFound '{7}' Path '{8}'" -f 
+                        $M = "Start SFTP download job '{0}' on '{1}' script '{9}'  with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' Option.OverwriteFile '{5}' Option.RemoveFileAfterwards '{6}' Option.ErrorWhen.PathIsNotFound '{7}' Path '{8}'" -f 
                         $task.TaskName, 
                         $action.Parameter.ComputerName,
                         $invokeParams.ArgumentList[1], 
@@ -481,7 +496,8 @@ Process {
                         $invokeParams.ArgumentList[5],
                         $invokeParams.ArgumentList[6], 
                         $invokeParams.ArgumentList[7],
-                        $($invokeParams.ArgumentList[0] -join "', '")
+                        $($invokeParams.ArgumentList[0] -join "', '"),
+                        $invokeParams.FilePath
                         Write-Verbose $M; 
                         Write-EventLog @EventVerboseParams -Message $M
 

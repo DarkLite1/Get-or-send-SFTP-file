@@ -20,6 +20,7 @@
             "PartialFileExtension": "UploadInProgress",
             "Option": {
               "OverwriteFile": false,
+              "RemoveFailedPartialFiles": false,
               "ErrorWhen": {
                 "PathIsNotFound": false
               }
