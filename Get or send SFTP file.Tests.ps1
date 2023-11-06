@@ -51,8 +51,7 @@ BeforeAll {
                                 OverwriteFile        = $false
                                 RemoveFileAfterwards = $false
                                 ErrorWhen            = @{
-                                    PathIsNotFound     = $true
-                                    SftpPathIsNotFound = $false
+                                    PathIsNotFound = $true
                                 }
                             }
                         }
@@ -664,43 +663,82 @@ Describe 'correct the import file' {
 }
 Describe 'execute the SFTP script' {
     BeforeAll {
-        $testJobArguments = {
-            ($FilePath -eq $testParams.Path.UploadScript) -and
-            ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path[0]) -and
-            ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path[1]) -and
-            ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
-            ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
-            ($ArgumentList[3] -eq 'bobUserName') -and
-            ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
-            ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
-            ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
-            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound) -and
-            ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles)
+        $testJobArguments = @(
+            {
+                ($FilePath -eq $testParams.Path.UploadScript) -and
+                ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path[0]) -and
+                ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path[1]) -and
+                ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
+                ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
+                ($ArgumentList[3] -eq 'bobUserName') -and
+                ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
+                ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
+                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound) -and
+                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles)
+            }
+            {
+                ($FilePath -eq $testParams.Path.DownloadScript) -and
+                ($ArgumentList[0] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Path) -and
+                ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
+                ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath) -and
+                ($ArgumentList[3] -eq 'bobUserName') -and
+                ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
+                ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.OverwriteFile) -and
+                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.RemoveFileAfterwards) -and
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.ErrorWhen.PathIsNotFound)
+            }
+        )
+    }
+    Context "for Tasks.Actions.Type 'Upload'" {
+        It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'PC1'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+            Out-File @testOutParams
+                
+            .$testScript @testParams
+    
+            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments[0]
         }
+        It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+            Out-File @testOutParams
+                
+            .$testScript @testParams
+    
+            Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[0]
+        }  
     }
-    It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
-        $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'PC1'
-
-        $testNewInputFile | ConvertTo-Json -Depth 7 | 
-        Out-File @testOutParams
-            
-        .$testScript @testParams
-
-        Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments
-    }
-    It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
-        $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
-
-        $testNewInputFile | ConvertTo-Json -Depth 7 | 
-        Out-File @testOutParams
-            
-        .$testScript @testParams
-
-        Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments
-    }
-} -Tag test
+    Context "for Tasks.Actions.Type 'Download'" {
+        It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].Actions[1].Parameter.ComputerName = 'PC1'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+            Out-File @testOutParams
+                
+            .$testScript @testParams
+    
+            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
+        }
+        It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].Actions[1].Parameter.ComputerName = 'localhost'
+    
+            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+            Out-File @testOutParams
+                
+            .$testScript @testParams
+    
+            Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
+        }  
+    } -Tag test
+} 
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 7 | 

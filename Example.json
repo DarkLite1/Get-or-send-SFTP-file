@@ -38,8 +38,7 @@
               "OverwriteFile": false,
               "RemoveFileAfterwards": true,
               "ErrorWhen": {
-                "PathIsNotFound": false,
-                "SftpPathIsNotFound": true
+                "PathIsNotFound": false
               }
             },
             "?": "Type: Upload | Download"

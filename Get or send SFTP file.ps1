@@ -285,8 +285,7 @@ Begin {
                             foreach (
                                 $boolean in 
                                 @(
-                                    'PathIsNotFound',
-                                    'SftpPathIsNotFound'
+                                    'PathIsNotFound'
                                 )
                             ) {
                                 try {
