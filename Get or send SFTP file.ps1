@@ -67,6 +67,15 @@
     Type 'Download':
     - A single folder on the machine defined in Tasks.Actions.Parameter.ComputerName where the files will be downloaded to.
 
+.PARAMETER Tasks.Actions.Parameter.PartialFileExtension
+    When type is 'Upload' the file that needs to be uploaded is first renamed 
+    by adding another file extension. This will make sure that errors like 
+    "file in use by another process" are avoided. 
+    
+    After a rename the file is uploaded with the extension defined in 
+    "PartialFileExtension". After a successful upload the file is then renamed 
+    on the SFTP server to its original name with the correct file extension.
+
 .PARAMETER Tasks.Actions.Parameter.Option.OverwriteFile
     Overwrite a file on the SFTP server when it already exists.
 

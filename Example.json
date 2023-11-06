@@ -17,6 +17,7 @@
             "SftpPath": "/reports/",
             "ComputerName": "localhost",
             "Path": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
+            "PartialFileExtension": "UploadInProgress",
             "Option": {
               "OverwriteFile": false,
               "ErrorWhen": {
