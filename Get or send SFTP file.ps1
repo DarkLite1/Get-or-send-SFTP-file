@@ -291,7 +291,7 @@ Begin {
                         'Upload' {
                             @(
                                 'SftpPath', 'ComputerName', 
-                                'Path', 'Option'
+                                'Path', 'Option', 'PartialFileExtension'
                             ).Where(
                                 { -not $action.Parameter.$_ }
                             ).foreach(
@@ -439,11 +439,12 @@ Process {
                             $action.Parameter.SftpPath, 
                             $task.Sftp.Credential.UserName, 
                             $task.Sftp.Credential.Password, 
+                            $action.Parameter.PartialFileExtension,
                             $action.Parameter.Option.OverwriteFile, 
                             $action.Parameter.Option.ErrorWhen.PathIsNotFound
                         }
                 
-                        $M = "Start SFTP upload job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' Option.OverwriteFile '{5}' Option.ErrorWhen.PathIsNotFound '{6}' Path '{7}'" -f 
+                        $M = "Start SFTP upload job '{0}' on '{1}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' Path '{8}'" -f 
                         $task.TaskName, 
                         $action.Parameter.ComputerName,
                         $invokeParams.ArgumentList[1], 
@@ -451,6 +452,7 @@ Process {
                         $invokeParams.ArgumentList[3], 
                         $invokeParams.ArgumentList[5],
                         $invokeParams.ArgumentList[6], 
+                        $invokeParams.ArgumentList[7], 
                         $($invokeParams.ArgumentList[0] -join "', '")
                         Write-Verbose $M; 
                         Write-EventLog @EventVerboseParams -Message $M

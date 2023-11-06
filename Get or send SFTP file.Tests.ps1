@@ -24,15 +24,16 @@ BeforeAll {
                     @{
                         Type      = 'Upload'
                         Parameter = @{
-                            SftpPath     = '/SFTP/folder/'
-                            ComputerName = 'localhost'
-                            Path         = @(
+                            SftpPath             = '/SFTP/folder/'
+                            ComputerName         = 'localhost'
+                            Path                 = @(
                                 (New-Item 'TestDrive:\a.txt').FullName
                                 (New-Item 'TestDrive:\b.txt').FullName
                             )
-                            Option       = @{
-                                OverwriteFile        = $false
-                                ErrorWhen            = @{
+                            PartialFileExtension = 'UploadInProgress'
+                            Option               = @{
+                                OverwriteFile = $false
+                                ErrorWhen     = @{
                                     PathIsNotFound     = $true
                                     SftpPathIsNotFound = $false
                                 }
@@ -451,7 +452,7 @@ Describe 'send an e-mail to the admin when' {
             }
             Context "Tasks.Actions.Type is 'Upload'" {
                 It 'Tasks.Actions.Parameter.<_> not found' -ForEach @(
-                    'SftpPath', 'ComputerName', 'Path', 'Option'
+                    'SftpPath', 'ComputerName', 'Path', 'Option', 'PartialFileExtension'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.$_ = $null
@@ -669,8 +670,9 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
             ($ArgumentList[3] -eq 'bobUserName') -and
             ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
-            ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
-            ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound)
+            ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
+            ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
+            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound)
         }
     }
     It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
