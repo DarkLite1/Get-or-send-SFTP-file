@@ -34,7 +34,13 @@
 
 .PARAMETER PartialFileExtension
     The name used for the file extension of the partial file that is being 
-    uploaded.
+    uploaded. The file that needs to be uploaded is first renamed 
+    by adding another file extension. This will make sure that errors like 
+    "file in use by another process" are avoided. 
+    
+    After a rename the file is uploaded with the extension defined in 
+    "PartialFileExtension". After a successful upload the file is then renamed 
+    on the SFTP server to its original name with the correct file extension.
 
 .PARAMETER OverwriteFileOnSftpServer
     Overwrite the file on the SFTP server in case it already exists.
@@ -42,6 +48,17 @@
 .PARAMETER ErrorWhenUploadPathIsNotFound
     Create an error in the returned object when the SFTP path is not found 
     on the SFTP server.
+
+.PARAMETER RemoveFailedPartialFiles
+    When the upload process is interrupted, it is possible that files are not 
+    completely uploaded and that there are sill partial files present on the 
+    SFTP server or in the local folder.
+
+    When RemoveFailedPartialFiles is TRUE these partial files will be removed
+    before the script starts. When RemoveFailedPartialFiles is FALSE, manual
+    intervention will be required to decide to still upload the partial file
+    found in the local folder, to rename the partial file on the SFTP server,
+    or to simply remove the partial file(s).
 #>
 
 [CmdLetBinding()]
@@ -60,6 +77,7 @@ Param (
     [String]$PartialFileExtension,
     [Boolean]$OverwriteFileOnSftpServer,
     [Boolean]$ErrorWhenUploadPathIsNotFound,
+    [Boolean]$RemoveFailedPartialFiles,
     [Int]$RetryCountOnLockedFiles = 3,
     [Int]$RetryWaitSeconds = 3
 )
@@ -68,7 +86,7 @@ try {
     $ErrorActionPreference = 'Stop'
 
     #region Get files to upload
-    $filesToUpload = @()
+    $allFiles = @()
 
     foreach ($P in $Path) {
         try {
@@ -88,12 +106,87 @@ try {
             #endregion
 
             #region Get files
-            $filesToUpload += if ($item.PSIsContainer) {
+            if ($item.PSIsContainer) {
                 Write-Verbose "Get files in folder '$P'"
-                Get-ChildItem -LiteralPath $item.FullName -File
+
+                $allFiles += Get-ChildItem -LiteralPath $item.FullName -File
+                
+                #region Remove partial files from the local folder
+                if ($RemoveFailedPartialFiles) {
+                    foreach (
+                        $partialFile in 
+                        $allFiles | Where-Object { 
+                            $_.Name -like "*.$PartialFileExtension" 
+                        }
+                    ) {
+                        try {
+                            $result = [PSCustomObject]@{
+                                DateTime  = Get-Date
+                                LocalPath = $null
+                                SftpPath  = $SftpPath
+                                FileName  = $partialFile.Name
+                                Uploaded  = $false
+                                Action    = @()
+                                Error     = $null
+                            }
+
+                            Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
+
+                            Remove-Item -LiteralPath $partialFile.FullName
+
+                            $result.Action = "removed failed uploaded partial file '$($partialFile.FullName)'"
+                        }
+                        catch {
+                            $result.Error = "Failed removing uploaded partial file: $_"
+                            Write-Warning $result.Error
+                            $Error.RemoveAt(0)
+                        }
+                        finally {
+                            $result
+                        }
+                    }
+                }
+                #endregion
             }
             else {
-                $item
+                $allFiles += $item
+
+                #region Remove partial file
+                $params = @{
+                    LiteralPath = "$($item.FullName).$PartialFileExtension"
+                    ErrorAction = 'Ignore'
+                }
+                if (
+                    ($RemoveFailedPartialFiles) -and
+                    ($partialFile = Get-Item @params)
+                ) {
+                    try {
+                        $result = [PSCustomObject]@{
+                            DateTime  = Get-Date
+                            LocalPath = $null
+                            SftpPath  = $SftpPath
+                            FileName  = $partialFile.Name
+                            Uploaded  = $false
+                            Action    = @()
+                            Error     = $null
+                        }
+
+                        Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
+
+                        Remove-Item -LiteralPath $partialFile.FullName
+
+                        $result.Action = "removed failed uploaded partial file '$($partialFile.FullName)'"
+                    }
+                    catch {
+                        $result.Error = "Failed removing uploaded partial file: $_"
+                        Write-Warning $result.Error
+                        $Error.RemoveAt(0)
+                    }
+                    finally {
+                        $result
+                    }
+                }
+                #endregion
             }
             #endregion
         }
@@ -111,6 +204,12 @@ try {
             $Error.RemoveAt(0)        
         }
     }
+    #endregion
+
+    #region Filter out only the files to upload
+    $filesToUpload = $allFiles.Where(
+        { $_.Name -notLike "*.$PartialFileExtension" }
+    )
     #endregion
     
     if (-not $filesToUpload) {
@@ -159,6 +258,43 @@ try {
     if (-not (Test-SFTPPath @sessionParams -Path $SftpPath)) {
         throw "Path '$SftpPath' not found on SFTP server"
     }    
+    #endregion
+
+    #region Remove partial files that failed uploading from the SFTP server
+    if ($RemoveFailedPartialFiles) {
+        $files = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
+        
+        foreach (
+            $partialFile in 
+            $files | Where-Object { $_.Name -like "*.$PartialFileExtension" }
+        ) {
+            try {
+                $result = [PSCustomObject]@{
+                    DateTime  = Get-Date
+                    LocalPath = $null
+                    SftpPath  = $SftpPath
+                    FileName  = $partialFile.Name
+                    Uploaded  = $false
+                    Action    = @()
+                    Error     = $null
+                }
+
+                Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
+
+                Remove-SFTPItem @sessionParams -Path $partialFile.FullName
+
+                $result.Action = "removed failed uploaded partial file '$($partialFile.FullName)'"
+            }
+            catch {
+                $result.Error = "Failed removing uploaded partial file: $_"
+                Write-Warning $result.Error
+                $Error.RemoveAt(0)
+            }
+            finally {
+                $result
+            }
+        }
+    }
     #endregion
 
     foreach ($file in $filesToUpload) {

@@ -126,7 +126,7 @@ try {
         $M = "Get SFTP file list in path '{0}'" -f $SftpPath
         Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
 
-        $sftpFiles = Get-SFTPChildItem @sessionParams
+        $sftpFiles = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
     }
     catch {
         throw "Failed retrieving the SFTP file list from '$SftpComputerName' in path '$SftpPath': $_"

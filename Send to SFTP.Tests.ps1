@@ -19,6 +19,7 @@ BeforeAll {
     Mock Get-SFTPChildItem
     Mock Set-SFTPItem
     Mock Rename-SFTPFile
+    Mock Remove-SFTPItem
     Mock New-SFTPSession {
         [PSCustomObject]@{
             SessionID = 1
@@ -238,6 +239,71 @@ Describe 'OverwriteFileOnSftpServer' {
                 ($SessionId -eq 1) -and
                 (-not $Force)
             }
+        }
+    }
+}
+Describe 'when RemoveFailedPartialFiles is true' {
+    Context 'remove partial files that are not completely uploaded' {
+        It 'from the local folder in Path' {
+            $testNewParams = $testParams.Clone()
+            $testNewParams.RemoveFailedPartialFiles = $true
+            $testNewParams.Path = (New-Item 'TestDrive:\Upload' -ItemType 'Directory').FullName
+
+            $testFiles = @(
+                Join-Path $testNewParams.Path "file.txt"
+                Join-Path $testNewParams.Path "file.txt.$($testParams.PartialFileExtension)"
+            ) | ForEach-Object {
+                New-Item -Path $_ -ItemType 'File'
+            }
+
+            $testResults = .$testScript @testNewParams
+
+            $testFiles[1].FullName | Should -Not -Exist
+
+            $testResult = $testResults.where(
+                { $_.FileName -eq $testFiles[1].Name }
+            )
+
+            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFiles[1].FullName)'" 
+        }
+        It 'with the same name as a file in Path' {
+            $testNewParams = $testParams.Clone()
+            $testNewParams.RemoveFailedPartialFiles = $true
+            $testNewParams.Path = (New-Item 'TestDrive:\u.txt' -ItemType 'File').FullName
+
+            $testFile = New-Item -Path "$($testNewParams.Path).$($testParams.PartialFileExtension)" -ItemType 'File'
+            
+            $testResults = .$testScript @testNewParams
+
+            $testFile.FullName | Should -Not -Exist
+
+            $testResult = $testResults.where(
+                { $_.FileName -eq $testFile.Name }
+            )
+
+            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFile.FullName)'" 
+        }
+        It 'from the SFTP server' {
+            $testFile = [PSCustomObject]@{
+                Name     = "file.txt.$($testParams.PartialFileExtension)"
+                FullName = $testParams.SftpPath + "file.txt.$($testParams.PartialFileExtension)"
+            }
+
+            Mock Get-SFTPChildItem {
+                $testFile
+            }
+
+            $testNewParams = $testParams.Clone()
+            $testNewParams.RemoveFailedPartialFiles = $true
+            $testNewParams.Path = $testNewParams.Path[0]
+
+            $testResults = .$testScript @testNewParams
+
+            $testResult = $testResults.where(
+                { $_.FileName -eq $testFile.Name }
+            )
+
+            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFile.FullName)'" 
         }
     }
 }
