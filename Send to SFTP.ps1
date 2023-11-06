@@ -10,11 +10,11 @@
     source file is always removed.
 
     To avoid file locks:
-    1. Rename the source file 'a.txt' to 'a.txt.UploadInProgress'
+    1. Rename the source file 'a.txt' to 'a.txt.PartialFileExtension'
         > when a file can't be renamed it is locked
         > then we wait a few seconds for an unlock and try again
-    2. Upload 'a.txt.UploadInProgress' to the SFTP server
-    3. On the SFTP server rename 'a.txt.UploadInProgress' to 'a.txt'
+    2. Upload 'a.txt.PartialFileExtension' to the SFTP server
+    3. On the SFTP server rename 'a.txt.PartialFileExtension' to 'a.txt'
 
 .PARAMETER Path
     Full path to the files to upload or to the folder containing the files to 
@@ -31,6 +31,10 @@
 
 .PARAMETER SftpPassword
     The password used to authenticate to the SFTP server.
+
+.PARAMETER PartialFileExtension
+    The name used for the file extension of the partial file that is being 
+    uploaded.
 
 .PARAMETER OverwriteFileOnSftpServer
     Overwrite the file on the SFTP server in case it already exists.
@@ -52,6 +56,8 @@ Param (
     [String]$SftpUserName,
     [Parameter(Mandatory)]
     [SecureString]$SftpPassword,
+    [Parameter(Mandatory)]
+    [String]$PartialFileExtension,
     [Boolean]$OverwriteFileOnSftpServer,
     [Boolean]$ErrorWhenUploadPathIsNotFound,
     [Int]$RetryCountOnLockedFiles = 3,
@@ -170,7 +176,7 @@ try {
             }
 
             $tempFile = @{
-                UploadFileName = $file.Name -Replace "\$($file.Extension)", "$($file.Extension).UploadInProgress" 
+                UploadFileName = $file.Name -Replace "\$($file.Extension)", "$($file.Extension).$PartialFileExtension" 
             }
             $tempFile.UploadFilePath = Join-Path $result.LocalPath $tempFile.UploadFileName
 

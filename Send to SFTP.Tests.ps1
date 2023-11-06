@@ -5,14 +5,15 @@
 BeforeAll {
     $testScript = $PSCommandPath.Replace('.Tests.ps1', '.ps1')
     $testParams = @{
-        Path             = @(
+        Path                 = @(
             (New-Item 'TestDrive:/a.txt' -ItemType 'File').FullName
             (New-Item 'TestDrive:/b.txt' -ItemType 'File').FullName
         )
-        SftpComputerName = 'PC1'
-        SftpPath         = '/out/'
-        SftpUserName     = 'bob'
-        SftpPassword     = 'pass' | ConvertTo-SecureString -AsPlainText -Force
+        SftpComputerName     = 'PC1'
+        SftpPath             = '/out/'
+        PartialFileExtension = 'UploadInProgress'
+        SftpUserName         = 'bob'
+        SftpPassword         = 'pass' | ConvertTo-SecureString -AsPlainText -Force
     }
 
     Mock Get-SFTPChildItem
@@ -34,7 +35,8 @@ Describe 'the mandatory parameters are' {
         'SftpComputerName', 
         'SftpUserName', 
         'SftpPassword', 
-        'SftpPath'
+        'SftpPath',
+        'PartialFileExtension'
     ) {
         (Get-Command $testScript).Parameters[$_].Attributes.Mandatory | 
         Should -BeTrue
