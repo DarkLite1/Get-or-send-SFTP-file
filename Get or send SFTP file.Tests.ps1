@@ -35,8 +35,7 @@ BeforeAll {
                                 OverwriteFile            = $false
                                 RemoveFailedPartialFiles = $false
                                 ErrorWhen                = @{
-                                    PathIsNotFound     = $true
-                                    SftpPathIsNotFound = $false
+                                    PathIsNotFound = $true
                                 }
                             }
                         }
@@ -430,8 +429,7 @@ Describe 'send an e-mail to the admin when' {
                     }
                 }
                 It 'Tasks.Actions.Parameter.Option.ErrorWhen.<_> not a boolean' -ForEach @(
-                    'PathIsNotFound',
-                    'SftpPathIsNotFound'
+                    'PathIsNotFound'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[1].Parameter.Option.ErrorWhen.$_ = $null
@@ -488,8 +486,7 @@ Describe 'send an e-mail to the admin when' {
                     }
                 }
                 It 'Tasks.Actions.Parameter.Option.ErrorWhen.<_> not a boolean' -ForEach @(
-                    'PathIsNotFound',
-                    'SftpPathIsNotFound'
+                    'PathIsNotFound'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.$_ = $null

@@ -295,7 +295,7 @@ Describe 'when RemoveFailedPartialFiles is true' {
 
             $testNewParams = $testParams.Clone()
             $testNewParams.RemoveFailedPartialFiles = $true
-            $testNewParams.Path = $testNewParams.Path[0]
+            $testNewParams.Path = (New-Item 'TestDrive:\o.txt' -ItemType 'File').FullName
 
             $testResults = .$testScript @testNewParams
 
