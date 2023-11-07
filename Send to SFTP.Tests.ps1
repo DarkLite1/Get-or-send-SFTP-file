@@ -324,7 +324,7 @@ Describe 'when FileExtensions is' {
             New-Item -Path (Join-Path $testNewParams.Path $_) -ItemType 'File'
         }
 
-        $testResults = .$testScript @testNewParams
+        .$testScript @testNewParams
 
         foreach ($testFile in $testFiles) {
             Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
@@ -344,7 +344,7 @@ Describe 'when FileExtensions is' {
             New-Item -Path (Join-Path $testNewParams.Path $_) -ItemType 'File'
         }
 
-        $testResults = .$testScript @testNewParams
+        .$testScript @testNewParams
 
         foreach ($testFile in $testFiles) {
             if ($testFile.Extension -eq '.jpg') {
@@ -361,4 +361,4 @@ Describe 'when FileExtensions is' {
             }
         }
     } 
-} -Tag test
+}
