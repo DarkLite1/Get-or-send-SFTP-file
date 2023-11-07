@@ -468,10 +468,11 @@ Process {
                             $action.Parameter.PartialFileExtension,
                             $action.Parameter.Option.OverwriteFile, 
                             $action.Parameter.Option.ErrorWhen.PathIsNotFound,
-                            $action.Parameter.Option.RemoveFailedPartialFiles
+                            $action.Parameter.Option.RemoveFailedPartialFiles,
+                            $action.Parameter.FileExtensions
                         }
                 
-                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Path '{9}'" -f 
+                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Path '{9}' FileExtensions '{11}'" -f 
                         $task.TaskName, 
                         $action.Parameter.ComputerName,
                         $invokeParams.ArgumentList[1], 
@@ -482,7 +483,9 @@ Process {
                         $invokeParams.ArgumentList[7], 
                         $invokeParams.ArgumentList[8], 
                         $($invokeParams.ArgumentList[0] -join "', '"),
-                        $invokeParams.FilePath
+                        $invokeParams.FilePath,
+                        $invokeParams.ArgumentList[9]
+
                         Write-Verbose $M; 
                         Write-EventLog @EventVerboseParams -Message $M
 

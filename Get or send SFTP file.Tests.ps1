@@ -700,7 +700,8 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
                 ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
                 ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound) -and
-                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles)
+                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles) -and
+                ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions)
             }
             {
                 ($FilePath -eq $testParams.Path.DownloadScript) -and
@@ -763,7 +764,7 @@ Describe 'execute the SFTP script' {
             Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
         }  
     }
-} 
+}  -Tag test
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 7 | 
