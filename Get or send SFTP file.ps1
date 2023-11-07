@@ -747,6 +747,17 @@ End {
                 }, 
                 'FileName',
                 @{
+                    Name       = 'Successful'
+                    Expression = { 
+                        if ($action.Type -eq 'Upload') {
+                            $_.Uploaded
+                        }
+                        else {
+                            $_.Downloaded
+                        }
+                    }
+                }, 
+                @{
                     Name       = 'Action'
                     Expression = { $_.Action -join ', ' }
                 }, 

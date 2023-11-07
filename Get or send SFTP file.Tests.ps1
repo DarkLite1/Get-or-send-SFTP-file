@@ -26,7 +26,7 @@ BeforeAll {
                         Parameter = @{
                             SftpPath             = '/SFTP/folder/'
                             ComputerName         = 'localhost'
-                            Paths                 = @(
+                            Paths                = @(
                                 (New-Item 'TestDrive:\a.txt').FullName
                                 (New-Item 'TestDrive:\b.txt').FullName
                             )
@@ -105,6 +105,7 @@ BeforeAll {
             FileName     = $testData[0].FileName
             DateTime     = $testData[0].DateTime
             Type         = 'Upload'
+            Successful   = $true
             Action       = $testData[0].Action -join ', '
             Error        = $null
         }
@@ -115,6 +116,7 @@ BeforeAll {
             FileName     = $testData[1].FileName
             DateTime     = $testData[1].DateTime
             Type         = 'Upload'
+            Successful   = $true
             Action       = $testData[1].Action -join ', '
             Error        = $null
         }
@@ -125,6 +127,7 @@ BeforeAll {
             FileName     = $testData[2].FileName
             DateTime     = $testData[2].DateTime
             Type         = 'Download'
+            Successful   = $true
             Action       = $testData[2].Action -join ', '
             Error        = $null
         }
@@ -796,9 +799,10 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow.Action | Should -Be $testRow.Action
                 $actualRow.Error | Should -Be $testRow.Error
                 $actualRow.Type | Should -Be $testRow.Type
+                $actualRow.Successful | Should -Be $testRow.Successful
                 $actualRow.FileName | Should -Be $testRow.FileName
             }
-        }
+        } -Tag test
     }
     Context 'send an e-mail' {
         It 'with attachment to the user' {
