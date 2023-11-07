@@ -18,7 +18,7 @@
             "ComputerName": "localhost",
             "Path": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
             "FileExtensions": [".xml", ".dat"],
-            "PartialFileExtension": "UploadInProgress",
+            "PartialFileExtension": ".UploadInProgress",
             "Option": {
               "OverwriteFile": false,
               "RemoveFailedPartialFiles": false,
