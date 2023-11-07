@@ -12,7 +12,7 @@ BeforeAll {
         SftpComputerName     = 'PC1'
         SftpPath             = '/out/'
         FileExtensions       = @()
-        PartialFileExtension = 'UploadInProgress'
+        PartialFileExtension = '.UploadInProgress'
         SftpUserName         = 'bob'
         SftpPassword         = 'pass' | ConvertTo-SecureString -AsPlainText -Force
     }
@@ -252,7 +252,7 @@ Describe 'when RemoveFailedPartialFiles is true' {
 
             $testFiles = @(
                 Join-Path $testNewParams.Path "file.txt"
-                Join-Path $testNewParams.Path "file.txt.$($testParams.PartialFileExtension)"
+                Join-Path $testNewParams.Path "file.txt$($testParams.PartialFileExtension)"
             ) | ForEach-Object {
                 New-Item -Path $_ -ItemType 'File'
             }
@@ -272,7 +272,7 @@ Describe 'when RemoveFailedPartialFiles is true' {
             $testNewParams.RemoveFailedPartialFiles = $true
             $testNewParams.Path = (New-Item 'TestDrive:\u.txt' -ItemType 'File').FullName
 
-            $testFile = New-Item -Path "$($testNewParams.Path).$($testParams.PartialFileExtension)" -ItemType 'File'
+            $testFile = New-Item -Path "$($testNewParams.Path)$($testParams.PartialFileExtension)" -ItemType 'File'
             
             $testResults = .$testScript @testNewParams
 
@@ -286,8 +286,8 @@ Describe 'when RemoveFailedPartialFiles is true' {
         }
         It 'from the SFTP server' {
             $testFile = [PSCustomObject]@{
-                Name     = "file.txt.$($testParams.PartialFileExtension)"
-                FullName = $testParams.SftpPath + "file.txt.$($testParams.PartialFileExtension)"
+                Name     = "file.txt$($testParams.PartialFileExtension)"
+                FullName = $testParams.SftpPath + "file.txt$($testParams.PartialFileExtension)"
             }
 
             Mock Get-SFTPChildItem {
@@ -329,7 +329,7 @@ Describe 'when FileExtensions is' {
         foreach ($testFile in $testFiles) {
             Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
                 ($Destination -eq $testNewParams.SftpPath) -and
-                ($Path -eq ($testFile.FullName + '.' + $testNewParams.PartialFileExtension))
+                ($Path -eq ($testFile.FullName + $testNewParams.PartialFileExtension))
             }
         }
     }
@@ -350,14 +350,14 @@ Describe 'when FileExtensions is' {
             if ($testFile.Extension -eq '.jpg') {
                 Should -Not -Invoke Set-SFTPItem -ParameterFilter {
                     ($Destination -eq $testNewParams.SftpPath) -and
-                    ($Path -eq ($testFile.FullName + '.' + $testNewParams.PartialFileExtension))
+                    ($Path -eq ($testFile.FullName + $testNewParams.PartialFileExtension))
                 }
                 Continue    
             }
 
             Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
                 ($Destination -eq $testNewParams.SftpPath) -and
-                ($Path -eq ($testFile.FullName + '.' + $testNewParams.PartialFileExtension))
+                ($Path -eq ($testFile.FullName + $testNewParams.PartialFileExtension))
             }
         }
     } 

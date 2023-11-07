@@ -117,7 +117,7 @@ try {
                     foreach (
                         $partialFile in 
                         $allFiles | Where-Object { 
-                            $_.Name -like "*.$PartialFileExtension" 
+                            $_.Name -like "*$PartialFileExtension" 
                         }
                     ) {
                         try {
@@ -154,7 +154,7 @@ try {
 
                 #region Remove partial file
                 $params = @{
-                    LiteralPath = "$($item.FullName).$PartialFileExtension"
+                    LiteralPath = "$($item.FullName)$PartialFileExtension"
                     ErrorAction = 'Ignore'
                 }
                 if (
@@ -209,7 +209,7 @@ try {
 
     #region Only select the required files for upload
     $filesToUpload = $allFiles.Where(
-        { $_.Name -notLike "*.$PartialFileExtension" }
+        { $_.Name -notLike "*$PartialFileExtension" }
     )
 
     if ($FileExtensions) {
@@ -274,7 +274,7 @@ try {
         
         foreach (
             $partialFile in 
-            $files | Where-Object { $_.Name -like "*.$PartialFileExtension" }
+            $files | Where-Object { $_.Name -like "*$PartialFileExtension" }
         ) {
             try {
                 $result = [PSCustomObject]@{
@@ -320,7 +320,7 @@ try {
             }
 
             $tempFile = @{
-                UploadFileName = $file.Name -Replace "\$($file.Extension)", "$($file.Extension).$PartialFileExtension" 
+                UploadFileName = $file.Name -Replace "\$($file.Extension)", "$($file.Extension)$PartialFileExtension" 
             }
             $tempFile.UploadFilePath = Join-Path $result.LocalPath $tempFile.UploadFileName
 
