@@ -623,7 +623,7 @@ Describe 'send an e-mail to the admin when' {
                         (&$MailAdminParams) -and 
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.FileExtensions' needs to start with a dot. For example: '.txt', '.xml'*")
                 }
-            } -Tag test
+            }
         }
         It 'the SFTP password is not found in the environment variables' {
             Mock Get-EnvironmentVariableValueHC {
