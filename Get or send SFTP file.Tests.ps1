@@ -30,7 +30,7 @@ BeforeAll {
                                 (New-Item 'TestDrive:\a.txt').FullName
                                 (New-Item 'TestDrive:\b.txt').FullName
                             )
-                            PartialFileExtension = 'UploadInProgress'
+                            PartialFileExtension = '.UploadInProgress'
                             Option               = @{
                                 OverwriteFile            = $false
                                 RemoveFailedPartialFiles = $false
@@ -596,6 +596,34 @@ Describe 'send an e-mail to the admin when' {
                         ($Message -like "*$ImportFile*Property 'Tasks.TaskName' with value 'Name1' is not unique*")
                 }
             }
+            It 'Tasks.Actions.Parameter.PartialFileExtension does not start with a dot' {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension = 'txt'
+    
+                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.PartialFileExtension' needs to start with a dot. For example: '.txt', '.xml'*")
+                }
+            }
+            It 'Tasks.Actions.Parameter.FileExtension does not start with a dot' {
+                $testNewInputFile = Copy-ObjectHC $testInputFile
+                $testNewInputFile.Tasks[0].Actions[0].Parameter.FileExtensions = @('txt', '.xml')
+    
+                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+                Out-File @testOutParams
+                    
+                .$testScript @testParams
+
+                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and 
+                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.FileExtensions' needs to start with a dot. For example: '.txt', '.xml'*")
+                }
+            } -Tag test
         }
         It 'the SFTP password is not found in the environment variables' {
             Mock Get-EnvironmentVariableValueHC {
@@ -734,7 +762,7 @@ Describe 'execute the SFTP script' {
     
             Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
         }  
-    } -Tag test
+    }
 } 
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {

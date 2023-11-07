@@ -338,6 +338,22 @@ Begin {
                                 }
                             }
                             #endregion
+
+                            #region Test file extensions
+                            @(
+                                'PartialFileExtension'
+                            ).Where(
+                                { $action.Parameter.$_ -notLike '.*' }
+                            ).foreach(
+                                { throw "Property 'Tasks.Actions.Parameter.$_' needs to start with a dot. For example: '.txt', '.xml', ..." }
+                            )
+
+                            $action.Parameter.FileExtensions.Where(
+                                { $_ -and ($_ -notLike '.*') }
+                            ).foreach(
+                                { throw "Property 'Tasks.Actions.Parameter.FileExtensions' needs to start with a dot. For example: '.txt', '.xml', ..." }
+                            )
+                            #endregion
                 
                             break
                         }
