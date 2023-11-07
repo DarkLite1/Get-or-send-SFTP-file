@@ -78,6 +78,7 @@ Param (
     [Boolean]$OverwriteFileOnSftpServer,
     [Boolean]$ErrorWhenUploadPathIsNotFound,
     [Boolean]$RemoveFailedPartialFiles,
+    [String[]]$FileExtensions,
     [Int]$RetryCountOnLockedFiles = 3,
     [Int]$RetryWaitSeconds = 3
 )
@@ -206,10 +207,17 @@ try {
     }
     #endregion
 
-    #region Filter out only the files to upload
+    #region Only select the required files for upload
     $filesToUpload = $allFiles.Where(
         { $_.Name -notLike "*.$PartialFileExtension" }
     )
+
+    if ($FileExtensions) {
+        Write-Verbose "Only include files with extension '$FileExtensions'"
+        $filesToUpload = $filesToUpload.Where(
+            { $FileExtensions -contains $_.Extension }
+        )
+    }
     #endregion
     
     if (-not $filesToUpload) {

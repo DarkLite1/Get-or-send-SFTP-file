@@ -17,6 +17,7 @@
             "SftpPath": "/reports/",
             "ComputerName": "localhost",
             "Path": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
+            "FileExtensions": [".xml", ".dat"],
             "PartialFileExtension": "UploadInProgress",
             "Option": {
               "OverwriteFile": false,
@@ -25,7 +26,7 @@
                 "PathIsNotFound": false
               }
             },
-            "?": "Type: Upload | Download"
+            "?": "Type: Upload | Download, FileExtensions: empty is all files"
           }
         },
         {

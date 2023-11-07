@@ -11,6 +11,7 @@ BeforeAll {
         )
         SftpComputerName     = 'PC1'
         SftpPath             = '/out/'
+        FileExtensions       = @()
         PartialFileExtension = 'UploadInProgress'
         SftpUserName         = 'bob'
         SftpPassword         = 'pass' | ConvertTo-SecureString -AsPlainText -Force
@@ -307,3 +308,57 @@ Describe 'when RemoveFailedPartialFiles is true' {
         }
     }
 }
+Describe 'when FileExtensions is' {
+    BeforeAll {
+        $testNewParams = $testParams.Clone()
+        $testNewParams.Path = (New-Item 'TestDrive:\Upload' -ItemType 'Directory').FullName
+    }
+    It 'empty, all files are uploaded' {
+        $testNewParams.FileExtensions = @()
+
+        $testFiles = @(
+            'file.txt'
+            'file.xml'
+            'file.jpg'
+        ) | ForEach-Object {
+            New-Item -Path (Join-Path $testNewParams.Path $_) -ItemType 'File'
+        }
+
+        $testResults = .$testScript @testNewParams
+
+        foreach ($testFile in $testFiles) {
+            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
+                ($Destination -eq $testNewParams.SftpPath) -and
+                ($Path -eq ($testFile.FullName + '.' + $testNewParams.PartialFileExtension))
+            }
+        }
+    }
+    It 'not empty, only specific files are uploaded' {
+        $testNewParams.FileExtensions = @('.txt', '.xml')
+
+        $testFiles = @(
+            'file.txt'
+            'file.xml'
+            'file.jpg'
+        ) | ForEach-Object {
+            New-Item -Path (Join-Path $testNewParams.Path $_) -ItemType 'File'
+        }
+
+        $testResults = .$testScript @testNewParams
+
+        foreach ($testFile in $testFiles) {
+            if ($testFile.Extension -eq '.jpg') {
+                Should -Not -Invoke Set-SFTPItem -ParameterFilter {
+                    ($Destination -eq $testNewParams.SftpPath) -and
+                    ($Path -eq ($testFile.FullName + '.' + $testNewParams.PartialFileExtension))
+                }
+                Continue    
+            }
+
+            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
+                ($Destination -eq $testNewParams.SftpPath) -and
+                ($Path -eq ($testFile.FullName + '.' + $testNewParams.PartialFileExtension))
+            }
+        }
+    } 
+} -Tag test
