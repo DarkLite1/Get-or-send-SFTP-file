@@ -301,7 +301,7 @@ Begin {
                         'Upload' {
                             @(
                                 'SftpPath', 'ComputerName', 
-                                'Path', 'Option', 'PartialFileExtension'
+                                'Paths', 'Option', 'PartialFileExtension'
                             ).Where(
                                 { -not $action.Parameter.$_ }
                             ).foreach(
@@ -460,7 +460,7 @@ Process {
                     'Upload' {  
                         $invokeParams = @{
                             FilePath     = $PathItem.UploadScript
-                            ArgumentList = $action.Parameter.Path, 
+                            ArgumentList = $action.Parameter.Paths, 
                             $task.Sftp.ComputerName, 
                             $action.Parameter.SftpPath, 
                             $task.Sftp.Credential.UserName, 
@@ -472,7 +472,7 @@ Process {
                             $action.Parameter.FileExtensions
                         }
                 
-                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Path '{9}' FileExtensions '{11}'" -f 
+                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Paths '{9}' FileExtensions '{11}'" -f 
                         $task.TaskName, 
                         $action.Parameter.ComputerName,
                         $invokeParams.ArgumentList[1], 
@@ -675,7 +675,15 @@ End {
                     </tr>
                     <tr>
                         <td>Path</td>
-                        <td>$($action.Parameter.Path -join '<br>')</td>
+                        <td>$(
+                            if ($action.Type -eq 'Upload') {
+                                $action.Parameter.Paths -join '<br>'
+                            }
+                            else {
+                                $action.Parameter.Path -join '<br>'
+                            }
+
+                        )</td>
                     </tr>
                     $(
                         if ($counter.Action.Errors) {

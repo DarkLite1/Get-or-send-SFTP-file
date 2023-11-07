@@ -16,7 +16,7 @@
           "Parameter": {
             "SftpPath": "/reports/",
             "ComputerName": "localhost",
-            "Path": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
+            "Paths": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
             "FileExtensions": [".xml", ".dat"],
             "PartialFileExtension": ".UploadInProgress",
             "Option": {

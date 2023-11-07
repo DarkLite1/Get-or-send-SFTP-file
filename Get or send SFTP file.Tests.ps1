@@ -26,7 +26,7 @@ BeforeAll {
                         Parameter = @{
                             SftpPath             = '/SFTP/folder/'
                             ComputerName         = 'localhost'
-                            Path                 = @(
+                            Paths                 = @(
                                 (New-Item 'TestDrive:\a.txt').FullName
                                 (New-Item 'TestDrive:\b.txt').FullName
                             )
@@ -69,18 +69,18 @@ BeforeAll {
 
     $testData = @(
         [PSCustomObject]@{
-            LocalPath = $testInputFile.Tasks[0].Actions[0].Parameter.Path[0]
+            LocalPath = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0]
             SftpPath  = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
-            FileName  = $testInputFile.Tasks[0].Actions[0].Parameter.Path[0] | Split-Path -Leaf
+            FileName  = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0] | Split-Path -Leaf
             DateTime  = Get-Date
             Uploaded  = $true
             Action    = @('file uploaded', 'file removed')
             Error     = $null
         }     
         [PSCustomObject]@{
-            LocalPath = $testInputFile.Tasks[0].Actions[0].Parameter.Path[1]
+            LocalPath = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1]
             SftpPath  = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
-            FileName  = $testInputFile.Tasks[0].Actions[0].Parameter.Path[1] | Split-Path -Leaf
+            FileName  = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1] | Split-Path -Leaf
             DateTime  = Get-Date
             Uploaded  = $true
             Action    = @('file uploaded', 'file removed')
@@ -450,7 +450,7 @@ Describe 'send an e-mail to the admin when' {
             }
             Context "Tasks.Actions.Type is 'Upload'" {
                 It 'Tasks.Actions.Parameter.<_> not found' -ForEach @(
-                    'SftpPath', 'ComputerName', 'Path', 'Option', 'PartialFileExtension'
+                    'SftpPath', 'ComputerName', 'Paths', 'Option', 'PartialFileExtension'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.$_ = $null
@@ -691,8 +691,8 @@ Describe 'execute the SFTP script' {
         $testJobArguments = @(
             {
                 ($FilePath -eq $testParams.Path.UploadScript) -and
-                ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path[0]) -and
-                ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path[1]) -and
+                ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0]) -and
+                ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1]) -and
                 ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
                 ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
                 ($ArgumentList[3] -eq 'bobUserName') -and
@@ -764,7 +764,7 @@ Describe 'execute the SFTP script' {
             Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
         }  
     }
-}  -Tag test
+}
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 7 | 
@@ -807,10 +807,10 @@ Describe 'when the SFTP script runs successfully' {
             ($Priority -eq 'Normal') -and
             ($Subject -eq '2 uploaded, 1 downloaded') -and
             ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*SFTP User name*bobUserName*Total files uploaded*2*UPLOAD FILES TO THE SFTP SERVER*SFTP path*$($testInputFile.Tasks[0].Actions[0].SftpPath)*$($testInputFile.Tasks[0].Actions[0].ComputerName)*Path*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Path[1])*DOWNLOAD FILES FROM THE SFTP SERVER*")
+            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*SFTP User name*bobUserName*Total files uploaded*2*UPLOAD FILES TO THE SFTP SERVER*SFTP path*$($testInputFile.Tasks[0].Actions[0].SftpPath)*$($testInputFile.Tasks[0].Actions[0].ComputerName)*Path*$($testInputFile.Tasks[0].Actions[0].Parameter.Paths[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Paths[1])*DOWNLOAD FILES FROM THE SFTP SERVER*")
             }
         }
-    }
+    } -Tag test
 }
 Describe 'ExportExcelFile.When' {
     Context 'create no Excel file' {
