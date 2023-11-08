@@ -111,42 +111,68 @@ Describe 'do not start an SFTP sessions when' {
         Should -Not -Invoke Remove-SFTPSession
     }
 }
-Describe 'when a file is uploaded it is' {
+Describe 'when a file is uploaded' {
     BeforeAll {
         $testNewParams = $testParams.Clone()
         $testNewParams.Path = (New-Item 'TestDrive:/c.txt' -ItemType 'File').FullName
 
         $testResults = .$testScript @testNewParams
     }
-    It 'renamed to extension .UploadInProgress' {
+    It 'it is renamed to extension .UploadInProgress' {
         'TestDrive:/c.txt' | Should -Not -Exist
-        $testResults.Action | Should -Contain 'temp file created'
     }
-    It 'uploaded to the SFTP server with extension .UploadInProgress' {
+    It 'it is uploaded to the SFTP server with extension .UploadInProgress' {
         Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
             ($Path -like '*\c.txt.UploadInProgress') -and
             ($Destination -eq $testNewParams.SftpPath) -and
             ($SessionId -eq 1)
         }
-        $testResults.Action | Should -Contain 'temp file uploaded'
     }
-    It 'renamed on the SFTP server to its original name' {
+    It 'it is renamed on the SFTP server to its original name' {
         Should -Invoke Rename-SFTPFile -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
             ($NewName -eq 'c.txt') -and
             ($Path -eq ($testNewParams.SftpPath + 'c.txt.UploadInProgress')) -and
             ($SessionId -eq 1)
         }
-        $testResults.Action | Should -Contain 'temp file renamed on SFTP server'
     }
-    It 'removed after a successful upload' {
+    It 'it is removed after a successful upload' {
         'TestDrive:/c.txt.UploadInProgress' | Should -Not -Exist 
-        $testResults.Action | Should -Contain 'temp file removed'
     }
-    It 'reports a successful upload' {
-        $testResults.Uploaded | Should -BeTrue
-        $testResults.Action | Should -Contain 'file successfully uploaded'
+    Context 'an object is returned with property' {
+        It 'DateTime' {
+            $testResults.DateTime.ToString('yyyyMMdd') | 
+            Should -Be (Get-Date).ToString('yyyyMMdd')
+        }
+        Context 'Action' {
+            It "<_>" -ForEach @(
+                'temp file created',
+                'temp file uploaded',
+                'temp file removed',
+                'temp file renamed on SFTP server',
+                'file successfully uploaded'
+            ) {
+                $testResults.Action | Should -Contain $_
+            }
+        }
+        It 'Uploaded' {
+            $testResults.Uploaded | Should -BeTrue
+        }
+        It 'LocalPath' {
+            $testResults.LocalPath | 
+            Should -Be ($testNewParams.Path | Split-Path -Parent)
+        }
+        It 'FileName' {
+            $testResults.FileName | 
+            Should -Be ($testNewParams.Path | Split-Path -Leaf)
+        }
+        It 'SftpPath' {
+            $testResults.SftpPath | Should -Be $testNewParams.SftpPath
+        }
+        It 'Error' {
+            $testResults.Error | Should -BeNullOrEmpty
+        }
     }
-}
+} -Tag test
 Describe 'upload to the SFTP server' {
     BeforeAll {
     }
