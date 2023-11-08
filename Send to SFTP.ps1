@@ -122,13 +122,14 @@ try {
                     ) {
                         try {
                             $result = [PSCustomObject]@{
-                                DateTime  = Get-Date
-                                LocalPath = $null
-                                SftpPath  = $SftpPath
-                                FileName  = $partialFile.Name
-                                Uploaded  = $false
-                                Action    = @()
-                                Error     = $null
+                                DateTime   = Get-Date
+                                LocalPath  = $null
+                                SftpPath   = $SftpPath
+                                FileName   = $partialFile.Name
+                                FileLength = $partialFile.Length
+                                Uploaded   = $false
+                                Action     = @()
+                                Error      = $null
                             }
 
                             Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
@@ -163,13 +164,14 @@ try {
                 ) {
                     try {
                         $result = [PSCustomObject]@{
-                            DateTime  = Get-Date
-                            LocalPath = $null
-                            SftpPath  = $SftpPath
-                            FileName  = $partialFile.Name
-                            Uploaded  = $false
-                            Action    = @()
-                            Error     = $null
+                            DateTime   = Get-Date
+                            LocalPath  = $null
+                            SftpPath   = $SftpPath
+                            FileName   = $partialFile.Name
+                            FileLength = $partialFile.Length
+                            Uploaded   = $false
+                            Action     = @()
+                            Error      = $null
                         }
 
                         Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
@@ -193,13 +195,14 @@ try {
         }
         catch {
             [PSCustomObject]@{
-                DateTime  = Get-Date
-                LocalPath = $P
-                SftpPath  = $SftpPath
-                FileName  = $null
-                Uploaded  = $false
-                Action    = $null
-                Error     = $_
+                DateTime   = Get-Date
+                LocalPath  = $P
+                SftpPath   = $SftpPath
+                FileName   = $null
+                FileLength = $null
+                Uploaded   = $false
+                Action     = $null
+                Error      = $_
             }
             Write-Warning $_
             $Error.RemoveAt(0)        
@@ -278,13 +281,14 @@ try {
         ) {
             try {
                 $result = [PSCustomObject]@{
-                    DateTime  = Get-Date
-                    LocalPath = $null
-                    SftpPath  = $SftpPath
-                    FileName  = $partialFile.Name
-                    Uploaded  = $false
-                    Action    = @()
-                    Error     = $null
+                    DateTime   = Get-Date
+                    LocalPath  = $null
+                    SftpPath   = $SftpPath
+                    FileName   = $partialFile.Name
+                    FileLength = $partialFile.Length
+                    Uploaded   = $false
+                    Action     = @()
+                    Error      = $null
                 }
 
                 Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
@@ -310,13 +314,14 @@ try {
             Write-Verbose "File '$($file.FullName)'"
 
             $result = [PSCustomObject]@{
-                DateTime  = Get-Date
-                LocalPath = $file.FullName | Split-Path -Parent
-                SftpPath  = $SftpPath
-                FileName  = $file.Name
-                Uploaded  = $false
-                Action    = @()
-                Error     = $null
+                DateTime   = Get-Date
+                LocalPath  = $file.FullName | Split-Path -Parent
+                SftpPath   = $SftpPath
+                FileName   = $file.Name
+                FileLength = $file.Length
+                Uploaded   = $false
+                Action     = @()
+                Error      = $null
             }
 
             $tempFile = @{
@@ -415,13 +420,14 @@ try {
 }
 catch {
     [PSCustomObject]@{
-        DateTime  = Get-Date
-        LocalPath = $Path
-        SftpPath  = $SftpPath
-        FileName  = $null
-        Uploaded  = $false
-        Action    = $null
-        Error     = "General error: $_"
+        DateTime   = Get-Date
+        LocalPath  = $Path
+        SftpPath   = $SftpPath
+        FileName   = $null
+        FileLength = $null
+        Uploaded   = $false
+        Action     = $null
+        Error      = "General error: $_"
     }
     Write-Warning $_
     $Error.RemoveAt(0)

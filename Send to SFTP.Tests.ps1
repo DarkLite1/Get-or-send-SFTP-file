@@ -171,12 +171,12 @@ Describe 'when a file is uploaded' {
         It 'Error' {
             $testResults.Error | Should -BeNullOrEmpty
         }
-        It 'Length' {
-            $testResults.Length | Should -Not -BeNullOrEmpty
-            $testResults.Length | Should -BeOfType [int]
+        It 'FileLength' {
+            $testResults.FileLength | Should -Not -BeNullOrEmpty
+            $testResults.FileLength | Should -BeOfType [long]
         }
     }
-} -Tag test
+}
 Describe 'upload to the SFTP server' {
     BeforeAll {
     }
