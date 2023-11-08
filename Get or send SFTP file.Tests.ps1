@@ -809,7 +809,7 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow.FileName | Should -Be $testRow.FileName
                 $actualRow.FileSize | Should -Be $testRow.FileSize
             }
-        } -Tag test
+        }
     }
     Context 'send an e-mail' {
         It 'with attachment to the user' {
@@ -836,7 +836,7 @@ Describe 'ExportExcelFile.When' {
     
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -BeNullOrEmpty
-        }
+        } -Tag test
         It "'OnlyOnError' and no errors are found" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnError'
