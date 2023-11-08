@@ -800,6 +800,7 @@ End {
 
                 $excelParams = @{
                     Path          = New-LogFileNameHC @excelFileLogParams
+                    AutoNameRange = $true
                     Append        = $true
                     AutoSize      = $true
                     FreezeTopRow  = $true
@@ -812,7 +813,17 @@ End {
                 $exportToExcel.Count, $excelParams.WorksheetName
                 Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
             
-                $exportToExcel | Export-Excel @excelParams
+                $exportToExcel | Export-Excel @excelParams -CellStyleSB {
+                    Param (
+                        $WorkSheet,
+                        $TotalRows,
+                        $LastColumn
+                    )
+                
+                    @($WorkSheet.Names['FileSize'].Style).ForEach( 
+                        { $_.NumberFormat.Format = '0.00\ \K\B' }
+                    )
+                }
 
                 $mailParams.Attachments = $excelParams.Path
             }
