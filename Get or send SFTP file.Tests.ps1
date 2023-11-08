@@ -69,27 +69,30 @@ BeforeAll {
 
     $testData = @(
         [PSCustomObject]@{
-            LocalPath = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0]
-            SftpPath  = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
-            FileName  = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0] | Split-Path -Leaf
-            DateTime  = Get-Date
-            Uploaded  = $true
-            Action    = @('file uploaded', 'file removed')
-            Error     = $null
+            LocalPath  = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0]
+            SftpPath   = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
+            FileName   = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0] | Split-Path -Leaf
+            FileLength = 5KB
+            DateTime   = Get-Date
+            Uploaded   = $true
+            Action     = @('file uploaded', 'file removed')
+            Error      = $null
         }     
         [PSCustomObject]@{
-            LocalPath = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1]
-            SftpPath  = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
-            FileName  = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1] | Split-Path -Leaf
-            DateTime  = Get-Date
-            Uploaded  = $true
-            Action    = @('file uploaded', 'file removed')
-            Error     = $null
+            LocalPath  = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1]
+            SftpPath   = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
+            FileName   = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1] | Split-Path -Leaf
+            FileLength = 9KB
+            DateTime   = Get-Date
+            Uploaded   = $true
+            Action     = @('file uploaded', 'file removed')
+            Error      = $null
         }
         [PSCustomObject]@{
             LocalPath  = $testInputFile.Tasks[0].Actions[1].Parameter.Path
             SftpPath   = $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath
             FileName   = 'sftp file.txt'
+            FileLength = 3KB
             DateTime   = Get-Date
             Downloaded = $true
             Action     = @('file downloaded', 'file removed')
@@ -103,6 +106,7 @@ BeforeAll {
             Source       = $testData[0].LocalPath
             Destination  = $testData[0].SftpPath
             FileName     = $testData[0].FileName
+            FileSize     = $testData[0].FileLength / 1KB
             DateTime     = $testData[0].DateTime
             Type         = 'Upload'
             Successful   = $true
@@ -114,6 +118,7 @@ BeforeAll {
             Source       = $testData[1].LocalPath
             Destination  = $testData[1].SftpPath
             FileName     = $testData[1].FileName
+            FileSize     = $testData[1].FileLength / 1KB
             DateTime     = $testData[1].DateTime
             Type         = 'Upload'
             Successful   = $true
@@ -125,6 +130,7 @@ BeforeAll {
             Source       = $testData[2].SftpPath
             Destination  = $testData[2].LocalPath
             FileName     = $testData[2].FileName
+            FileSize     = $testData[2].FileLength / 1KB
             DateTime     = $testData[2].DateTime
             Type         = 'Download'
             Successful   = $true
@@ -801,6 +807,7 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow.Type | Should -Be $testRow.Type
                 $actualRow.Successful | Should -Be $testRow.Successful
                 $actualRow.FileName | Should -Be $testRow.FileName
+                $actualRow.FileSizeKB | Should -Be $testRow.FileSizeKB
             }
         } -Tag test
     }

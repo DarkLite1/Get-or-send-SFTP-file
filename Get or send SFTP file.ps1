@@ -747,6 +747,10 @@ End {
                 }, 
                 'FileName',
                 @{
+                    Name       = 'FileSize'
+                    Expression = { $_.FileLength / 1KB }
+                },
+                @{
                     Name       = 'Successful'
                     Expression = { 
                         if ($action.Type -eq 'Upload') {
@@ -760,7 +764,7 @@ End {
                 @{
                     Name       = 'Action'
                     Expression = { $_.Action -join ', ' }
-                }, 
+                },
                 Error
                 #endregion
             }
