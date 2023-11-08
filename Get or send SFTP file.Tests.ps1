@@ -807,7 +807,7 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow.Type | Should -Be $testRow.Type
                 $actualRow.Successful | Should -Be $testRow.Successful
                 $actualRow.FileName | Should -Be $testRow.FileName
-                $actualRow.FileSizeKB | Should -Be $testRow.FileSizeKB
+                $actualRow.FileSize | Should -Be $testRow.FileSize
             }
         } -Tag test
     }
