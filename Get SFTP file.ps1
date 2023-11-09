@@ -6,16 +6,29 @@
     Download files from an SFTP server.
 
 .DESCRIPTION
-    Download files from an SFTP server.
+    Download one or more files from an SFTP server. Downloaded files will
+    always be removed from the SFTP server. Simply  because renaming the file
+    on the SFTP server, to avoid file locks, might otherwise interfere with 
+    the creation of new files with the same name on the SFTP server.
+
+    To avoid file locks:
+    1. Rename the source file on the SFTP server
+       from 'a.txt' to 'a.txt.PartialFileExtension'
+        > when a file can't be renamed it is locked
+        > then we wait a few seconds for an unlock and try again
+    2. Download 'a.txt.PartialFileExtension' from the SFTP server
+    3. Remove the file on the SFTP server
+    4. Rename the file from 'a.txt.PartialFileExtension' to 'a.txt'
+       in the download folder
 
 .PARAMETER Path
-    Folder where the downloaded files will be saved.
-
-.PARAMETER SftpPath
-    Path on the SFTP server where the files are located.
+    Full path to the folder where the downloaded files will be saved.
     
 .PARAMETER SftpComputerName
     The URL where the SFTP server can be reached.
+
+.PARAMETER SftpPath
+    Path to th folder on the SFTP server.
 
 .PARAMETER SftpUserName
     The user name used to authenticate to the SFTP server.
@@ -23,17 +36,35 @@
 .PARAMETER SftpPassword
     The password used to authenticate to the SFTP server.
 
+.PARAMETER PartialFileExtension
+    The name used for the file extension of the partial file that is being 
+    downloaded. The file that needs to be downloaded is first renamed 
+    by adding another file extension. This will make sure that errors like 
+    "file in use by another process" are avoided. 
+    
+    After a rename the file is downloaded with the extension defined in 
+    "PartialFileExtension". After a successful download the file is then 
+    removed from the SFTP server and renamed to its original name in the
+    download folder.
+
+.PARAMETER FileExtensions
+    Only the files with a matching file extension will be downloaded. If blank, 
+    all files will be downloaded. 
+
 .PARAMETER OverwriteFile
     When a file that is being downloaded is already present with the same name
     it will be overwritten when OverwriteFile is TRUE.
 
-.PARAMETER RemoveFileAfterDownload
-    When the file is correctly downloaded, remove it from the SFTP server.
+.PARAMETER RemoveFailedPartialFiles
+    When the download process is interrupted, it is possible that files are not 
+    completely downloaded and that there are sill partial files present on the 
+    SFTP server or in the local folder.
 
-.PARAMETER ErrorWhenPathIsNotFound
-    When ErrorWhenPathIsNotFound is TRUE and download folder does not exist, 
-    an error is thrown. When ErrorWhenPathIsNotFound is FALSE and the download
-    folder does not exist, the folder is created.
+    When RemoveFailedPartialFiles is TRUE these partial files will be removed
+    before the script starts. When RemoveFailedPartialFiles is FALSE, manual
+    intervention will be required to decide to still download the partial file
+    found on the SFTP server, to rename the partial file on the local system,
+    or to simply remove the partial file(s).
 #>
 
 [CmdLetBinding()]
@@ -48,33 +79,18 @@ Param (
     [String]$SftpUserName,
     [Parameter(Mandatory)]
     [SecureString]$SftpPassword,
+    [Parameter(Mandatory)]
+    [String]$PartialFileExtension,
     [Boolean]$OverwriteFile,
-    [Boolean]$RemoveFileAfterDownload,
-    [Boolean]$ErrorWhenPathIsNotFound
+    [Boolean]$RemoveFailedPartialFiles,
+    [String[]]$FileExtensions,
+    [Int]$RetryCountOnLockedFiles = 3,
+    [Int]$RetryWaitSeconds = 3
 )
 
 try {
-    Write-Verbose "Test download path '$Path'"
-    $downloadPathItem = Get-Item -LiteralPath $Path -ErrorAction 'Ignore'
-      
-    #region Test Path exists
-    if (-not $downloadPathItem) {
-        $M = "Download folder '$Path' not found"
-        if ($ErrorWhenPathIsNotFound) {
-            throw $M
-        }
+    $ErrorActionPreference = 'Stop'
 
-        Write-Verbose $M
-
-        try {
-            $downloadPathItem = New-Item -Path $Path -ItemType Directory -ErrorAction 'Stop'
-        }
-        catch {
-            throw "Failed creating download folder '$Path': $_"
-        }
-    }
-    #endregion
-    
     #region Create SFTP credential
     try {
         Write-Verbose 'Create SFTP credential'
@@ -82,7 +98,6 @@ try {
         $params = @{
             TypeName     = 'System.Management.Automation.PSCredential'
             ArgumentList = $SftpUserName, $SftpPassword
-            ErrorAction  = 'Stop'
         }
         $sftpCredential = New-Object @params
     }
@@ -99,7 +114,6 @@ try {
             ComputerName = $SftpComputerName
             Credential   = $sftpCredential
             AcceptKey    = $true
-            ErrorAction  = 'Stop'
         }
         $sftpSession = New-SFTPSession @params
     }
@@ -109,8 +123,7 @@ try {
     #endregion
 
     $sessionParams = @{
-        SessionId   = $sftpSession.SessionID
-        ErrorAction = 'Stop'
+        SessionId = $sftpSession.SessionID
     }
 
     #region Test SFTP path exists
@@ -121,72 +134,230 @@ try {
     }    
     #endregion
 
-    #region Get SFTP file list
-    try {
-        $M = "Get SFTP file list in path '{0}'" -f $SftpPath
-        Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
+    #region Test download folder exists
+    Write-Verbose "Test download folder '$Path' exists"
+        
+    if (-not (Test-Path -LiteralPath $Path -PathType 'Container')) {
+        throw "Path '$Path' not found"
+    }    
+    #endregion
 
-        $sftpFiles = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
+    #region Get list of files on the SFTP server
+    try {
+        Write-Verbose "Get list of files from SFTP server path '$SftpPath'"
+    
+        $allFiles = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
     }
     catch {
-        throw "Failed retrieving the SFTP file list from '$SftpComputerName' in path '$SftpPath': $_"
+        [PSCustomObject]@{
+            DateTime   = Get-Date
+            LocalPath  = $P
+            SftpPath   = $SftpPath
+            FileName   = $null
+            FileLength = $null
+            Downloaded = $false
+            Action     = $null
+            Error      = $_
+        }
+        Write-Warning $_
+        $Error.RemoveAt(0)        
     }
     #endregion
 
-    foreach ($file in $sftpFiles) {
+    #region Remove partial files that failed downloading
+    if ($RemoveFailedPartialFiles) {
+        #region From the SFTP server
+        foreach (
+            $partialFile in 
+            $allFiles | Where-Object { $_.Name -like "*$PartialFileExtension" }
+        ) {
+            try {
+                $result = [PSCustomObject]@{
+                    DateTime   = Get-Date
+                    LocalPath  = $null
+                    SftpPath   = $SftpPath
+                    FileName   = $partialFile.Name
+                    FileLength = $partialFile.Length
+                    Downloaded = $false
+                    Action     = @()
+                    Error      = $null
+                }
+
+                Write-Verbose "Remove failed downloaded partial file '$($partialFile.FullName)'"
+
+                Remove-SFTPItem @sessionParams -Path $partialFile.FullName
+
+                $result.Action = "removed failed downloaded partial file '$($partialFile.FullName)'"
+            }
+            catch {
+                $result.Error = "Failed removing downloaded partial file: $_"
+                Write-Warning $result.Error
+                $Error.RemoveAt(0)
+            }
+            finally {
+                $result
+            }
+        }
+        #endregion
+
+        #region From the download folder
+        foreach (
+            $partialFile in 
+            Get-ChildItem -LiteralPath $Path -File | Where-Object { 
+                $_.Name -like "*$PartialFileExtension" 
+            }
+        ) {
+            try {
+                $result = [PSCustomObject]@{
+                    DateTime   = Get-Date
+                    LocalPath  = $null
+                    SftpPath   = $SftpPath
+                    FileName   = $partialFile.Name
+                    FileLength = $partialFile.Length
+                    Downloaded = $false
+                    Action     = @()
+                    Error      = $null
+                }
+
+                Write-Verbose "Remove failed downloaded partial file '$($partialFile.FullName)'"
+
+                Remove-Item -LiteralPath $partialFile.FullName
+
+                $result.Action = "removed failed downloaded partial file '$($partialFile.FullName)'"
+            }
+            catch {
+                $result.Error = "Failed removing downloaded partial file: $_"
+                Write-Warning $result.Error
+                $Error.RemoveAt(0)
+            }
+            finally {
+                $result
+            }
+        }
+        #endregion
+    }
+    #endregion
+    
+    #region Only select the required files for download
+    $filesToDownload = $allFiles.Where(
+        { $_.Name -notLike "*$PartialFileExtension" }
+    )
+    
+    if ($FileExtensions) {
+        Write-Verbose "Only include files with extension '$FileExtensions'"
+        $filesToDownload = $filesToDownload.Where(
+            { $FileExtensions -contains $_.Extension }
+        )
+    }
+    #endregion
+        
+    if (-not $filesToDownload) {
+        Write-Verbose 'No files to download'
+        Exit
+    }
+
+    foreach ($file in $filesToDownload) {
         try {
+            Write-Verbose "File '$($file.FullName)'"
+
             $result = [PSCustomObject]@{
                 DateTime   = Get-Date
                 LocalPath  = $Path
                 SftpPath   = $SftpPath
                 FileName   = $file.Name
+                FileLength = $file.Length
                 Downloaded = $false
                 Action     = @()
                 Error      = $null
             }
 
-            Write-Verbose "Download file '$($result.FileName)'"
-    
-            #region Download file from SFTP server
-            try {
-                $params = @{
-                    Path        = $file.FullName
-                    Destination = $downloadPathItem.FullName
-                }
-    
-                if ($OverwriteFile) {
-                    $params.Force = $true
-                }
-    
-                Get-SFTPItem @sessionParams @params
+            $tempFile = @{
+                DownloadFileName = $file.Name -Replace "\$($file.Extension)", "$($file.Extension)$PartialFileExtension" 
+            }
+            $tempFile.DownloadFilePath = $result.SftpPath + $tempFile.DownloadFileName
 
-                $result.Action += 'file downloaded'
-                $result.Downloaded = $true
-            }
-            catch {
-                $M = "Failed downloading file: $_"
-                $Error.RemoveAt(0)
-                throw $M
-            }
-            #endregion
-    
-            #region Remove file after download
-            if ($RemoveFileAfterDownload) {
+            #region Rename source file to temp file on SFTP server
+            $retryCount = 0
+            $fileLocked = $true
+
+            while (
+                ($fileLocked) -and
+                ($retryCount -lt $RetryCountOnLockedFiles)
+            ) {
                 try {
-                    $M = "Remove file '{0}' from SFTP server" -f $file.FullName
-                    Write-Verbose $M
-    
-                    Remove-SFTPItem @sessionParams -Path $file.FullName
+                    $params = @{
+                        Path    = $file.FullName
+                        NewName = $tempFile.DownloadFileName
+                    }
+                    Rename-SFTPFile @sessionParams @params
         
-                    $result.Action += 'file removed'    
+                    $fileLocked = $false
+                    $result.Action += 'temp file created on SFTP server'
                 }
                 catch {
-                    $M = "Failed removing downloaded file: $_"
-                    $Error.RemoveAt(0)
-                    throw $M
+                    $retryCount++
+                    Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
+                    Start-Sleep -Seconds $RetryWaitSeconds
                 }
             }
+
+            if ($fileLocked) {
+                throw "File in use by another process. Waited for $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds without success."
+            }
             #endregion
+    
+            #region download temp file from the SFTP server
+            try {
+                $params = @{
+                    Path        = $tempFile.DownloadFilePath
+                    Destination = $Path
+                }
+                
+                if ($OverwriteFileOnSftpServer) {
+                    Write-Verbose 'Overwrite file on on the local file system'
+                    $params.Force = $true
+                }
+                
+                Write-Verbose "download file '$($params.Path)'"
+                Get-SFTPItem @sessionParams @params
+    
+                Write-Verbose 'File downloaded'
+                $result.Action += 'temp file downloaded'
+            }
+            catch {
+                throw "Failed to download file '$($tempFile.DownloadFilePath)': $_"
+            }
+            #endregion
+    
+            #region Remove file
+            try {
+                Write-Verbose 'Remove file'
+
+                Remove-SFTPItem @sessionParams -Path $tempFile.DownloadFilePath
+                $result.Action += 'temp file removed from SFTP server'
+            }
+            catch {
+                throw "Failed to remove file '$($tempFile.DownloadFilePath)': $_"
+            }
+            #endregion
+            
+            #region Rename file
+            try {
+                $params = @{
+                    LiteralPath = Join-Path $Path $tempFile.DownloadFileName
+                    NewName     = $result.FileName
+                }
+                Rename-Item @params
+    
+                $result.Action += 'temp file renamed'
+            }
+            catch {
+                throw "Failed to rename the file '$($tempFile.DownloadFileName)' to '$($result.FileName)' on the SFTP server: $_"
+            }
+            #endregion
+
+            $result.Action += 'file successfully downloaded'
+            $result.Downloaded = $true
         }
         catch {
             $result.Error = $_
@@ -197,6 +368,7 @@ try {
             $result
         }
     }
+    
 }
 catch {
     [PSCustomObject]@{
@@ -204,9 +376,10 @@ catch {
         LocalPath  = $Path
         SftpPath   = $SftpPath
         FileName   = $null
+        FileLength = $null
         Downloaded = $false
         Action     = $null
-        Error      = $_
+        Error      = "General error: $_"
     }
     Write-Warning $_
     $Error.RemoveAt(0)
