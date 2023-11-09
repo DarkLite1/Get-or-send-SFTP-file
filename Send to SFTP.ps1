@@ -42,6 +42,10 @@
     "PartialFileExtension". After a successful upload the file is then renamed 
     on the SFTP server to its original name with the correct file extension.
 
+.PARAMETER FileExtensions
+    Only the files with a matching file extension will be uploaded. If blank, 
+    all files will be uploaded. 
+
 .PARAMETER OverwriteFileOnSftpServer
     Overwrite the file on the SFTP server in case it already exists.
 
