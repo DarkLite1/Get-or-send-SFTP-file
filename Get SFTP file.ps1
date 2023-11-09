@@ -368,7 +368,6 @@ try {
             $result
         }
     }
-    
 }
 catch {
     [PSCustomObject]@{
