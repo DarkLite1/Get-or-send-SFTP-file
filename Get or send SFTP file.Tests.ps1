@@ -43,15 +43,13 @@ BeforeAll {
                     @{
                         Type      = 'Download'
                         Parameter = @{
-                            SftpPath     = '/SFTP/folder/'
-                            ComputerName = 'localhost'
-                            Path         = (New-Item 'TestDrive:\d' -ItemType Directory).FullName
-                            Option       = @{
-                                OverwriteFile        = $false
-                                RemoveFileAfterwards = $false
-                                ErrorWhen            = @{
-                                    PathIsNotFound = $true
-                                }
+                            SftpPath             = '/SFTP/folder/'
+                            ComputerName         = 'localhost'
+                            Path                 = (New-Item 'TestDrive:\d' -ItemType Directory).FullName
+                            FileExtensions       = @('.txt')
+                            PartialFileExtension = '.DownloadInProgress'
+                            Option               = @{
+                                OverwriteFile = $false
                             }
                         }
                     }
@@ -402,7 +400,8 @@ Describe 'send an e-mail to the admin when' {
             }
             Context "Tasks.Actions.Type is 'Download'" {
                 It 'Tasks.Actions.Parameter.<_> not found' -ForEach @(
-                    'SftpPath', 'ComputerName', 'Path', 'Option'
+                    'SftpPath', 'ComputerName', 'Path', 'Option',
+                    'FileExtensions', 'PartialFileExtension'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[1].Parameter.$_ = $null

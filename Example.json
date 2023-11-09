@@ -35,6 +35,8 @@
             "SftpPath": "/data/",
             "ComputerName": "localhost",
             "Path": "C:\\Folder",
+            "FileExtensions": [".xlsx", ".txt"],
+            "PartialFileExtension": ".DownloadInProgress",
             "Option": {
               "OverwriteFile": false
             },

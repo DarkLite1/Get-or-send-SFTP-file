@@ -259,7 +259,8 @@ Begin {
                         'Download' {
                             @(
                                 'SftpPath', 'ComputerName', 
-                                'Path', 'Option'
+                                'Path', 'Option',
+                                'FileExtensions', 'PartialFileExtension'
                             ).Where(
                                 { -not $action.Parameter.$_ }
                             ).foreach(
