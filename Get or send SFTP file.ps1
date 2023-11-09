@@ -270,8 +270,7 @@ Begin {
                             foreach (
                                 $boolean in 
                                 @(
-                                    'OverwriteFile', 
-                                    'RemoveFileAfterwards'
+                                    'OverwriteFile'
                                 )
                             ) {
                                 try {
@@ -279,20 +278,6 @@ Begin {
                                 }
                                 catch {
                                     throw "Property 'Tasks.Actions.Parameter.Option.$boolean' is not a boolean value"
-                                }
-                            }
-
-                            foreach (
-                                $boolean in 
-                                @(
-                                    'PathIsNotFound'
-                                )
-                            ) {
-                                try {
-                                    $null = [Boolean]::Parse($action.Parameter.Option.ErrorWhen.$boolean)
-                                }
-                                catch {
-                                    throw "Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$boolean' is not a boolean value"
                                 }
                             }
                             #endregion

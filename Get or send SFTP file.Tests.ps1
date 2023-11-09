@@ -421,8 +421,7 @@ Describe 'send an e-mail to the admin when' {
                     }
                 }
                 It 'Tasks.Actions.Parameter.Option.<_> not a boolean' -ForEach @(
-                    'OverwriteFile', 
-                    'RemoveFileAfterwards'
+                    'OverwriteFile'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[1].Parameter.Option.$_ = $null
@@ -435,25 +434,6 @@ Describe 'send an e-mail to the admin when' {
                     Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and 
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.Option.$_' is not a boolean value*")
-                    }
-                }
-                It 'Tasks.Actions.Parameter.Option.ErrorWhen.<_> not a boolean' -ForEach @(
-                    'PathIsNotFound'
-                ) {
-                    $testNewInputFile = Copy-ObjectHC $testInputFile
-                    $testNewInputFile.Tasks[0].Actions[1].Parameter.Option.ErrorWhen.$_ = $null
-    
-                    $testNewInputFile | ConvertTo-Json -Depth 7 | 
-                    Out-File @testOutParams
-                    
-                    .$testScript @testParams
-                    
-                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
-                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$_' is not a boolean value*")
-                    }
-                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                        $EntryType -eq 'Error'
                     }
                 }
             }
