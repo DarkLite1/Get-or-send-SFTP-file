@@ -240,13 +240,15 @@ try {
     
     #region Only select the required files for download
     $filesToDownload = $allFiles.Where(
-        { $_.Name -notLike "*$PartialFileExtension" }
+        { $_.Name -notmatch "$PartialFileExtension$" }
     )
     
     if ($FileExtensions) {
-        Write-Verbose "Only include files with extension '$FileExtensions'"
+        Write-Verbose "Only include files with extension '$FileExtensions'"    
+        $fileExtensionFilter = ($FileExtensions).ForEach({ "$_$" }) -join '|'
+        
         $filesToDownload = $filesToDownload.Where(
-            { $FileExtensions -contains $_.Extension }
+            { $_.Name -match $fileExtensionFilter }
         )
     }
     #endregion
