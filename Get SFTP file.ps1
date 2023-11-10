@@ -361,6 +361,8 @@ try {
 
             $result.Action += 'file successfully downloaded'
             $result.Downloaded = $true
+
+            Write-Verbose 'file successfully downloaded'
         }
         catch {
             $result.Error = $_
