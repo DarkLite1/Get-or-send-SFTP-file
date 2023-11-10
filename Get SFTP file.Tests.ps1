@@ -14,15 +14,20 @@ BeforeAll {
         SftpPassword         = 'pass' | ConvertTo-SecureString -AsPlainText -Force
     }
 
-    Mock Get-SFTPChildItem {
+    $testData = @(
         [PSCustomObject]@{
             Name     = 'file.txt'
             FullName = $testParams.SftpPath + 'file.txt'
+            Length   = 1KB
         }
+    )
+
+    Mock Get-SFTPChildItem {
+        $testData
     }
     Mock Get-SFTPItem
-    Mock Set-SFTPItem
     Mock Rename-SFTPFile
+    Mock Rename-Item
     Mock Remove-SFTPItem
     Mock New-SFTPSession {
         [PSCustomObject]@{
@@ -83,60 +88,55 @@ Describe 'generate an error when' {
         $testResult = .$testScript @testParams
 
         $testResult.Error | Should -BeLike '*download failed'
-    } -Tag test
-}
-Describe 'do not start an SFTP sessions when' {
-    It 'there is nothing to download' {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = (New-Item 'TestDrive:/f' -ItemType 'Directory').FullName
+    }
+    It 'the file cannot be removed from the SFTP server' {
+        Mock Remove-SFTPItem {
+            throw 'removal failed'
+        }
 
-        .$testScript @testNewParams
+        $testResult = .$testScript @testParams
 
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = 'c:\doesNotExist.txt'
-        $testNewParams.ErrorWhenUploadPathIsNotFound = $true
+        $testResult.Error | Should -BeLike "*removal failed"
+    }
+    It 'the file cannot be renamed on the file system' {
+        Mock Rename-Item {
+            throw 'rename failed'
+        }
 
-        .$testScript @testNewParams
+        $testResult = .$testScript @testParams
 
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = 'c:\doesNotExist.txt'
-        $testNewParams.ErrorWhenUploadPathIsNotFound = $false
-
-        .$testScript @testNewParams
-
-        Should -Not -Invoke Set-SFTPItem
-        Should -Not -Invoke New-SFTPSession
-        Should -Not -Invoke Test-SFTPPath
-        Should -Not -Invoke Remove-SFTPSession
+        $testResult.Error | Should -BeLike "*rename failed"
     }
 }
-Describe 'when a file is uploaded' {
+Describe 'when a file is downloaded' {
     BeforeAll {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = (New-Item 'TestDrive:/c.txt' -ItemType 'File').FullName
-
-        $testResults = .$testScript @testNewParams
+        $testResults = .$testScript @testParams
     }
-    It 'it is renamed to extension .DownloadInProgress' {
-        'TestDrive:/c.txt' | Should -Not -Exist
+    It 'it is renamed on the SFTP server to extension .DownloadInProgress' {
+        Should -Invoke Rename-SFTPFile -Times 1 -Exactly -Scope Describe -ParameterFilter {
+            ($Path -eq $testParams.SftpPath + $testData[0].Name) -and
+            ($NewName -eq $testData[0].Name + $testParams.PartialFileExtension)
+        }
     }
-    It 'it is uploaded to the SFTP server with extension .DownloadInProgress' {
-        Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
-            ($Path -like '*\c.txt.DownloadInProgress') -and
-            ($Destination -eq $testNewParams.SftpPath) -and
+    It 'it is downloaded from the SFTP server with extension .DownloadInProgress' {
+        Should -Invoke Get-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
+            ($Path -eq $testParams.SftpPath + $testData[0].Name + $testParams.PartialFileExtension) -and
+            ($Destination -eq $testParams.Path) -and
             ($SessionId -eq 1)
         }
     }
-    It 'it is renamed on the SFTP server to its original name' {
-        Should -Invoke Rename-SFTPFile -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
-            ($NewName -eq 'c.txt') -and
-            ($Path -eq ($testNewParams.SftpPath + 'c.txt.DownloadInProgress')) -and
+    It 'it is removed from the SFTP server after a successful download' {
+        Should -Invoke Remove-SFTPItem -Times 1 -Exactly -Scope Describe -ParameterFilter {
+            ($Path -eq $testParams.SftpPath + $testData[0].Name + $testParams.PartialFileExtension) -and
             ($SessionId -eq 1)
         }
     }
-    It 'it is removed after a successful download' {
-        'TestDrive:/c.txt.DownloadInProgress' | Should -Not -Exist 
-    }
+    It 'it is renamed on the local file system to its original name' {
+        Should -Invoke Rename-Item -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
+            ($NewName -eq $testData[0].Name) -and
+            ($LiteralPath -eq ($testParams.Path + '\' + $testData[0].Name + $testParams.PartialFileExtension))
+        }
+    } -Tag test 
     Context 'an object is returned with property' {
         It 'DateTime' {
             $testResults.DateTime.ToString('yyyyMMdd') | 
@@ -145,36 +145,34 @@ Describe 'when a file is uploaded' {
         Context 'Action' {
             It "<_>" -ForEach @(
                 'temp file created',
-                'temp file uploaded',
+                'temp file downloaded',
                 'temp file removed',
-                'temp file renamed on SFTP server',
-                'file successfully uploaded'
+                'temp file renamed',
+                'file successfully downloaded'
             ) {
                 $testResults.Action | Should -Contain $_
             }
         }
-        It 'Uploaded' {
-            $testResults.Uploaded | Should -BeTrue
+        It 'Downloaded' {
+            $testResults.Downloaded | Should -BeTrue
         }
         It 'LocalPath' {
-            $testResults.LocalPath | 
-            Should -Be ($testNewParams.Path | Split-Path -Parent)
+            $testResults.LocalPath | Should -Be $testParams.Path
         }
         It 'FileName' {
-            $testResults.FileName | 
-            Should -Be ($testNewParams.Path | Split-Path -Leaf)
+            $testResults.FileName | Should -Be $testData[0].Name
         }
         It 'SftpPath' {
-            $testResults.SftpPath | Should -Be $testNewParams.SftpPath
+            $testResults.SftpPath | Should -Be $testParams.SftpPath
         }
         It 'Error' {
             $testResults.Error | Should -BeNullOrEmpty
         }
         It 'FileLength' {
             $testResults.FileLength | Should -Not -BeNullOrEmpty
-            $testResults.FileLength | Should -BeOfType [long]
+            $testResults.FileLength | Should -BeOfType [int]
         }
-    }
+    }  -Tag test 
 }
 Describe 'download to the SFTP server' {
     BeforeAll {
@@ -228,7 +226,7 @@ Describe 'download to the SFTP server' {
             $_.LocalPath | Should -Not -BeNullOrEmpty
             $_.SftpPath | Should -Be $testNewParams.SftpPath
             $_.FileName | Should -Not -BeNullOrEmpty
-            $_.Uploaded | Should -BeTrue
+            $_.Downloaded | Should -BeTrue
             $_.DateTime | Should -Not -BeNullOrEmpty
             $_.Action | Should -Not -BeNullOrEmpty
             $_.Error | Should -BeNullOrEmpty
@@ -273,7 +271,7 @@ Describe 'OverwriteFileOnSftpServer' {
     }
 }
 Describe 'when RemoveFailedPartialFiles is true' {
-    Context 'remove partial files that are not completely uploaded' {
+    Context 'remove partial files that are not completely downloaded' {
         It 'from the local folder in Path' {
             $testNewParams = $testParams.Clone()
             $testNewParams.RemoveFailedPartialFiles = $true
@@ -294,7 +292,7 @@ Describe 'when RemoveFailedPartialFiles is true' {
                 { $_.FileName -eq $testFiles[1].Name }
             )
 
-            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFiles[1].FullName)'" 
+            $testResult.Action | Should -Be "removed failed downloaded partial file '$($testFiles[1].FullName)'" 
         }
         It 'with the same name as a file in Path' {
             $testNewParams = $testParams.Clone()
@@ -311,7 +309,7 @@ Describe 'when RemoveFailedPartialFiles is true' {
                 { $_.FileName -eq $testFile.Name }
             )
 
-            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFile.FullName)'" 
+            $testResult.Action | Should -Be "removed failed downloaded partial file '$($testFile.FullName)'" 
         }
         It 'from the SFTP server' {
             $testFile = [PSCustomObject]@{
@@ -333,7 +331,7 @@ Describe 'when RemoveFailedPartialFiles is true' {
                 { $_.FileName -eq $testFile.Name }
             )
 
-            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFile.FullName)'" 
+            $testResult.Action | Should -Be "removed failed downloaded partial file '$($testFile.FullName)'" 
         }
     }
 }
@@ -342,7 +340,7 @@ Describe 'when FileExtensions is' {
         $testNewParams = $testParams.Clone()
         $testNewParams.Path = (New-Item 'TestDrive:\download' -ItemType 'Directory').FullName
     }
-    It 'empty, all files are uploaded' {
+    It 'empty, all files are downloaded' {
         $testNewParams.FileExtensions = @()
 
         $testFiles = @(
@@ -362,7 +360,7 @@ Describe 'when FileExtensions is' {
             }
         }
     }
-    It 'not empty, only specific files are uploaded' {
+    It 'not empty, only specific files are downloaded' {
         $testNewParams.FileExtensions = @('.txt', '.xml')
 
         $testFiles = @(

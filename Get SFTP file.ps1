@@ -273,8 +273,8 @@ try {
 
             $tempFile = @{
                 DownloadFileName = $file.Name + $PartialFileExtension
+                DownloadFilePath = $SftpPath + $file.Name + $PartialFileExtension
             }
-            $tempFile.DownloadFilePath = $result.SftpPath + $tempFile.DownloadFileName
 
             #region Rename source file to temp file on SFTP server
             $retryCount = 0
@@ -289,10 +289,11 @@ try {
                         Path    = $file.FullName
                         NewName = $tempFile.DownloadFileName
                     }
+                    Write-Verbose "rename file to '$($params.NewName)'"
                     Rename-SFTPFile @sessionParams @params
         
                     $fileLocked = $false
-                    $result.Action += 'temp file created on SFTP server'
+                    $result.Action += 'temp file created'
                 }
                 catch {
                     $retryCount++
@@ -302,7 +303,7 @@ try {
             }
 
             if ($fileLocked) {
-                throw "File in use by another process. Waited for $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds without success."
+                throw "File in use on the SFTP server by another process. Waited for $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds without success."
             }
             #endregion
     
@@ -313,15 +314,14 @@ try {
                     Destination = $Path
                 }
                 
-                if ($OverwriteFileOnSftpServer) {
+                if ($OverwriteFile) {
                     Write-Verbose 'Overwrite file on on the local file system'
                     $params.Force = $true
                 }
                 
-                Write-Verbose "download file '$($params.Path)'"
+                Write-Verbose 'download temp file'
                 Get-SFTPItem @sessionParams @params
     
-                Write-Verbose 'File downloaded'
                 $result.Action += 'temp file downloaded'
             }
             catch {
@@ -331,10 +331,10 @@ try {
     
             #region Remove file
             try {
-                Write-Verbose 'Remove file'
+                Write-Verbose 'Remove temp file'
 
                 Remove-SFTPItem @sessionParams -Path $tempFile.DownloadFilePath
-                $result.Action += 'temp file removed from SFTP server'
+                $result.Action += 'temp file removed'
             }
             catch {
                 throw "Failed to remove file '$($tempFile.DownloadFilePath)': $_"
@@ -347,12 +347,13 @@ try {
                     LiteralPath = Join-Path $Path $tempFile.DownloadFileName
                     NewName     = $result.FileName
                 }
+                Write-Verbose 'Rename temp file'
                 Rename-Item @params
     
                 $result.Action += 'temp file renamed'
             }
             catch {
-                throw "Failed to rename the file '$($tempFile.DownloadFileName)' to '$($result.FileName)' on the SFTP server: $_"
+                throw "Failed to rename the file '$($params.LiteralPath)' to '$($result.FileName)': $_"
             }
             #endregion
 
