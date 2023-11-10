@@ -272,7 +272,7 @@ try {
             }
 
             $tempFile = @{
-                DownloadFileName = $file.Name -Replace "\$($file.Extension)", "$($file.Extension)$PartialFileExtension" 
+                DownloadFileName = $file.Name + $PartialFileExtension
             }
             $tempFile.DownloadFilePath = $result.SftpPath + $tempFile.DownloadFileName
 

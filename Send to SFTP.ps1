@@ -329,7 +329,7 @@ try {
             }
 
             $tempFile = @{
-                UploadFileName = $file.Name -Replace "\$($file.Extension)", "$($file.Extension)$PartialFileExtension" 
+                UploadFileName = $file.Name + $PartialFileExtension
             }
             $tempFile.UploadFilePath = Join-Path $result.LocalPath $tempFile.UploadFileName
 

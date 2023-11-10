@@ -14,7 +14,12 @@ BeforeAll {
         SftpPassword         = 'pass' | ConvertTo-SecureString -AsPlainText -Force
     }
 
-    Mock Get-SFTPChildItem
+    Mock Get-SFTPChildItem {
+        [PSCustomObject]@{
+            Name     = 'file.txt'
+            FullName = $testParams.SftpPath + 'file.txt'
+        }
+    }
     Mock Get-SFTPItem
     Mock Set-SFTPItem
     Mock Rename-SFTPFile
@@ -69,19 +74,16 @@ Describe 'generate an error when' {
 
         $testResult.Error | 
         Should -BeLike "*Path '$($testNewParams.Path)' not found"
-    } -Tag test
+    }
     It 'the download fails' {
-        Mock Set-SFTPItem {
+        Mock Get-SFTPItem {
             throw 'download failed'
         }
 
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = $testParams.Path[0]
-
-        $testResult = .$testScript @testNewParams
+        $testResult = .$testScript @testParams
 
         $testResult.Error | Should -BeLike '*download failed'
-    }
+    } -Tag test
 }
 Describe 'do not start an SFTP sessions when' {
     It 'there is nothing to download' {
