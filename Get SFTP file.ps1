@@ -239,17 +239,20 @@ try {
     #endregion
     
     #region Only select the required files for download
-    $filesToDownload = $allFiles.Where(
-        { $_.Name -notmatch "$PartialFileExtension$" }
-    )
+    $filesToDownload = $allFiles | Where-Object { 
+        $_.Name -notmatch "$PartialFileExtension$"
+    }
+    
     
     if ($FileExtensions) {
         Write-Verbose "Only include files with extension '$FileExtensions'"    
-        $fileExtensionFilter = ($FileExtensions).ForEach({ "$_$" }) -join '|'
+        $fileExtensionFilter = (
+            $FileExtensions | ForEach-Object { "$_$" }
+        ) -join '|'
         
-        $filesToDownload = $filesToDownload.Where(
-            { $_.Name -match $fileExtensionFilter }
-        )
+        $filesToDownload = $filesToDownload | Where-Object {
+            $_.Name -match $fileExtensionFilter
+        }
     }
     #endregion
         

@@ -240,11 +240,12 @@ Describe 'when RemoveFailedPartialFiles is true' {
 
             $testResults = .$testScript @testNewParams
 
-            $testResult = $testResults.where(
-                { $_.FileName -eq $testFile.Name }
-            )
+            $testResult = $testResults | Where-Object {
+                $_.FileName -eq $testFile.Name
+            }
 
-            $testResult.Action | Should -Be "removed failed downloaded partial file '$($testFile.FullName)'" 
+            $testResult.Action | 
+            Should -Be "removed failed downloaded partial file '$($testFile.FullName)'" 
         }
     }
 }
