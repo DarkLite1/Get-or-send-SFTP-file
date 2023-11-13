@@ -38,7 +38,8 @@
             "FileExtensions": [".xlsx", ".txt"],
             "PartialFileExtension": ".DownloadInProgress",
             "Option": {
-              "OverwriteFile": false
+              "OverwriteFile": false,
+              "RemoveFailedPartialFiles": false
             },
             "?": "Type: Upload | Download"
           }

@@ -49,7 +49,8 @@ BeforeAll {
                             FileExtensions       = @('.txt')
                             PartialFileExtension = '.DownloadInProgress'
                             Option               = @{
-                                OverwriteFile = $false
+                                RemoveFailedPartialFiles = $false
+                                OverwriteFile            = $false
                             }
                         }
                     }
@@ -420,7 +421,8 @@ Describe 'send an e-mail to the admin when' {
                     }
                 }
                 It 'Tasks.Actions.Parameter.Option.<_> not a boolean' -ForEach @(
-                    'OverwriteFile'
+                    'OverwriteFile',
+                    'RemoveFailedPartialFiles'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[1].Parameter.Option.$_ = $null
@@ -698,9 +700,10 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath) -and
                 ($ArgumentList[3] -eq 'bobUserName') -and
                 ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
-                ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.OverwriteFile) -and
-                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.RemoveFileAfterwards) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.ErrorWhen.PathIsNotFound)
+                ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[1].Parameter.PartialFileExtension) -and
+                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[1].Parameter.FileExtensions)
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.OverwriteFile) -and
+                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.RemoveFileAfterwards)
             }
         )
     }
@@ -750,7 +753,7 @@ Describe 'execute the SFTP script' {
             .$testScript @testParams
     
             Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
-        }  
+        } -Tag test
     }
 }
 Describe 'when the SFTP script runs successfully' {
@@ -815,7 +818,7 @@ Describe 'ExportExcelFile.When' {
     
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -BeNullOrEmpty
-        } -Tag test
+        }
         It "'OnlyOnError' and no errors are found" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnError'

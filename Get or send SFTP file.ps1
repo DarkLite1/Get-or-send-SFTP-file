@@ -271,7 +271,8 @@ Begin {
                             foreach (
                                 $boolean in 
                                 @(
-                                    'OverwriteFile'
+                                    'OverwriteFile',
+                                    'RemoveFailedPartialFiles'
                                 )
                             ) {
                                 try {
@@ -483,22 +484,24 @@ Process {
                             $action.Parameter.SftpPath, 
                             $task.Sftp.Credential.UserName, 
                             $task.Sftp.Credential.Password, 
+                            $action.Parameter.PartialFileExtension,
+                            $action.Parameter.FileExtensions,
                             $action.Parameter.Option.OverwriteFile, 
-                            $action.Parameter.Option.RemoveFileAfterwards,
-                            $action.Parameter.Option.ErrorWhen.PathIsNotFound
+                            $action.Parameter.Option.RemoveFailedPartialFiles
                         }
                 
-                        $M = "Start SFTP download job '{0}' on '{1}' script '{9}'  with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' Option.OverwriteFile '{5}' Option.RemoveFileAfterwards '{6}' Option.ErrorWhen.PathIsNotFound '{7}' Path '{8}'" -f 
+                        $M = "Start SFTP download job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' Option.OverwriteFile '{8}' Option.RemoveFailedPartialFiles '{9}' Path '{10}'" -f 
                         $task.TaskName, 
                         $action.Parameter.ComputerName,
+                        $invokeParams.FilePath,
                         $invokeParams.ArgumentList[1], 
                         $invokeParams.ArgumentList[2], 
                         $invokeParams.ArgumentList[3], 
                         $invokeParams.ArgumentList[5],
-                        $invokeParams.ArgumentList[6], 
+                        ($invokeParams.ArgumentList[6] -join ', '), 
                         $invokeParams.ArgumentList[7],
-                        $($invokeParams.ArgumentList[0] -join "', '"),
-                        $invokeParams.FilePath
+                        $invokeParams.ArgumentList[8],
+                        $invokeParams.ArgumentList[0]
                         Write-Verbose $M; 
                         Write-EventLog @EventVerboseParams -Message $M
 
