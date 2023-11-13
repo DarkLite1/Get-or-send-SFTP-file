@@ -215,15 +215,15 @@ try {
     #endregion
 
     #region Only select the required files for upload
-    $filesToUpload = $allFiles.Where(
-        { $_.Name -notLike "*$PartialFileExtension" }
-    )
+    $filesToUpload = $allFiles | Where-Object { 
+        $_.Name -notLike "*$PartialFileExtension" 
+    }
 
     if ($FileExtensions) {
         Write-Verbose "Only include files with extension '$FileExtensions'"
-        $filesToUpload = $filesToUpload.Where(
-            { $FileExtensions -contains $_.Extension }
-        )
+        $filesToUpload = $filesToUpload | Where-Object { 
+            $FileExtensions -contains $_.Extension 
+        }
     }
     #endregion
     

@@ -291,9 +291,9 @@ Describe 'when RemoveFailedPartialFiles is true' {
 
             $testFiles[1].FullName | Should -Not -Exist
 
-            $testResult = $testResults.where(
-                { $_.FileName -eq $testFiles[1].Name }
-            )
+            $testResult = $testResults | Where-Object { 
+                $_.FileName -eq $testFiles[1].Name 
+            }
 
             $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFiles[1].FullName)'" 
         }
@@ -308,9 +308,9 @@ Describe 'when RemoveFailedPartialFiles is true' {
 
             $testFile.FullName | Should -Not -Exist
 
-            $testResult = $testResults.where(
-                { $_.FileName -eq $testFile.Name }
-            )
+            $testResult = $testResults | Where-Object { 
+                $_.FileName -eq $testFile.Name 
+            }
 
             $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFile.FullName)'" 
         }
@@ -330,11 +330,12 @@ Describe 'when RemoveFailedPartialFiles is true' {
 
             $testResults = .$testScript @testNewParams
 
-            $testResult = $testResults.where(
-                { $_.FileName -eq $testFile.Name }
-            )
+            $testResult = $testResults | Where-Object { 
+                $_.FileName -eq $testFile.Name 
+            }
 
-            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFile.FullName)'" 
+            $testResult.Action | 
+            Should -Be "removed failed uploaded partial file '$($testFile.FullName)'" 
         }
     }
 }
