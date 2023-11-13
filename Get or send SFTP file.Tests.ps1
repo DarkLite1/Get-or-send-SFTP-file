@@ -701,9 +701,9 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[3] -eq 'bobUserName') -and
                 ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
                 ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[1].Parameter.PartialFileExtension) -and
-                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[1].Parameter.FileExtensions)
+                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[1].Parameter.FileExtensions) -and
                 ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.OverwriteFile) -and
-                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.RemoveFileAfterwards)
+                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.RemoveFailedPartialFiles)
             }
         )
     }
@@ -753,7 +753,7 @@ Describe 'execute the SFTP script' {
             .$testScript @testParams
     
             Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
-        } -Tag test
+        } 
     }
 }
 Describe 'when the SFTP script runs successfully' {

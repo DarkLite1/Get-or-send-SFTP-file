@@ -498,7 +498,7 @@ Process {
                         $invokeParams.ArgumentList[2], 
                         $invokeParams.ArgumentList[3], 
                         $invokeParams.ArgumentList[5],
-                        ($invokeParams.ArgumentList[6] -join ', '), 
+                        $($invokeParams.ArgumentList[6] -join ', '),
                         $invokeParams.ArgumentList[7],
                         $invokeParams.ArgumentList[8],
                         $invokeParams.ArgumentList[0]
