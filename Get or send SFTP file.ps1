@@ -1,5 +1,5 @@
 ﻿#Requires -Version 5.1
-#Requires -Modules Toolbox.HTML, Toolbox.EventLog
+#Requires -Modules Toolbox.HTML, Toolbox.EventLog, ImportExcel
 
 <#
 .SYNOPSIS
@@ -150,7 +150,7 @@ Begin {
             [Environment]::GetEnvironmentVariable($Name)
         }
 
-        $null = Get-ScriptRuntimeHC -Start
+        Get-ScriptRuntimeHC -Start
         Import-EventLogParamsHC -Source $ScriptName
         Write-EventLog @EventStartParams
         $Error.Clear()
