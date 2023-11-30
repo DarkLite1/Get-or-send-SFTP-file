@@ -406,21 +406,42 @@ Begin {
 
         try {
             foreach ($task in $Tasks) {
-                #region Add environment variable SFTP Password
-                $params = @{
-                    String      = $null
-                    AsPlainText = $true
-                    Force       = $true
-                    ErrorAction = 'Stop'
-                }
+                #region Set secure string as password
+                if ($task.Sftp.Credential.PasswordKeyFile) {
+                    try {
+                        $PasswordKeyFileStrings = Get-Content -LiteralPath $task.Sftp.Credential.PasswordKeyFile -ErrorAction Stop
 
-                if (-not (
-                        $params.String = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.Password)
-                ) {
-                    throw "Environment variable '`$ENV:$($task.Sftp.Credential.Password)' in 'Sftp.Credential.Password' not found on computer $ENV:COMPUTERNAME"
-                }
+                        if (-not $PasswordKeyFileStrings) {
+                            throw 'File empty'
+                        }
 
-                $task.Sftp.Credential.Password = ConvertTo-SecureString @params
+                        $task.Sftp.Credential.PasswordKeyFile = $PasswordKeyFileStrings
+                    }
+                    catch {
+                        throw "Failed converting the task.Sftp.Credential.PasswordKeyFile '$($task.Sftp.Credential.PasswordKeyFile)' to an array: $_"
+                    }
+
+                    # Avoid password popup
+                    $task.Sftp.Credential.Password = New-Object System.Security.SecureString
+                }
+                else {
+                    #region Add environment variable SFTP Password
+                    $params = @{
+                        String      = $null
+                        AsPlainText = $true
+                        Force       = $true
+                        ErrorAction = 'Stop'
+                    }
+
+                    if (-not (
+                            $params.String = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.Password)
+                    ) {
+                        throw "Environment variable '`$ENV:$($task.Sftp.Credential.Password)' in 'Sftp.Credential.Password' not found on computer $ENV:COMPUTERNAME"
+                    }
+
+                    $task.Sftp.Credential.Password = ConvertTo-SecureString @params
+                    #endregion
+                }
                 #endregion
 
                 #region Add environment variable SFTP UserName
