@@ -8,7 +8,7 @@
         "Credential": {
           "UserName": "APP_X_SFTP_USERNAME",
           "Password": "APP_X_SFTP_PASSWORD",
-          "PasswordKeyFile": ""
+          "PasswordKeyFile": null
         }
       },
       "Actions": [
