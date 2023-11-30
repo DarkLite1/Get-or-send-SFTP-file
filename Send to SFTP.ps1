@@ -6,7 +6,7 @@
     Upload files to an SFTP server.
 
 .DESCRIPTION
-    Send one or more files to an SFTP server. After a successful upload the 
+    Send one or more files to an SFTP server. After a successful upload the
     source file is always removed.
 
     To avoid file locks:
@@ -17,9 +17,9 @@
     3. On the SFTP server rename 'a.txt.PartialFileExtension' to 'a.txt'
 
 .PARAMETER Path
-    Full path to the files to upload or to the folder containing the files to 
+    Full path to the files to upload or to the folder containing the files to
     upload. Only files are uploaded subfolders are not.
-    
+
 .PARAMETER SftpComputerName
     The URL where the SFTP server can be reached.
 
@@ -32,30 +32,34 @@
 .PARAMETER SftpPassword
     The password used to authenticate to the SFTP server.
 
+.PARAMETER SftpPasswordKeyFile
+    The password used to authenticate to the SFTP server. This is an
+    SSH private key file in the OpenSSH format converted to an array of strings.
+
 .PARAMETER PartialFileExtension
-    The name used for the file extension of the partial file that is being 
-    uploaded. The file that needs to be uploaded is first renamed 
-    by adding another file extension. This will make sure that errors like 
-    "file in use by another process" are avoided. 
-    
-    After a rename the file is uploaded with the extension defined in 
-    "PartialFileExtension". After a successful upload the file is then renamed 
+    The name used for the file extension of the partial file that is being
+    uploaded. The file that needs to be uploaded is first renamed
+    by adding another file extension. This will make sure that errors like
+    "file in use by another process" are avoided.
+
+    After a rename the file is uploaded with the extension defined in
+    "PartialFileExtension". After a successful upload the file is then renamed
     on the SFTP server to its original name with the correct file extension.
 
 .PARAMETER FileExtensions
-    Only the files with a matching file extension will be uploaded. If blank, 
-    all files will be uploaded. 
+    Only the files with a matching file extension will be uploaded. If blank,
+    all files will be uploaded.
 
 .PARAMETER OverwriteFileOnSftpServer
     Overwrite the file on the SFTP server in case it already exists.
 
 .PARAMETER ErrorWhenUploadPathIsNotFound
-    Create an error in the returned object when the SFTP path is not found 
+    Create an error in the returned object when the SFTP path is not found
     on the SFTP server.
 
 .PARAMETER RemoveFailedPartialFiles
-    When the upload process is interrupted, it is possible that files are not 
-    completely uploaded and that there are sill partial files present on the 
+    When the upload process is interrupted, it is possible that files are not
+    completely uploaded and that there are sill partial files present on the
     SFTP server or in the local folder.
 
     When RemoveFailedPartialFiles is TRUE these partial files will be removed
@@ -97,7 +101,7 @@ try {
         try {
             Write-Verbose "Test path '$P'"
             $item = Get-Item -LiteralPath $P -ErrorAction 'Ignore'
-      
+
             #region Test Path exists
             if (-not $item) {
                 $M = "Path '$P' not found"
@@ -115,13 +119,13 @@ try {
                 Write-Verbose "Get files in folder '$P'"
 
                 $allFiles += Get-ChildItem -LiteralPath $item.FullName -File
-                
+
                 #region Remove partial files from the local folder
                 if ($RemoveFailedPartialFiles) {
                     foreach (
-                        $partialFile in 
-                        $allFiles | Where-Object { 
-                            $_.Name -like "*$PartialFileExtension" 
+                        $partialFile in
+                        $allFiles | Where-Object {
+                            $_.Name -like "*$PartialFileExtension"
                         }
                     ) {
                         try {
@@ -209,24 +213,24 @@ try {
                 Error      = $_
             }
             Write-Warning $_
-            $Error.RemoveAt(0)        
+            $Error.RemoveAt(0)
         }
     }
     #endregion
 
     #region Only select the required files for upload
-    $filesToUpload = $allFiles | Where-Object { 
-        $_.Name -notLike "*$PartialFileExtension" 
+    $filesToUpload = $allFiles | Where-Object {
+        $_.Name -notLike "*$PartialFileExtension"
     }
 
     if ($FileExtensions) {
         Write-Verbose "Only include files with extension '$FileExtensions'"
-        $filesToUpload = $filesToUpload | Where-Object { 
-            $FileExtensions -contains $_.Extension 
+        $filesToUpload = $filesToUpload | Where-Object {
+            $FileExtensions -contains $_.Extension
         }
     }
     #endregion
-    
+
     if (-not $filesToUpload) {
         Write-Verbose 'No files to upload'
         Exit
@@ -235,7 +239,7 @@ try {
     #region Create SFTP credential
     try {
         Write-Verbose 'Create SFTP credential'
-    
+
         $params = @{
             TypeName     = 'System.Management.Automation.PSCredential'
             ArgumentList = $SftpUserName, $SftpPassword
@@ -246,7 +250,7 @@ try {
         throw "Failed creating the SFTP credential with user name '$($SftpUserName)' and password '$SftpPassword': $_"
     }
     #endregion
-        
+
     #region Open SFTP session
     try {
         Write-Verbose 'Start SFTP session'
@@ -269,18 +273,18 @@ try {
 
     #region Test SFTP path exists
     Write-Verbose "Test SFTP path '$SftpPath' exists"
-        
+
     if (-not (Test-SFTPPath @sessionParams -Path $SftpPath)) {
         throw "Path '$SftpPath' not found on SFTP server"
-    }    
+    }
     #endregion
 
     #region Remove partial files that failed uploading from the SFTP server
     if ($RemoveFailedPartialFiles) {
         $files = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
-        
+
         foreach (
-            $partialFile in 
+            $partialFile in
             $files | Where-Object { $_.Name -like "*$PartialFileExtension" }
         ) {
             try {
@@ -358,22 +362,22 @@ try {
                 throw "File in use by another process. Waited for $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds without success."
             }
             #endregion
-    
+
             #region Upload temp file to SFTP server
             try {
                 $params = @{
                     Path        = $tempFile.UploadFilePath
                     Destination = $SftpPath
                 }
-                
+
                 if ($OverwriteFileOnSftpServer) {
                     Write-Verbose 'Overwrite file on SFTP server'
                     $params.Force = $true
                 }
-                
+
                 Write-Verbose "Upload file '$($params.Path)'"
                 Set-SFTPItem @sessionParams @params
-    
+
                 Write-Verbose 'File uploaded'
                 $result.Action += 'temp file uploaded'
             }
@@ -381,19 +385,19 @@ try {
                 throw "Failed to upload file '$($tempFile.UploadFilePath)': $_"
             }
             #endregion
-    
+
             #region Remove file
             try {
                 Write-Verbose 'Remove file'
 
                 $tempFile.UploadFilePath | Remove-Item -Force
-                $result.Action += 'temp file removed'    
+                $result.Action += 'temp file removed'
             }
             catch {
                 throw "Failed to remove file '$($tempFile.UploadFilePath)': $_"
             }
             #endregion
-            
+
             #region Rename file on SFTP server
             try {
                 $params = @{
@@ -401,7 +405,7 @@ try {
                     NewName = $result.FileName
                 }
                 Rename-SFTPFile @sessionParams @params
-    
+
                 $result.Action += 'temp file renamed on SFTP server'
             }
             catch {
@@ -415,7 +419,7 @@ try {
         catch {
             $result.Error = $_
             Write-Warning $_
-            $Error.RemoveAt(0)        
+            $Error.RemoveAt(0)
         }
         finally {
             $result
