@@ -488,8 +488,9 @@ Process {
                             $task.Sftp.ComputerName,
                             $action.Parameter.SftpPath,
                             $task.Sftp.Credential.UserName,
-                            $task.Sftp.Credential.Password,
                             $action.Parameter.PartialFileExtension,
+                            $task.Sftp.Credential.Password,
+                            $task.Sftp.Credential.PasswordKeyFile,
                             $action.Parameter.Option.OverwriteFile,
                             $action.Parameter.Option.ErrorWhen.PathIsNotFound,
                             $action.Parameter.Option.RemoveFailedPartialFiles,
@@ -502,13 +503,13 @@ Process {
                         $invokeParams.ArgumentList[1],
                         $invokeParams.ArgumentList[2],
                         $invokeParams.ArgumentList[3],
-                        $invokeParams.ArgumentList[5],
-                        $invokeParams.ArgumentList[6],
+                        $invokeParams.ArgumentList[4],
                         $invokeParams.ArgumentList[7],
                         $invokeParams.ArgumentList[8],
+                        $invokeParams.ArgumentList[9],
                         $($invokeParams.ArgumentList[0] -join "', '"),
                         $invokeParams.FilePath,
-                        $invokeParams.ArgumentList[9]
+                        $invokeParams.ArgumentList[10]
 
                         Write-Verbose $M;
                         Write-EventLog @EventVerboseParams -Message $M
@@ -522,8 +523,9 @@ Process {
                             $task.Sftp.ComputerName,
                             $action.Parameter.SftpPath,
                             $task.Sftp.Credential.UserName,
-                            $task.Sftp.Credential.Password,
                             $action.Parameter.PartialFileExtension,
+                            $task.Sftp.Credential.Password,
+                            $task.Sftp.Credential.PasswordKeyFile,
                             $action.Parameter.FileExtensions,
                             $action.Parameter.Option.OverwriteFile,
                             $action.Parameter.Option.RemoveFailedPartialFiles
@@ -536,10 +538,10 @@ Process {
                         $invokeParams.ArgumentList[1],
                         $invokeParams.ArgumentList[2],
                         $invokeParams.ArgumentList[3],
-                        $invokeParams.ArgumentList[5],
-                        $($invokeParams.ArgumentList[6] -join ', '),
-                        $invokeParams.ArgumentList[7],
+                        $invokeParams.ArgumentList[4],
+                        $($invokeParams.ArgumentList[7] -join ', '),
                         $invokeParams.ArgumentList[8],
+                        $invokeParams.ArgumentList[9],
                         $invokeParams.ArgumentList[0]
                         Write-Verbose $M;
                         Write-EventLog @EventVerboseParams -Message $M

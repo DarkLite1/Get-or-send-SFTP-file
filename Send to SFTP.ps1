@@ -80,9 +80,9 @@ Param (
     [Parameter(Mandatory)]
     [String]$SftpUserName,
     [Parameter(Mandatory)]
-    [SecureString]$SftpPassword,
-    [Parameter(Mandatory)]
     [String]$PartialFileExtension,
+    [SecureString]$SftpPassword,
+    [String[]]$SftpPasswordKeyFile,
     [Boolean]$OverwriteFileOnSftpServer,
     [Boolean]$ErrorWhenUploadPathIsNotFound,
     [Boolean]$RemoveFailedPartialFiles,

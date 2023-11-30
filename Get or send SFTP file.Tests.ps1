@@ -16,8 +16,9 @@ BeforeAll {
                 Sftp            = @{
                     ComputerName = 'PC1'
                     Credential   = @{
-                        UserName = 'envVarBob'
-                        Password = 'envVarPasswordBob'
+                        UserName        = 'envVarBob'
+                        Password        = 'envVarPasswordBob'
+                        PasswordKeyFile = $null
                     }
                 }
                 Actions         = @(
@@ -30,6 +31,7 @@ BeforeAll {
                                 (New-Item 'TestDrive:\a.txt').FullName
                                 (New-Item 'TestDrive:\b.txt').FullName
                             )
+                            FileExtension        = $null
                             PartialFileExtension = '.UploadInProgress'
                             Option               = @{
                                 OverwriteFile            = $false
@@ -760,12 +762,13 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
                 ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
                 ($ArgumentList[3] -eq 'bobUserName') -and
-                ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
-                ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
-                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound) -and
-                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles) -and
-                ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions)
+                ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
+                ($ArgumentList[5] -eq 'bobPasswordEncrypted') -and
+                (-not $ArgumentList[6]) -and
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
+                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound) -and
+                ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles) -and
+                ($ArgumentList[10] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions)
             }
             {
                 ($FilePath -eq $testParams.Path.DownloadScript) -and
@@ -773,11 +776,12 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
                 ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath) -and
                 ($ArgumentList[3] -eq 'bobUserName') -and
-                ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
-                ($ArgumentList[5] -eq $testInputFile.Tasks[0].Actions[1].Parameter.PartialFileExtension) -and
-                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Actions[1].Parameter.FileExtensions) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.OverwriteFile) -and
-                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.RemoveFailedPartialFiles)
+                ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[1].Parameter.PartialFileExtension) -and
+                ($ArgumentList[5] -eq 'bobPasswordEncrypted') -and
+                (-not $ArgumentList[6]) -and
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[1].Parameter.FileExtensions) -and
+                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.OverwriteFile) -and
+                ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Option.RemoveFailedPartialFiles)
             }
         )
     }
