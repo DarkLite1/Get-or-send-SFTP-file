@@ -36,7 +36,7 @@
 .PARAMETER SftpPassword
     The password used to authenticate to the SFTP server.
 
-.PARAMETER SftpPasswordKeyFile
+.PARAMETER SftpOpenSshKeyFile
     The password used to authenticate to the SFTP server. This is an
     SSH private key file in the OpenSSH format converted to an array of strings.
 
@@ -84,7 +84,7 @@ Param (
     [Parameter(Mandatory)]
     [String]$PartialFileExtension,
     [SecureString]$SftpPassword,
-    [String[]]$SftpPasswordKeyFile,
+    [String[]]$SftpOpenSshKeyFile,
     [String[]]$FileExtensions,
     [Boolean]$OverwriteFile,
     [Boolean]$RemoveFailedPartialFiles,
