@@ -7,7 +7,8 @@
         "ComputerName": "ftp.application-x.be",
         "Credential": {
           "UserName": "APP_X_SFTP_USERNAME",
-          "Password": "APP_X_SFTP_PASSWORD"
+          "Password": "APP_X_SFTP_PASSWORD",
+          "PasswordKeyFile": ""
         }
       },
       "Actions": [

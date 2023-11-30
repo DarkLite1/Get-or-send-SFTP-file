@@ -6,11 +6,11 @@
     Download files from an SFTP server or upload files to an SFTP server.
 
 .DESCRIPTION
-    Read an input file that contains all the required parameters for this 
+    Read an input file that contains all the required parameters for this
     script. Then based on the action, a file is uploaded or downloaded.
-    
-    Based on the input file parameters a summary e-mail is sent to the user or 
-    not. In any case, when there is an error, there's always an e-mail sent to 
+
+    Based on the input file parameters a summary e-mail is sent to the user or
+    not. In any case, when there is an error, there's always an e-mail sent to
     the admin.
 
     The computer that is running the SFTP code should have the module 'Posh-SSH'
@@ -21,26 +21,30 @@
 
 .PARAMETER Tasks
     Each task is a collection of upload or download actions. The exported Excel
-    file is created based on the TaskName and is unique to a single task. 
+    file is created based on the TaskName and is unique to a single task.
 
-    If different Excel log files or e-mails are required, use separate tasks 
+    If different Excel log files or e-mails are required, use separate tasks
     with a unique TaskName.
 
 .PARAMETER Tasks.TaskName
-    Name of the task. This name is used for naming the Excel log file and to 
+    Name of the task. This name is used for naming the Excel log file and to
     identify a task in the e-mail sent to the user.
 
 .PARAMETER Tasks.Sftp.ComputerName
     The URL where the SFTP server can be reached.
 
 .PARAMETER Tasks.Sftp.Credential.UserName
-    The user name used to authenticate to the SFTP server. This is an 
+    The user name used to authenticate to the SFTP server. This is an
     environment variable on the client running the script.
-    
+
 .PARAMETER Tasks.Sftp.Credential.Password
-    The password used to authenticate to the SFTP server. This is an 
+    The password used to authenticate to the SFTP server. This is an
     environment variable on the client running the script.
-    
+
+.PARAMETER Tasks.Sftp.Credential.PasswordKeyFile
+    The password used to authenticate to the SFTP server. This is an
+    SSH private key file in the OpenSSH format.
+
 .PARAMETER Tasks.Actions
     Each action represents a job that will either upload of download files
     to or from an SFTP server.
@@ -56,24 +60,24 @@
     Parameters specific to the upload or download action.
 
 .PARAMETER Tasks.Actions.Parameter.ComputerName
-    The client where the SFTP code will be executed. This machine needs to 
+    The client where the SFTP code will be executed. This machine needs to
     have the module 'Posh-SSH' installed.
 
 .PARAMETER Tasks.Actions.Parameter.Path
     Type 'Upload':
-    - One ore more full paths to a file or folder. When Path is a folder, 
+    - One ore more full paths to a file or folder. When Path is a folder,
       the files within that folder will be uploaded.
 
     Type 'Download':
     - A single folder on the machine defined in Tasks.Actions.Parameter.ComputerName where the files will be downloaded to.
 
 .PARAMETER Tasks.Actions.Parameter.PartialFileExtension
-    When type is 'Upload' the file that needs to be uploaded is first renamed 
-    by adding another file extension. This will make sure that errors like 
-    "file in use by another process" are avoided. 
-    
-    After a rename the file is uploaded with the extension defined in 
-    "PartialFileExtension". After a successful upload the file is then renamed 
+    When type is 'Upload' the file that needs to be uploaded is first renamed
+    by adding another file extension. This will make sure that errors like
+    "file in use by another process" are avoided.
+
+    After a rename the file is uploaded with the extension defined in
+    "PartialFileExtension". After a successful upload the file is then renamed
     on the SFTP server to its original name with the correct file extension.
 
 .PARAMETER Tasks.Actions.Parameter.Option.OverwriteFile
@@ -89,8 +93,8 @@
     this option is ignored, because a folder can be empty.
 
 .PARAMETER Tasks.Actions.Parameter.Option.ErrorWhen.RemoveFailedPartialFiles
-    When the upload process is interrupted, it is possible that files are not 
-    completely uploaded and that there are sill partial files present on the 
+    When the upload process is interrupted, it is possible that files are not
+    completely uploaded and that there are sill partial files present on the
     SFTP server or in the local folder.
 
     When RemoveFailedPartialFiles is TRUE these partial files will be removed
@@ -117,9 +121,9 @@
 
     Valid values:
     - Never               : Never create an Excel log file
-    - OnlyOnError         : Only create an Excel log file when 
+    - OnlyOnError         : Only create an Excel log file when
                             errors where detected
-    - OnlyOnErrorOrAction : Only create an Excel log file when 
+    - OnlyOnErrorOrAction : Only create an Excel log file when
                             errors where detected or when items were uploaded
 #>
 
@@ -146,7 +150,7 @@ Begin {
             Param(
                 [String]$Name
             )
-        
+
             [Environment]::GetEnvironmentVariable($Name)
         }
 
@@ -195,11 +199,11 @@ Begin {
         #region Import .json file
         $M = "Import .json file '$ImportFile'"
         Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-      
-        $file = Get-Content $ImportFile -Raw -EA Stop -Encoding UTF8 | 
+
+        $file = Get-Content $ImportFile -Raw -EA Stop -Encoding UTF8 |
         ConvertFrom-Json
         #endregion
-      
+
         #region Test .json file properties
         try {
             if (-not ($Tasks = $file.Tasks)) {
@@ -227,9 +231,9 @@ Begin {
                 ).foreach(
                     { throw "Property 'Tasks.$_' not found" }
                 )
-                
+
                 if (-not $task.TaskName) {
-                    throw "Property 'Tasks.TaskName' not found" 
+                    throw "Property 'Tasks.TaskName' not found"
                 }
 
                 @('ComputerName', 'Credential').where(
@@ -237,7 +241,7 @@ Begin {
                 ).foreach(
                     { throw "Property 'Tasks.Sftp.$_' not found" }
                 )
-                                
+
                 @('UserName', 'Password').Where(
                     { -not $task.Sftp.Credential.$_ }
                 ).foreach(
@@ -258,7 +262,7 @@ Begin {
                     switch ($action.Type) {
                         'Download' {
                             @(
-                                'SftpPath', 'ComputerName', 
+                                'SftpPath', 'ComputerName',
                                 'Path', 'Option',
                                 'FileExtensions', 'PartialFileExtension'
                             ).Where(
@@ -269,7 +273,7 @@ Begin {
 
                             #region Test boolean values
                             foreach (
-                                $boolean in 
+                                $boolean in
                                 @(
                                     'OverwriteFile',
                                     'RemoveFailedPartialFiles'
@@ -287,7 +291,7 @@ Begin {
                         }
                         'Upload' {
                             @(
-                                'SftpPath', 'ComputerName', 
+                                'SftpPath', 'ComputerName',
                                 'Paths', 'Option', 'PartialFileExtension'
                             ).Where(
                                 { -not $action.Parameter.$_ }
@@ -297,7 +301,7 @@ Begin {
 
                             #region Test boolean values
                             foreach (
-                                $boolean in 
+                                $boolean in
                                 @(
                                     'OverwriteFile',
                                     'RemoveFailedPartialFiles'
@@ -312,7 +316,7 @@ Begin {
                             }
 
                             foreach (
-                                $boolean in 
+                                $boolean in
                                 @(
                                     'PathIsNotFound'
                                 )
@@ -341,7 +345,7 @@ Begin {
                                 { throw "Property 'Tasks.Actions.Parameter.FileExtensions' needs to start with a dot. For example: '.txt', '.xml', ..." }
                             )
                             #endregion
-                
+
                             break
                         }
                         Default {
@@ -349,13 +353,13 @@ Begin {
                         }
                     }
                 }
-                
+
                 @('To', 'When').Where(
                     { -not $task.SendMail.$_ }
                 ).foreach(
                     { throw "Property 'Tasks.SendMail.$_' not found" }
                 )
-                
+
                 @('When').Where(
                     { -not $task.ExportExcelFile.$_ }
                 ).foreach(
@@ -401,7 +405,7 @@ Begin {
                 ) {
                     throw "Environment variable '`$ENV:$($task.Sftp.Credential.Password)' in 'Sftp.Credential.Password' not found on computer $ENV:COMPUTERNAME"
                 }
-                
+
                 $task.Sftp.Credential.Password = ConvertTo-SecureString @params
                 #endregion
 
@@ -419,7 +423,7 @@ Begin {
                 foreach ($action in $task.Actions) {
                     $action.Parameter.SftpPath = $action.Parameter.SftpPath -replace '\\', '/'
                     $action.Parameter.SftpPath = $action.Parameter.SftpPath.TrimEnd('/') + '/'
-                    $action.Parameter.SftpPath = '/' + $action.Parameter.SftpPath.TrimStart('/') 
+                    $action.Parameter.SftpPath = '/' + $action.Parameter.SftpPath.TrimStart('/')
                 }
                 #endregion
             }
@@ -442,67 +446,67 @@ Process {
             foreach ($action in $task.Actions) {
                 #region Create job parameters
                 switch ($action.Type) {
-                    'Upload' {  
+                    'Upload' {
                         $invokeParams = @{
                             FilePath     = $PathItem.UploadScript
-                            ArgumentList = $action.Parameter.Paths, 
-                            $task.Sftp.ComputerName, 
-                            $action.Parameter.SftpPath, 
-                            $task.Sftp.Credential.UserName, 
-                            $task.Sftp.Credential.Password, 
+                            ArgumentList = $action.Parameter.Paths,
+                            $task.Sftp.ComputerName,
+                            $action.Parameter.SftpPath,
+                            $task.Sftp.Credential.UserName,
+                            $task.Sftp.Credential.Password,
                             $action.Parameter.PartialFileExtension,
-                            $action.Parameter.Option.OverwriteFile, 
+                            $action.Parameter.Option.OverwriteFile,
                             $action.Parameter.Option.ErrorWhen.PathIsNotFound,
                             $action.Parameter.Option.RemoveFailedPartialFiles,
                             $action.Parameter.FileExtensions
                         }
-                
-                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Paths '{9}' FileExtensions '{11}'" -f 
-                        $task.TaskName, 
+
+                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Paths '{9}' FileExtensions '{11}'" -f
+                        $task.TaskName,
                         $action.Parameter.ComputerName,
-                        $invokeParams.ArgumentList[1], 
-                        $invokeParams.ArgumentList[2], 
-                        $invokeParams.ArgumentList[3], 
+                        $invokeParams.ArgumentList[1],
+                        $invokeParams.ArgumentList[2],
+                        $invokeParams.ArgumentList[3],
                         $invokeParams.ArgumentList[5],
-                        $invokeParams.ArgumentList[6], 
-                        $invokeParams.ArgumentList[7], 
-                        $invokeParams.ArgumentList[8], 
+                        $invokeParams.ArgumentList[6],
+                        $invokeParams.ArgumentList[7],
+                        $invokeParams.ArgumentList[8],
                         $($invokeParams.ArgumentList[0] -join "', '"),
                         $invokeParams.FilePath,
                         $invokeParams.ArgumentList[9]
 
-                        Write-Verbose $M; 
+                        Write-Verbose $M;
                         Write-EventLog @EventVerboseParams -Message $M
 
                         break
                     }
-                    'Download' {  
+                    'Download' {
                         $invokeParams = @{
                             FilePath     = $PathItem.DownloadScript
-                            ArgumentList = $action.Parameter.Path, 
-                            $task.Sftp.ComputerName, 
-                            $action.Parameter.SftpPath, 
-                            $task.Sftp.Credential.UserName, 
-                            $task.Sftp.Credential.Password, 
+                            ArgumentList = $action.Parameter.Path,
+                            $task.Sftp.ComputerName,
+                            $action.Parameter.SftpPath,
+                            $task.Sftp.Credential.UserName,
+                            $task.Sftp.Credential.Password,
                             $action.Parameter.PartialFileExtension,
                             $action.Parameter.FileExtensions,
-                            $action.Parameter.Option.OverwriteFile, 
+                            $action.Parameter.Option.OverwriteFile,
                             $action.Parameter.Option.RemoveFailedPartialFiles
                         }
-                
-                        $M = "Start SFTP download job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' Option.OverwriteFile '{8}' Option.RemoveFailedPartialFiles '{9}' Path '{10}'" -f 
-                        $task.TaskName, 
+
+                        $M = "Start SFTP download job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' Option.OverwriteFile '{8}' Option.RemoveFailedPartialFiles '{9}' Path '{10}'" -f
+                        $task.TaskName,
                         $action.Parameter.ComputerName,
                         $invokeParams.FilePath,
-                        $invokeParams.ArgumentList[1], 
-                        $invokeParams.ArgumentList[2], 
-                        $invokeParams.ArgumentList[3], 
+                        $invokeParams.ArgumentList[1],
+                        $invokeParams.ArgumentList[2],
+                        $invokeParams.ArgumentList[3],
                         $invokeParams.ArgumentList[5],
                         $($invokeParams.ArgumentList[6] -join ', '),
                         $invokeParams.ArgumentList[7],
                         $invokeParams.ArgumentList[8],
                         $invokeParams.ArgumentList[0]
-                        Write-Verbose $M; 
+                        Write-Verbose $M;
                         Write-EventLog @EventVerboseParams -Message $M
 
                         break
@@ -519,9 +523,9 @@ Process {
                         Results = @()
                     }
                 }
-          
+
                 #region Start job
-                $computerName = $action.Parameter.ComputerName 
+                $computerName = $action.Parameter.ComputerName
 
                 $action.Job.Object = if (
                     ($computerName) -and
@@ -538,11 +542,11 @@ Process {
                     Start-Job @invokeParams
                 }
                 #endregion
-        
+
                 #region Wait for max running jobs
                 $params = @{
                     Name       = $Tasks.Actions.Job.Object | Where-Object { $_ }
-                    MaxThreads = $MaxConcurrentJobs     
+                    MaxThreads = $MaxConcurrentJobs
                 }
                 Wait-MaxRunningJobsHC @params
                 #endregion
@@ -551,7 +555,7 @@ Process {
 
         #region Wait for all jobs to finish
         Write-Verbose 'Wait for all jobs to finish'
-        
+
         $null = $Tasks.Actions.Job.Object | Wait-Job
         #endregion
 
@@ -559,8 +563,8 @@ Process {
         foreach ($task in $Tasks) {
             foreach ($action in $task.Actions) {
                 $action.Job.Results += Receive-Job -Job $action.Job.Object
-                
-                $M = "Task '{0}' type '{1}' {2} job result{3}" -f 
+
+                $M = "Task '{0}' type '{1}' {2} job result{3}" -f
                 $task.TaskName,
                 $action.Type,
                 $action.Job.Results.Count,
@@ -583,15 +587,15 @@ End {
         $countSystemErrors = (
             $Error.Exception.Message | Measure-Object
         ).Count
-        
+
         #region Create error html lists
         $systemErrorsHtmlList = if ($countSystemErrors) {
-            "<p>Detected <b>{0} system error{1}</b>:{2}</p>" -f $countSystemErrors, 
+            "<p>Detected <b>{0} system error{1}</b>:{2}</p>" -f $countSystemErrors,
             $(
                 if ($countSystemErrors -ne 1) { 's' }
             ),
             $(
-                $Error.Exception.Message | Where-Object { $_ } | 
+                $Error.Exception.Message | Where-Object { $_ } |
                 ConvertTo-HtmlListHC
             )
         }
@@ -702,7 +706,7 @@ End {
 
                 #region Create Excel objects
 
-                $exportToExcel += $action.Job.Results | Select-Object DateTime, 
+                $exportToExcel += $action.Job.Results | Select-Object DateTime,
                 @{
                     Name       = 'Type'
                     Expression = { $action.Type }
@@ -712,26 +716,26 @@ End {
                 },
                 @{
                     Name       = 'Source'
-                    Expression = { 
+                    Expression = {
                         if ($action.Type -eq 'Upload') {
-                            $_.LocalPath -join ', ' 
+                            $_.LocalPath -join ', '
                         }
                         else {
                             $_.SftpPath -join ', '
                         }
                     }
-                }, 
+                },
                 @{
                     Name       = 'Destination'
-                    Expression = { 
+                    Expression = {
                         if ($action.Type -eq 'Upload') {
                             $_.SftpPath -join ', '
                         }
                         else {
-                            $_.LocalPath -join ', ' 
+                            $_.LocalPath -join ', '
                         }
                     }
-                }, 
+                },
                 'FileName',
                 @{
                     Name       = 'FileSize'
@@ -739,7 +743,7 @@ End {
                 },
                 @{
                     Name       = 'Successful'
-                    Expression = { 
+                    Expression = {
                         if ($action.Type -eq 'Upload') {
                             $_.Uploaded
                         }
@@ -747,7 +751,7 @@ End {
                             $_.Downloaded
                         }
                     }
-                }, 
+                },
                 @{
                     Name       = 'Action'
                     Expression = { $_.Action -join ', ' }
@@ -757,17 +761,17 @@ End {
             }
 
             $htmlTableActions = $htmlTableActions -join '<br>'
-       
+
             #region Create Excel worksheet Overview
             $createExcelFile = $false
 
             if (
-                (   
-                    ($task.ExportExcelFile.When -eq 'OnlyOnError') -and 
+                (
+                    ($task.ExportExcelFile.When -eq 'OnlyOnError') -and
                     ($counter.Total.Errors)
                 ) -or
-                (   
-                    ($task.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and 
+                (
+                    ($task.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and
                     (
                         ($counter.Total.Errors) -or ($counter.Total.Actions)
                     )
@@ -796,18 +800,18 @@ End {
                     Verbose       = $false
                 }
 
-                $M = "Export {0} rows to Excel sheet '{1}'" -f 
+                $M = "Export {0} rows to Excel sheet '{1}'" -f
                 $exportToExcel.Count, $excelParams.WorksheetName
                 Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
-            
+
                 $exportToExcel | Export-Excel @excelParams -CellStyleSB {
                     Param (
                         $WorkSheet,
                         $TotalRows,
                         $LastColumn
                     )
-                
-                    @($WorkSheet.Names['FileSize'].Style).ForEach( 
+
+                    @($WorkSheet.Names['FileSize'].Style).ForEach(
                         { $_.NumberFormat.Format = '0.00\ \K\B' }
                     )
                 }
@@ -818,18 +822,18 @@ End {
 
             #region Mail subject and priority
             $mailParams.Priority = 'Normal'
-            $mailParams.Subject = @() 
-            
+            $mailParams.Subject = @()
+
             if ($task.Actions.Type -contains 'Upload') {
                 $mailParams.Subject += "$($counter.Total.UploadedFiles) uploaded"
             }
             if ($task.Actions.Type -contains 'Download') {
                 $mailParams.Subject += "$($counter.Total.DownloadedFiles) downloaded"
             }
-            
+
             if ($counter.Total.Errors) {
                 $mailParams.Priority = 'High'
-                $mailParams.Subject += "{0} error{1}" -f 
+                $mailParams.Subject += "{0} error{1}" -f
                 $counter.Total.Errors,
                 $(if ($counter.Total.Errors -ne 1) { 's' })
             }
@@ -844,12 +848,12 @@ End {
                 (
                     ($task.SendMail.When -eq 'Always')
                 ) -or
-                (   
-                    ($task.SendMail.When -eq 'OnlyOnError') -and 
+                (
+                    ($task.SendMail.When -eq 'OnlyOnError') -and
                     ($counter.Total.Errors)
                 ) -or
-                (   
-                    ($task.SendMail.When -eq 'OnlyOnErrorOrAction') -and 
+                (
+                    ($task.SendMail.When -eq 'OnlyOnErrorOrAction') -and
                     (
                         ($counter.Total.Actions) -or ($counter.Total.Errors)
                     )
@@ -899,7 +903,7 @@ End {
                 )
             </table>"
             #endregion
-                
+
             #region Send mail
             $mailParams += @{
                 To        = $task.SendMail.To
@@ -909,17 +913,17 @@ End {
                         $summaryHtmlTable
                         <p>Action details.</p>
                         $htmlTableActions"
-                
+
                 LogFolder = $LogParams.LogFolder
                 Header    = $ScriptName
                 Save      = $LogFile + ' - Mail.html'
             }
-        
+
             if ($mailParams.Attachments) {
-                $mailParams.Message += 
+                $mailParams.Message +=
                 "<p><i>* Check the attachment for details</i></p>"
             }
-        
+
             Get-ScriptRuntimeHC -Stop
 
             if ($sendMailToUser) {
@@ -935,7 +939,7 @@ End {
 
                 if ($counter.Total.Errors) {
                     Write-Verbose 'Send e-mail to admin only with errors'
-                    
+
                     $mailParams.To = $ScriptAdmin
                     Send-MailHC @mailParams
                 }
