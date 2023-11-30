@@ -42,13 +42,12 @@ BeforeAll {
 Describe 'the mandatory parameters are' {
     It '<_>' -ForEach @(
         'Path',
-        'SftpComputerName', 
-        'SftpUserName', 
-        'SftpPassword', 
+        'SftpComputerName',
+        'SftpUserName',
         'SftpPath',
         'PartialFileExtension'
     ) {
-        (Get-Command $testScript).Parameters[$_].Attributes.Mandatory | 
+        (Get-Command $testScript).Parameters[$_].Attributes.Mandatory |
         Should -BeTrue
     }
 }
@@ -77,7 +76,7 @@ Describe 'generate an error when' {
 
         $testResult = .$testScript @testNewParams
 
-        $testResult.Error | 
+        $testResult.Error |
         Should -BeLike "*Path '$($testNewParams.Path)' not found"
     }
     It 'the download fails' {
@@ -139,7 +138,7 @@ Describe 'when a file is downloaded' {
     }
     Context 'an object is returned with property' {
         It 'DateTime' {
-            $testResults.DateTime.ToString('yyyyMMdd') | 
+            $testResults.DateTime.ToString('yyyyMMdd') |
             Should -Be (Get-Date).ToString('yyyyMMdd')
         }
         Context 'Action' {
@@ -223,7 +222,7 @@ Describe 'when RemoveFailedPartialFiles is true' {
                 { $_.FileName -eq $testFiles[1].Name }
             )
 
-            $testResult.Action | Should -Be "removed failed downloaded partial file '$($testFiles[1].FullName)'" 
+            $testResult.Action | Should -Be "removed failed downloaded partial file '$($testFiles[1].FullName)'"
         }
         It 'from the SFTP server' {
             $testFile = [PSCustomObject]@{
@@ -244,8 +243,8 @@ Describe 'when RemoveFailedPartialFiles is true' {
                 $_.FileName -eq $testFile.Name
             }
 
-            $testResult.Action | 
-            Should -Be "removed failed downloaded partial file '$($testFile.FullName)'" 
+            $testResult.Action |
+            Should -Be "removed failed downloaded partial file '$($testFile.FullName)'"
         }
     }
 }
@@ -290,7 +289,7 @@ Describe 'when FileExtensions is' {
         $testNewParams.FileExtensions = @('.txt', '.xml')
 
         .$testScript @testNewParams
-        
+
         foreach ($testFile in $testFiles.where({ $_.Name -notLike "*.jpg" })) {
             Should -Invoke Get-SFTPItem -Times 1 -Exactly -ParameterFilter {
                 ($Destination -eq $testNewParams.Path) -and
@@ -304,4 +303,19 @@ Describe 'when FileExtensions is' {
             }
         }
     }
-} 
+}
+Describe 'when SftpOpenSshKeyFile is used' {
+    It 'New-SFTPSession is called with the correct arguments' {
+        $testNewParams = $testParams.Clone()
+        $testNewParams.SftpOpenSshKeyFile = @('a')
+
+        .$testScript @testNewParams
+
+        Should -Invoke New-SFTPSession -Times 1 -Exactly -ParameterFilter {
+            ($ComputerName -eq $testNewParams.SftpComputerName) -and
+            ($Credential -is 'System.Management.Automation.PSCredential') -and
+            ($AcceptKey) -and
+            ($KeyString -eq 'a')
+        }
+    }
+}

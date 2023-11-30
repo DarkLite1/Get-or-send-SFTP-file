@@ -34,13 +34,12 @@ BeforeAll {
 Describe 'the mandatory parameters are' {
     It '<_>' -ForEach @(
         'Path',
-        'SftpComputerName', 
-        'SftpUserName', 
-        'SftpPassword', 
+        'SftpComputerName',
+        'SftpUserName',
         'SftpPath',
         'PartialFileExtension'
     ) {
-        (Get-Command $testScript).Parameters[$_].Attributes.Mandatory | 
+        (Get-Command $testScript).Parameters[$_].Attributes.Mandatory |
         Should -BeTrue
     }
 }
@@ -63,14 +62,14 @@ Describe 'generate an error when' {
 
         $testResult.Error | Should -Be "General error: Path '$($testParams.SftpPath)' not found on SFTP server"
     }
-    It 'Path does not exist and ErrorWhenUploadPathIsNotFound is true' {      
+    It 'Path does not exist and ErrorWhenUploadPathIsNotFound is true' {
         $testNewParams = $testParams.Clone()
         $testNewParams.Path = 'c:\doesNotExist'
         $testNewParams.ErrorWhenUploadPathIsNotFound = $true
 
         $testResult = .$testScript @testNewParams
 
-        $testResult.Error | 
+        $testResult.Error |
         Should -Be "Path '$($testNewParams.Path)' not found"
     }
     It 'the upload fails' {
@@ -136,11 +135,11 @@ Describe 'when a file is uploaded' {
         }
     }
     It 'it is removed after a successful upload' {
-        'TestDrive:/c.txt.UploadInProgress' | Should -Not -Exist 
+        'TestDrive:/c.txt.UploadInProgress' | Should -Not -Exist
     }
     Context 'an object is returned with property' {
         It 'DateTime' {
-            $testResults.DateTime.ToString('yyyyMMdd') | 
+            $testResults.DateTime.ToString('yyyyMMdd') |
             Should -Be (Get-Date).ToString('yyyyMMdd')
         }
         Context 'Action' {
@@ -158,11 +157,11 @@ Describe 'when a file is uploaded' {
             $testResults.Uploaded | Should -BeTrue
         }
         It 'LocalPath' {
-            $testResults.LocalPath | 
+            $testResults.LocalPath |
             Should -Be ($testNewParams.Path | Split-Path -Parent)
         }
         It 'FileName' {
-            $testResults.FileName | 
+            $testResults.FileName |
             Should -Be ($testNewParams.Path | Split-Path -Leaf)
         }
         It 'SftpPath' {
@@ -183,7 +182,7 @@ Describe 'upload to the SFTP server' {
     BeforeEach {
         $testFolder = 'TestDrive:/a'
         Remove-Item $testFolder -Recurse -ErrorAction Ignore
-        $null = New-Item $testFolder -ItemType 'Directory' 
+        $null = New-Item $testFolder -ItemType 'Directory'
 
         $testFiles = @('file1.txt', 'file2.txt', 'file3.txt') | ForEach-Object {
             New-Item "$testFolder\$_" -ItemType 'File'
@@ -291,11 +290,11 @@ Describe 'when RemoveFailedPartialFiles is true' {
 
             $testFiles[1].FullName | Should -Not -Exist
 
-            $testResult = $testResults | Where-Object { 
-                $_.FileName -eq $testFiles[1].Name 
+            $testResult = $testResults | Where-Object {
+                $_.FileName -eq $testFiles[1].Name
             }
 
-            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFiles[1].FullName)'" 
+            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFiles[1].FullName)'"
         }
         It 'with the same name as a file in Path' {
             $testNewParams = $testParams.Clone()
@@ -303,16 +302,16 @@ Describe 'when RemoveFailedPartialFiles is true' {
             $testNewParams.Path = (New-Item 'TestDrive:\u.txt' -ItemType 'File').FullName
 
             $testFile = New-Item -Path "$($testNewParams.Path)$($testParams.PartialFileExtension)" -ItemType 'File'
-            
+
             $testResults = .$testScript @testNewParams
 
             $testFile.FullName | Should -Not -Exist
 
-            $testResult = $testResults | Where-Object { 
-                $_.FileName -eq $testFile.Name 
+            $testResult = $testResults | Where-Object {
+                $_.FileName -eq $testFile.Name
             }
 
-            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFile.FullName)'" 
+            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFile.FullName)'"
         }
         It 'from the SFTP server' {
             $testFile = [PSCustomObject]@{
@@ -330,12 +329,12 @@ Describe 'when RemoveFailedPartialFiles is true' {
 
             $testResults = .$testScript @testNewParams
 
-            $testResult = $testResults | Where-Object { 
-                $_.FileName -eq $testFile.Name 
+            $testResult = $testResults | Where-Object {
+                $_.FileName -eq $testFile.Name
             }
 
-            $testResult.Action | 
-            Should -Be "removed failed uploaded partial file '$($testFile.FullName)'" 
+            $testResult.Action |
+            Should -Be "removed failed uploaded partial file '$($testFile.FullName)'"
         }
     }
 }
@@ -383,7 +382,7 @@ Describe 'when FileExtensions is' {
                     ($Destination -eq $testNewParams.SftpPath) -and
                     ($Path -eq ($testFile.FullName + $testNewParams.PartialFileExtension))
                 }
-                Continue    
+                Continue
             }
 
             Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
@@ -391,5 +390,23 @@ Describe 'when FileExtensions is' {
                 ($Path -eq ($testFile.FullName + $testNewParams.PartialFileExtension))
             }
         }
-    } 
+    }
+}
+Describe 'when SftpOpenSshKeyFile is used' {
+    It 'New-SFTPSession is called with the correct arguments' {
+        $testNewParams = $testParams.Clone()
+        $testNewParams.Path = (New-Item 'TestDrive:\Upload' -ItemType 'Directory').FullName
+        New-Item -Path (Join-Path $testNewParams.Path 'k.txt') -ItemType 'File'
+
+        $testNewParams.SftpOpenSshKeyFile = @('a')
+
+        .$testScript @testNewParams
+
+        Should -Invoke New-SFTPSession -Times 1 -Exactly -ParameterFilter {
+            ($ComputerName -eq $testNewParams.SftpComputerName) -and
+            ($Credential -is 'System.Management.Automation.PSCredential') -and
+            ($AcceptKey) -and
+            ($KeyString -eq 'a')
+        }
+    }
 }

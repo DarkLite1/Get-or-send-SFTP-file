@@ -260,6 +260,11 @@ try {
             Credential   = $sftpCredential
             AcceptKey    = $true
         }
+
+        if ($SftpOpenSshKeyFile) {
+            $params.KeyString = $SftpOpenSshKeyFile
+        }
+
         $sftpSession = New-SFTPSession @params
     }
     catch {
