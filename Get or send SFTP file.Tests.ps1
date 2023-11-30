@@ -417,6 +417,42 @@ Describe 'send an e-mail to the admin when' {
                         $EntryType -eq 'Error'
                     }
                 }
+                It 'PasswordKeyFile does not exist' {
+                    $testNewInputFile = Copy-ObjectHC $testInputFile
+                    $testNewInputFile.Tasks[0].Sftp.Credential.Password = $null
+                    $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile = 'a'
+
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
+                    Out-File @testOutParams
+
+                    .$testScript @testParams
+
+                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Failed converting the task.Sftp.Credential.PasswordKeyFile*")
+                    }
+                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                        $EntryType -eq 'Error'
+                    }
+                }
+                It 'PasswordKeyFile is an empty file' {
+                    $testNewInputFile = Copy-ObjectHC $testInputFile
+                    $testNewInputFile.Tasks[0].Sftp.Credential.Password = $null
+                    $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile = (New-Item 'TestDrive:\a.pub' -ItemType File).FullName
+
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
+                    Out-File @testOutParams
+
+                    .$testScript @testParams
+
+                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Failed converting the task.Sftp.Credential.PasswordKeyFile*")
+                    }
+                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                        $EntryType -eq 'Error'
+                    }
+                }
             }
             It 'Tasks.Actions.<_> not found' -ForEach @(
                 'Type', 'Parameter'
