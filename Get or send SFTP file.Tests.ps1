@@ -76,7 +76,7 @@ BeforeAll {
             Uploaded   = $true
             Action     = @('file uploaded', 'file removed')
             Error      = $null
-        }     
+        }
         [PSCustomObject]@{
             LocalPath  = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1]
             SftpPath   = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
@@ -160,7 +160,7 @@ BeforeAll {
             [String]$Name
         )
     }
-    
+
     Mock Get-EnvironmentVariableValueHC {
         'bobUserName'
     } -ParameterFilter {
@@ -177,7 +177,7 @@ BeforeAll {
         $String -eq 'bobPassword'
     }
     Mock Start-Job {
-        & $realCmdLet.InvokeCommand -Scriptblock { 
+        & $realCmdLet.InvokeCommand -Scriptblock {
             $using:testData[0]
             $using:testData[1]
         } -AsJob -ComputerName $env:COMPUTERNAME
@@ -185,15 +185,15 @@ BeforeAll {
         $FilePath -eq $testParams.Path.UploadScript
     }
     Mock Start-Job {
-        & $realCmdLet.InvokeCommand -Scriptblock { 
+        & $realCmdLet.InvokeCommand -Scriptblock {
             $using:testData[2]
         } -AsJob -ComputerName $env:COMPUTERNAME
     } -ParameterFilter {
         $FilePath -eq $testParams.Path.DownloadScript
     }
     Mock Invoke-Command {
-        & $realCmdLet.InvokeCommand -Scriptblock { 
-            
+        & $realCmdLet.InvokeCommand -Scriptblock {
+
         } -AsJob -ComputerName $env:COMPUTERNAME
     }
     Mock Send-MailHC
@@ -201,17 +201,17 @@ BeforeAll {
 }
 Describe 'the mandatory parameters are' {
     It '<_>' -ForEach @('ImportFile', 'ScriptName') {
-        (Get-Command $testScript).Parameters[$_].Attributes.Mandatory | 
+        (Get-Command $testScript).Parameters[$_].Attributes.Mandatory |
         Should -BeTrue
     }
 }
 Describe 'send an e-mail to the admin when' {
     BeforeAll {
         $MailAdminParams = {
-            ($To -eq $testParams.ScriptAdmin) -and 
-            ($Priority -eq 'High') -and 
+            ($To -eq $testParams.ScriptAdmin) -and
+            ($Priority -eq 'High') -and
             ($Subject -eq 'FAILURE')
-        }    
+        }
     }
     It 'the log folder cannot be created' {
         $testNewParams = Copy-ObjectHC $testParams
@@ -220,7 +220,7 @@ Describe 'send an e-mail to the admin when' {
         .$testScript @testNewParams
 
         Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-            (&$MailAdminParams) -and 
+            (&$MailAdminParams) -and
             ($Message -like '*Failed creating the log folder*')
         }
     }
@@ -228,12 +228,12 @@ Describe 'send an e-mail to the admin when' {
         It 'Path.UploadScript' {
             $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Path.UploadScript = 'c:\upDoesNotExist.ps1'
-            
-            $testInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testNewParams
-    
+
             Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                     (&$MailAdminParams) -and ($Message -like "*Path.UploadScript 'c:\upDoesNotExist.ps1' not found*")
             }
@@ -244,12 +244,12 @@ Describe 'send an e-mail to the admin when' {
         It 'Path.DownloadScript' {
             $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Path.DownloadScript = 'c:\downDoesNotExist.ps1'
-            
-            $testInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testNewParams
-    
+
             Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                     (&$MailAdminParams) -and ($Message -like "*Path.DownloadScript 'c:\downDoesNotExist.ps1' not found*")
             }
@@ -262,9 +262,9 @@ Describe 'send an e-mail to the admin when' {
         It 'is not found' {
             $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.ImportFile = 'nonExisting.json'
-    
+
             .$testScript @testNewParams
-    
+
             Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                     (&$MailAdminParams) -and ($Message -like "Cannot find path*nonExisting.json*")
             }
@@ -278,14 +278,14 @@ Describe 'send an e-mail to the admin when' {
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
-                    
+
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property '$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -295,14 +295,14 @@ Describe 'send an e-mail to the admin when' {
             It 'MaxConcurrentJobs not a number' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.MaxConcurrentJobs = 'wrong'
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
-                    
+
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'MaxConcurrentJobs' needs to be a number, the value 'wrong' is not supported.*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -314,14 +314,14 @@ Describe 'send an e-mail to the admin when' {
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
-                    
+
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -331,14 +331,14 @@ Describe 'send an e-mail to the admin when' {
             It 'Tasks.TaskName not found' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].TaskName = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
-                    
+
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.TaskName' not found*")
                 }
             }
@@ -347,14 +347,14 @@ Describe 'send an e-mail to the admin when' {
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].Sftp.$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
-                    
+
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Sftp.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -362,22 +362,60 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
             It 'Tasks.Sftp.Credential.<_> not found' -ForEach @(
-                'UserName', 'Password'
+                'UserName'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].Sftp.Credential.$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
-                    
+
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Sftp.Credential.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
+                }
+            }
+            Context 'Tasks.Sftp.Credential' {
+                It 'Password or PasswordKeyFile are missing' {
+                    $testNewInputFile = Copy-ObjectHC $testInputFile
+                    $testNewInputFile.Tasks[0].Sftp.Credential.Password = $null
+                    $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile = $null
+
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
+                    Out-File @testOutParams
+
+                    .$testScript @testParams
+
+                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Property 'Tasks.Sftp.Credential.Password' or 'Tasks.Sftp.Credential.PasswordKeyFile' not found*")
+                    }
+                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                        $EntryType -eq 'Error'
+                    }
+                }
+                It 'Password and PasswordKeyFile used at the same time' {
+                    $testNewInputFile = Copy-ObjectHC $testInputFile
+                    $testNewInputFile.Tasks[0].Sftp.Credential.Password = 'a'
+                    $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile = 'b'
+
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
+                    Out-File @testOutParams
+
+                    .$testScript @testParams
+
+                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Property 'Tasks.Sftp.Credential.Password' and 'Tasks.Sftp.Credential.PasswordKeyFile' cannot be used at the same time*")
+                    }
+                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                        $EntryType -eq 'Error'
+                    }
                 }
             }
             It 'Tasks.Actions.<_> not found' -ForEach @(
@@ -385,14 +423,14 @@ Describe 'send an e-mail to the admin when' {
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].Actions[0].$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
-                    
+
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -406,14 +444,14 @@ Describe 'send an e-mail to the admin when' {
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[1].Parameter.$_ = $null
-    
-                    $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
                     Out-File @testOutParams
-                    
+
                     .$testScript @testParams
-                    
+
                     Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.$_' not found*")
                     }
                     Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -426,14 +464,14 @@ Describe 'send an e-mail to the admin when' {
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[1].Parameter.Option.$_ = $null
-    
-                    $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
                     Out-File @testOutParams
-                    
+
                     .$testScript @testParams
-                    
+
                     Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.Option.$_' is not a boolean value*")
                     }
                 }
@@ -444,14 +482,14 @@ Describe 'send an e-mail to the admin when' {
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.$_ = $null
-    
-                    $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
                     Out-File @testOutParams
-                    
+
                     .$testScript @testParams
-                    
+
                     Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.$_' not found*")
                     }
                     Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -464,14 +502,14 @@ Describe 'send an e-mail to the admin when' {
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.Option.$_ = $null
-    
-                    $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
                     Out-File @testOutParams
-                    
+
                     .$testScript @testParams
-                    
+
                     Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.Option.$_' is not a boolean value*")
                     }
                 }
@@ -480,14 +518,14 @@ Describe 'send an e-mail to the admin when' {
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.$_ = $null
-    
-                    $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
                     Out-File @testOutParams
-                    
+
                     .$testScript @testParams
-                    
+
                     Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$_' is not a boolean value*")
                     }
                     Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -500,14 +538,14 @@ Describe 'send an e-mail to the admin when' {
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].SendMail.$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
-                    
+
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.SendMail.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -519,14 +557,14 @@ Describe 'send an e-mail to the admin when' {
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].ExportExcelFile.$_ = $null
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
-                    
+
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.ExportExcelFile.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -536,14 +574,14 @@ Describe 'send an e-mail to the admin when' {
             It 'Tasks.ExportExcelFile.When is not valid' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].ExportExcelFile.When = 'wrong'
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.ExportExcelFile.When' with value 'wrong' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -553,14 +591,14 @@ Describe 'send an e-mail to the admin when' {
             It 'Tasks.SendMail.When is not valid' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].SendMail.When = 'wrong'
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.SendMail.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
@@ -575,42 +613,42 @@ Describe 'send an e-mail to the admin when' {
                 )
                 $testNewInputFile.Tasks[0].TaskName = 'Name1'
                 $testNewInputFile.Tasks[1].TaskName = 'Name1'
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.TaskName' with value 'Name1' is not unique*")
                 }
             }
             It 'Tasks.Actions.Parameter.PartialFileExtension does not start with a dot' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension = 'txt'
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.PartialFileExtension' needs to start with a dot. For example: '.txt', '.xml'*")
                 }
             }
             It 'Tasks.Actions.Parameter.FileExtension does not start with a dot' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].Actions[0].Parameter.FileExtensions = @('txt', '.xml')
-    
-                $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+                $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
-                    
+
                 .$testScript @testParams
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and 
+                        (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.FileExtensions' needs to start with a dot. For example: '.txt', '.xml'*")
                 }
             }
@@ -625,11 +663,11 @@ Describe 'send an e-mail to the admin when' {
                 $Name -eq $testInputFile.Tasks[0].Sftp.Credential.Password
             }
 
-            $testInputFile | ConvertTo-Json -Depth 7 | 
+            $testInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
 
             .$testScript @testParams
-    
+
             Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                     (&$MailAdminParams) -and ($Message -like "*Environment variable '`$ENV:$($testInputFile.Tasks[0].Sftp.Credential.Password)' in 'Sftp.Credential.Password' not found*")
             }
@@ -647,11 +685,11 @@ Describe 'send an e-mail to the admin when' {
                 $Name -eq $testInputFile.Tasks[0].Sftp.Credential.UserName
             }
 
-            $testInputFile | ConvertTo-Json -Depth 7 | 
+            $testInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
 
             .$testScript @testParams
-    
+
             Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                     (&$MailAdminParams) -and ($Message -like "*Environment variable '`$ENV:$($testInputFile.Tasks[0].Sftp.Credential.UserName)' in 'Sftp.Credential.UserName' not found*")
             }
@@ -666,10 +704,10 @@ Describe 'correct the import file' {
         $testNewInputFile = Copy-ObjectHC $testInputFile
         $testNewInputFile.Tasks[0].Actions[0].Parameter.SftpPath = '/a'
         $testNewInputFile.Tasks[0].Actions[1].Parameter.SftpPath = '\b/'
-    
-        $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+        $testNewInputFile | ConvertTo-Json -Depth 7 |
         Out-File @testOutParams
-    
+
         .$testScript @testParams
 
         $Tasks[0].Actions[0].Parameter.SftpPath | Should -Be '/a/'
@@ -711,54 +749,54 @@ Describe 'execute the SFTP script' {
         It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'PC1'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-                
+
             .$testScript @testParams
-    
+
             Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments[0]
         }
         It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-                
+
             .$testScript @testParams
-    
+
             Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[0]
-        }  
+        }
     }
     Context "for Tasks.Actions.Type 'Download'" {
         It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[1].Parameter.ComputerName = 'PC1'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-                
+
             .$testScript @testParams
-    
+
             Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
         }
         It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[1].Parameter.ComputerName = 'localhost'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-                
+
             .$testScript @testParams
-    
+
             Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
-        } 
+        }
     }
 }
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {
-        $testInputFile | ConvertTo-Json -Depth 7 | 
+        $testInputFile | ConvertTo-Json -Depth 7 |
         Out-File @testOutParams
 
         .$testScript @testParams
@@ -782,7 +820,7 @@ Describe 'when the SFTP script runs successfully' {
                 }
                 $actualRow.ComputerName | Should -Be $testRow.ComputerName
                 $actualRow.Destination | Should -Be $testRow.Destination
-                $actualRow.DateTime.ToString('yyyyMMdd') | 
+                $actualRow.DateTime.ToString('yyyyMMdd') |
                 Should -Be $testRow.DateTime.ToString('yyyyMMdd')
                 $actualRow.Action | Should -Be $testRow.Action
                 $actualRow.Error | Should -Be $testRow.Error
@@ -810,31 +848,31 @@ Describe 'ExportExcelFile.When' {
         It "'Never'" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].ExportExcelFile.When = 'Never'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -BeNullOrEmpty
         }
         It "'OnlyOnError' and no errors are found" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnError'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -BeNullOrEmpty
         }
         It "'OnlyOnErrorOrAction' and there are no errors and no actions" {
             Mock Start-Job {
-                & $realCmdLet.InvokeCommand -Scriptblock { 
-                   
+                & $realCmdLet.InvokeCommand -Scriptblock {
+
                 } -AsJob -ComputerName $env:COMPUTERNAME
             } -ParameterFilter {
                 ($FilePath -eq $testParams.Path.DownloadScript) -or
@@ -843,12 +881,12 @@ Describe 'ExportExcelFile.When' {
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrAction'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -BeNullOrEmpty
         }
@@ -856,13 +894,13 @@ Describe 'ExportExcelFile.When' {
     Context 'create an Excel file' {
         It "'OnlyOnError' and there are errors" {
             Mock Start-Job {
-                & $realCmdLet.InvokeCommand -Scriptblock { 
+                & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
                         DateTime = Get-Date
                         Action   = @()
                         Error    = 'oops'
-                    }     
+                    }
                 } -AsJob -ComputerName $env:COMPUTERNAME
             } -ParameterFilter {
                 ($FilePath -eq $testParams.Path.DownloadScript) -or
@@ -871,25 +909,25 @@ Describe 'ExportExcelFile.When' {
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnError'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -Not -BeNullOrEmpty
         }
         It "'OnlyOnErrorOrAction' and there are actions but no errors" {
             Mock Start-Job {
-                & $realCmdLet.InvokeCommand -Scriptblock { 
+                & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
                         DateTime = Get-Date
                         Uploaded = $true
                         Action   = @('upload')
                         Error    = $null
-                    }     
+                    }
                 } -AsJob -ComputerName $env:COMPUTERNAME
             } -ParameterFilter {
                 ($FilePath -eq $testParams.Path.DownloadScript) -or
@@ -898,25 +936,25 @@ Describe 'ExportExcelFile.When' {
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrAction'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -Not -BeNullOrEmpty
         }
         It "'OnlyOnErrorOrAction' and there are errors but no actions" {
             Mock Start-Job {
-                & $realCmdLet.InvokeCommand -Scriptblock { 
+                & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
                         Uploaded = $false
                         DateTime = Get-Date
                         Action   = @()
                         Error    = 'oops'
-                    }     
+                    }
                 } -AsJob -ComputerName $env:COMPUTERNAME
             } -ParameterFilter {
                 ($FilePath -eq $testParams.Path.DownloadScript) -or
@@ -925,12 +963,12 @@ Describe 'ExportExcelFile.When' {
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrAction'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Get-ChildItem $testParams.LogFolder -File -Recurse -Filter '*.xlsx' |
             Should -Not -BeNullOrEmpty
         }
@@ -946,29 +984,29 @@ Describe 'SendMail.When' {
         It "'Never'" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].SendMail.When = 'Never'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Should -Not -Invoke Send-MailHC @testParamFilter
         }
         It "'OnlyOnError' and no errors are found" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnError'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Should -Not -Invoke Send-MailHC
         }
         It "'OnlyOnErrorOrAction' and there are no errors and no actions" {
             Mock Start-Job {
-                & $realCmdLet.InvokeCommand -Scriptblock { 
-                   
+                & $realCmdLet.InvokeCommand -Scriptblock {
+
                 } -AsJob -ComputerName $env:COMPUTERNAME
             } -ParameterFilter {
                 ($FilePath -eq $testParams.Path.DownloadScript) -or
@@ -977,25 +1015,25 @@ Describe 'SendMail.When' {
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrAction'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Should -Not -Invoke Send-MailHC
         }
     }
     Context 'send an e-mail to the user' {
         It "'OnlyOnError' and there are errors" {
             Mock Start-Job {
-                & $realCmdLet.InvokeCommand -Scriptblock { 
+                & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
                         DateTime = Get-Date
                         Action   = @()
                         Error    = 'oops'
-                    }     
+                    }
                 } -AsJob -ComputerName $env:COMPUTERNAME
             } -ParameterFilter {
                 ($FilePath -eq $testParams.Path.DownloadScript) -or
@@ -1004,24 +1042,24 @@ Describe 'SendMail.When' {
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnError'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Should -Invoke Send-MailHC @testParamFilter
         }
         It "'OnlyOnErrorOrAction' and there are actions but no errors" {
             Mock Start-Job {
-                & $realCmdLet.InvokeCommand -Scriptblock { 
+                & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
                         DateTime = Get-Date
                         Uploaded = $true
                         Action   = @('upload')
                         Error    = $null
-                    }     
+                    }
                 } -AsJob -ComputerName $env:COMPUTERNAME
             } -ParameterFilter {
                 ($FilePath -eq $testParams.Path.DownloadScript) -or
@@ -1030,23 +1068,23 @@ Describe 'SendMail.When' {
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrAction'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Should -Invoke Send-MailHC @testParamFilter
         }
         It "'OnlyOnErrorOrAction' and there are errors but no actions" {
             Mock Start-Job {
-                & $realCmdLet.InvokeCommand -Scriptblock { 
+                & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
                         DateTime = Get-Date
                         Action   = @()
                         Error    = 'oops'
-                    }     
+                    }
                 } -AsJob -ComputerName $env:COMPUTERNAME
             } -ParameterFilter {
                 ($FilePath -eq $testParams.Path.DownloadScript) -or
@@ -1055,12 +1093,12 @@ Describe 'SendMail.When' {
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrAction'
-    
-            $testNewInputFile | ConvertTo-Json -Depth 7 | 
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
-    
+
             .$testScript @testParams
-    
+
             Should -Invoke Send-MailHC @testParamFilter
         }
     }

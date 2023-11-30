@@ -242,11 +242,25 @@ Begin {
                     { throw "Property 'Tasks.Sftp.$_' not found" }
                 )
 
-                @('UserName', 'Password').Where(
+                @('UserName').Where(
                     { -not $task.Sftp.Credential.$_ }
                 ).foreach(
                     { throw "Property 'Tasks.Sftp.Credential.$_' not found" }
                 )
+
+                if (
+                    $task.Sftp.Credential.Password -and
+                    $task.Sftp.Credential.PasswordKeyFile
+                ) {
+                    throw "Property 'Tasks.Sftp.Credential.Password' and 'Tasks.Sftp.Credential.PasswordKeyFile' cannot be used at the same time"
+                }
+
+                if (
+                    (-not $task.Sftp.Credential.Password) -and
+                    (-not $task.Sftp.Credential.PasswordKeyFile)
+                ) {
+                    throw "Property 'Tasks.Sftp.Credential.Password' or 'Tasks.Sftp.Credential.PasswordKeyFile' not found"
+                }
 
                 if (-not $task.Actions) {
                     throw 'Tasks.Actions is missing'
