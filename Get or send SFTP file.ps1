@@ -509,7 +509,7 @@ Process {
                         $invokeParams.ArgumentList[9],
                         $($invokeParams.ArgumentList[0] -join "', '"),
                         $invokeParams.FilePath,
-                        $invokeParams.ArgumentList[10]
+                        $($invokeParams.ArgumentList[10] -join "', '")
 
                         Write-Verbose $M;
                         Write-EventLog @EventVerboseParams -Message $M
