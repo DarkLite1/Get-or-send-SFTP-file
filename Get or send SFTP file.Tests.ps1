@@ -833,6 +833,34 @@ Describe 'execute the SFTP script' {
             Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
         }
     }
+    It 'with Tasks.Sftp.Credential.PasswordKeyFile and a blank secure string for Tasks.Sftp.Credential.Password' {
+        $testNewInputFile = Copy-ObjectHC $testInputFile
+        $testNewInputFile.Tasks[0].Sftp.Credential.Password = $null
+        $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile = (New-Item 'TestDrive:\key' -ItemType File).FullName
+
+        'passKeyContent' | Out-File -LiteralPath $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile
+
+        $testNewInputFile | ConvertTo-Json -Depth 7 |
+        Out-File @testOutParams
+
+        .$testScript @testParams
+
+        Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter {
+            ($FilePath -eq $testParams.Path.UploadScript) -and
+            ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0]) -and
+            ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1]) -and
+            ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
+            ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
+            ($ArgumentList[3] -eq 'bobUserName') -and
+            ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
+            ($ArgumentList[5] -is 'SecureString') -and
+            ($ArgumentList[6] -eq 'passKeyContent') -and
+            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
+            ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound) -and
+            ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles) -and
+            ($ArgumentList[10] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions)
+        }
+    }
 }
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {
