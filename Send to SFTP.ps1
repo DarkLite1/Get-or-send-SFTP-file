@@ -369,6 +369,7 @@ try {
                         }
                         catch {
                             $errorMessage = $_
+                            $Error.RemoveAt(0)
                             $retryCount++
                             Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
                             Start-Sleep -Seconds $RetryWaitSeconds
@@ -376,7 +377,7 @@ try {
                     }
 
                     if ($fileLocked) {
-                        throw "Failed removing duplicate file from the SFTP server after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds: $errorMessage"
+                        throw "Failed removing duplicate file from the SFTP server after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds (file in use): $errorMessage"
                     }
                 }
                 else {
@@ -400,6 +401,8 @@ try {
                     $result.Action += 'temp file created'
                 }
                 catch {
+                    $errorMessage = $_
+                    $Error.RemoveAt(0)
                     $retryCount++
                     Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
                     Start-Sleep -Seconds $RetryWaitSeconds
@@ -407,7 +410,7 @@ try {
             }
 
             if ($fileLocked) {
-                throw "File in use by another process. Waited for $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds without success."
+                throw "Failed renaming the source file after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds (file in use): $errorMessage"
             }
             #endregion
 
