@@ -102,7 +102,7 @@ try {
             Write-Verbose "Test path '$P'"
             $item = Get-Item -LiteralPath $P -ErrorAction 'Ignore'
 
-            #region Test Path exists
+            #region Test local path exists
             if (-not $item) {
                 $M = "Path '$P' not found"
                 if ($ErrorWhenUploadPathIsNotFound) {
@@ -114,7 +114,7 @@ try {
             }
             #endregion
 
-            #region Get files
+            #region Get local files
             if ($item.PSIsContainer) {
                 Write-Verbose "Get files in folder '$P'"
 
@@ -285,12 +285,12 @@ try {
     #endregion
 
     #region Remove partial files that failed uploading from the SFTP server
-    if ($RemoveFailedPartialFiles) {
-        $files = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
+    $sftpFiles = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
 
+    if ($RemoveFailedPartialFiles) {
         foreach (
             $partialFile in
-            $files | Where-Object { $_.Name -like "*$PartialFileExtension" }
+            $sftpFiles | Where-Object { $_.Name -like "*$PartialFileExtension" }
         ) {
             try {
                 $result = [PSCustomObject]@{
@@ -304,14 +304,14 @@ try {
                     Error      = $null
                 }
 
-                Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
+                Write-Verbose "Remove partial file '$($partialFile.FullName)'"
 
                 Remove-SFTPItem @sessionParams -Path $partialFile.FullName
 
-                $result.Action = "removed failed uploaded partial file '$($partialFile.FullName)'"
+                $result.Action = "removed partial file '$($partialFile.FullName)'"
             }
             catch {
-                $result.Error = "Failed removing uploaded partial file: $_"
+                $result.Error = "Failed removing partial file: $_"
                 Write-Warning $result.Error
                 $Error.RemoveAt(0)
             }
@@ -341,6 +341,32 @@ try {
                 UploadFileName = $file.Name + $PartialFileExtension
             }
             $tempFile.UploadFilePath = Join-Path $result.LocalPath $tempFile.UploadFileName
+
+            #region Test file already on SFTP server
+            if (
+                $sftpFile = $sftpFiles.where(
+                    { $_.Name -eq $file.Name }, 'First')
+            ) {
+                Write-Verbose 'Duplicate file on SFTP server'
+
+                if ($OverwriteFileOnSftpServer) {
+                    try {
+                        $removeParams = @{
+                            Path        = $sftpFile.FullName
+                            ErrorAction = 'Stop'
+                        }
+                        Remove-SFTPItem @sessionParams @removeParams
+                    }
+                    catch {
+                        throw 'Failed removing duplicate file from SFTP server'
+                    }
+                    $result.Action += 'removed duplicate file from SFTP server'
+                }
+                else {
+                    throw 'Duplicate file on SFTP server, use Option.OverwriteFile if desired'
+                }
+            }
+            #endregion
 
             #region Rename source file to temp file
             $retryCount = 0
@@ -375,11 +401,6 @@ try {
                     Destination = $SftpPath
                 }
 
-                if ($OverwriteFileOnSftpServer) {
-                    Write-Verbose 'Overwrite file on SFTP server'
-                    $params.Force = $true
-                }
-
                 Write-Verbose "Upload file '$($params.Path)'"
                 Set-SFTPItem @sessionParams @params
 
@@ -391,7 +412,7 @@ try {
             }
             #endregion
 
-            #region Remove file
+            #region Remove local file
             try {
                 Write-Verbose 'Remove file'
 
@@ -405,6 +426,10 @@ try {
 
             #region Rename file on SFTP server
             try {
+                if ($OverwriteFileOnSftpServer) {
+
+
+                }
                 $params = @{
                     Path    = $SftpPath + $tempFile.UploadFileName
                     NewName = $result.FileName
