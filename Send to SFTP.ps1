@@ -350,17 +350,32 @@ try {
                 Write-Verbose 'Duplicate file on SFTP server'
 
                 if ($OverwriteFileOnSftpServer) {
-                    try {
-                        $removeParams = @{
-                            Path        = $sftpFile.FullName
-                            ErrorAction = 'Stop'
-                        }
-                        Remove-SFTPItem @sessionParams @removeParams
+                    $retryCount = 0
+                    $fileLocked = $true
 
-                        $result.Action += 'removed duplicate file from SFTP server'
+                    while (
+                            ($fileLocked) -and
+                            ($retryCount -lt $RetryCountOnLockedFiles)
+                    ) {
+                        try {
+                            $removeParams = @{
+                                Path        = $sftpFile.FullName
+                                ErrorAction = 'Stop'
+                            }
+                            Remove-SFTPItem @sessionParams @removeParams
+
+                            $fileLocked = $false
+                            $result.Action += 'removed duplicate file from SFTP server'
+                        }
+                        catch {
+                            $retryCount++
+                            Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
+                            Start-Sleep -Seconds $RetryWaitSeconds
+                        }
                     }
-                    catch {
-                        throw "Failed removing duplicate file from SFTP server: $_"
+
+                    if ($fileLocked) {
+                        throw "Failed removing duplicate file from SFTP server: file in use by another process. Waited for $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds without success."
                     }
                 }
                 else {
