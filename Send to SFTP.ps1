@@ -299,7 +299,6 @@ try {
     #endregion
 
     #region Remove partial files that failed uploading from the SFTP server
-
     if ($RemoveFailedPartialFiles) {
         foreach (
             $partialFile in
