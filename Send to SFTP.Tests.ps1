@@ -242,34 +242,37 @@ Describe 'OverwriteFileOnSftpServer' {
         }
     }
     It 'when true the file on the SFTP server is overwritten' {
+        Mock Get-SFTPChildItem {
+            @{
+                Name = 'a.txt'
+                FullName = 'sftpPath\a.txt'
+            }
+        }
+
         $testNewParams = $testParams.Clone()
         $testNewParams.OverwriteFileOnSftpServer = $true
 
         .$testScript @testNewParams
 
-        $testNewParams.Path | ForEach-Object {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -like "$_.UploadInProgress") -and
-                ($Destination -eq $testNewParams.SftpPath) -and
-                ($SessionId -eq 1) -and
-                ($Force)
-            }
+        Should -Invoke Remove-SFTPItem -Times 1 -Exactly -ParameterFilter {
+            ($Path -eq 'sftpPath\a.txt') -and
+            ($SessionId -eq 1)
         }
     }
     It 'when false the file on the SFTP server is not overwritten' {
+        Mock Get-SFTPChildItem {
+            @{
+                Name = 'a.txt'
+                FullName = 'sftpPath\a.txt'
+            }
+        }
+
         $testNewParams = $testParams.Clone()
         $testNewParams.OverwriteFileOnSftpServer = $false
 
         .$testScript @testNewParams
 
-        $testNewParams.Path | ForEach-Object {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -like "$_.UploadInProgress") -and
-                ($Destination -eq $testNewParams.SftpPath) -and
-                ($SessionId -eq 1) -and
-                (-not $Force)
-            }
-        }
+        Should -Not -Invoke Remove-SFTPItem
     }
 }
 Describe 'when RemoveFailedPartialFiles is true' {
@@ -334,7 +337,7 @@ Describe 'when RemoveFailedPartialFiles is true' {
             }
 
             $testResult.Action |
-            Should -Be "removed failed uploaded partial file '$($testFile.FullName)'"
+            Should -Be "removed partial file '$($testFile.FullName)'"
         }
     }
 }
