@@ -358,7 +358,7 @@ try {
                         Remove-SFTPItem @sessionParams @removeParams
                     }
                     catch {
-                        throw 'Failed removing duplicate file from SFTP server'
+                        throw "Failed removing duplicate file from SFTP server: $_"
                     }
                     $result.Action += 'removed duplicate file from SFTP server'
                 }
