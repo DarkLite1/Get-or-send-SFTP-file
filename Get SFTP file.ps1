@@ -300,17 +300,32 @@ try {
                 Write-Verbose 'Duplicate file on local file system'
 
                 if ($OverwriteFile) {
-                    try {
-                        $removeParams = @{
-                            LiteralPath = $localFile.FullName
-                            ErrorAction = 'Stop'
-                        }
-                        Remove-Item @removeParams
+                    $retryCount = 0
+                    $fileLocked = $true
 
-                        $result.Action += 'removed duplicate file from local file system'
+                    while (
+                        ($fileLocked) -and
+                        ($retryCount -lt $RetryCountOnLockedFiles)
+                    ) {
+                        try {
+                            $removeParams = @{
+                                LiteralPath = $localFile.FullName
+                                ErrorAction = 'Stop'
+                            }
+                            Remove-Item @removeParams
+
+                            $fileLocked = $false
+                            $result.Action += 'removed duplicate file from local file system'
+                        }
+                        catch {
+                            $retryCount++
+                            Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
+                            Start-Sleep -Seconds $RetryWaitSeconds
+                        }
                     }
-                    catch {
-                        throw "Failed removing duplicate file from local file system: $_"
+
+                    if ($fileLocked) {
+                        throw "Failed removing duplicate file from local file system: file in use by another process. Waited for $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds without success."
                     }
                 }
                 else {
