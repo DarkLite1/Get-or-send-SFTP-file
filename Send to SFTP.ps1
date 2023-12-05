@@ -342,7 +342,7 @@ try {
             }
             $tempFile.UploadFilePath = Join-Path $result.LocalPath $tempFile.UploadFileName
 
-            #region Test file already on SFTP server
+            #region Overwrite file on SFTP server
             if (
                 $sftpFile = $sftpFiles.where(
                     { $_.Name -eq $file.Name }, 'First')
@@ -354,8 +354,8 @@ try {
                     $fileLocked = $true
 
                     while (
-                            ($fileLocked) -and
-                            ($retryCount -lt $RetryCountOnLockedFiles)
+                        ($fileLocked) -and
+                        ($retryCount -lt $RetryCountOnLockedFiles)
                     ) {
                         try {
                             $removeParams = @{
