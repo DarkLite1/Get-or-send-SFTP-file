@@ -318,6 +318,7 @@ try {
                             $result.Action += 'removed duplicate file from local file system'
                         }
                         catch {
+                            $errorMessage = $_
                             $retryCount++
                             Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
                             Start-Sleep -Seconds $RetryWaitSeconds
@@ -325,7 +326,7 @@ try {
                     }
 
                     if ($fileLocked) {
-                        throw "Failed removing duplicate file from local file system: file in use by another process. Waited for $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds without success."
+                        throw "Failed removing duplicate file from the local file system after multiple attempts within ($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds: $errorMessage"
                     }
                 }
                 else {

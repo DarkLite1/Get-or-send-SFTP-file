@@ -368,6 +368,7 @@ try {
                             $result.Action += 'removed duplicate file from SFTP server'
                         }
                         catch {
+                            $errorMessage = $_
                             $retryCount++
                             Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
                             Start-Sleep -Seconds $RetryWaitSeconds
@@ -375,7 +376,7 @@ try {
                     }
 
                     if ($fileLocked) {
-                        throw "Failed removing duplicate file from SFTP server: file in use by another process. Waited for $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds without success."
+                        throw "Failed removing duplicate file from the SFTP server after multiple attempts within ($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds: $errorMessage"
                     }
                 }
                 else {
