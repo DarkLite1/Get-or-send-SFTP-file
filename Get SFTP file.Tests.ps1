@@ -174,17 +174,26 @@ Describe 'when a file is downloaded' {
     }
 }
 Describe 'OverwriteFile' {
+    BeforeAll {
+        Mock Remove-Item
+        Mock Get-SFTPChildItem {
+            [PSCustomObject]@{
+                Name     = 'x.txt'
+                FullName = $testParams.SftpPath + 'x.txt'
+                Length   = 1KB
+            }
+        }
+
+        $testFile = New-Item -Path $testParams.Path -Name 'x.txt' -ItemType File
+    }
     It 'when true the file on the local file system is overwritten' {
         $testNewParams = $testParams.Clone()
         $testNewParams.OverwriteFile = $true
 
         .$testScript @testNewParams
 
-        Should -Invoke Get-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
-            ($Path -eq $testParams.SftpPath + $testData[0].Name + $testParams.PartialFileExtension) -and
-            ($Destination -eq $testParams.Path) -and
-            ($SessionId -eq 1) -and
-            ($Force)
+        Should -Invoke Remove-Item -Times 1 -Exactly -ParameterFilter {
+            ($LiteralPath -eq $testFile.FullName)
         }
     }
     It 'when false the file on the local file system is not overwritten' {
@@ -193,11 +202,8 @@ Describe 'OverwriteFile' {
 
         .$testScript @testNewParams
 
-        Should -Invoke Get-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
-            ($Path -eq $testParams.SftpPath + $testData[0].Name + $testParams.PartialFileExtension) -and
-            ($Destination -eq $testParams.Path) -and
-            ($SessionId -eq 1) -and
-            (-not $Force)
+        Should -Not -Invoke Remove-Item -Times 1 -Exactly -ParameterFilter {
+            ($LiteralPath -eq $testFile.FullName)
         }
     }
 }

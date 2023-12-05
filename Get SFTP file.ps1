@@ -174,6 +174,8 @@ try {
     #endregion
 
     #region Remove partial files that failed downloading
+    $localFiles = Get-ChildItem -LiteralPath $Path -File
+
     if ($RemoveFailedPartialFiles) {
         #region From the SFTP server
         foreach (
@@ -212,7 +214,7 @@ try {
         #region From the download folder
         foreach (
             $partialFile in
-            Get-ChildItem -LiteralPath $Path -File | Where-Object {
+            $localFiles | Where-Object {
                 $_.Name -like "*$PartialFileExtension"
             }
         ) {
@@ -290,6 +292,33 @@ try {
                 DownloadFilePath = $SftpPath + $file.Name + $PartialFileExtension
             }
 
+            #region Test file already present
+            if (
+                $localFile = $localFiles.where(
+                    { $_.Name -eq $file.Name }, 'First')
+            ) {
+                Write-Verbose 'Duplicate file on local file system'
+
+                if ($OverwriteFile) {
+                    try {
+                        $removeParams = @{
+                            LiteralPath = $localFile.FullName
+                            ErrorAction = 'Stop'
+                        }
+                        Remove-Item @removeParams
+
+                        $result.Action += 'removed duplicate file from local file system'
+                    }
+                    catch {
+                        throw "Failed removing duplicate file from local file system: $_"
+                    }
+                }
+                else {
+                    throw 'Duplicate file on local file system, use Option.OverwriteFile if desired'
+                }
+            }
+            #endregion
+
             #region Rename source file to temp file on SFTP server
             $retryCount = 0
             $fileLocked = $true
@@ -326,11 +355,6 @@ try {
                 $params = @{
                     Path        = $tempFile.DownloadFilePath
                     Destination = $Path
-                }
-
-                if ($OverwriteFile) {
-                    Write-Verbose 'Overwrite file on on the local file system'
-                    $params.Force = $true
                 }
 
                 Write-Verbose 'download temp file'

@@ -356,11 +356,12 @@ try {
                             ErrorAction = 'Stop'
                         }
                         Remove-SFTPItem @sessionParams @removeParams
+
+                        $result.Action += 'removed duplicate file from SFTP server'
                     }
                     catch {
                         throw "Failed removing duplicate file from SFTP server: $_"
                     }
-                    $result.Action += 'removed duplicate file from SFTP server'
                 }
                 else {
                     throw 'Duplicate file on SFTP server, use Option.OverwriteFile if desired'
