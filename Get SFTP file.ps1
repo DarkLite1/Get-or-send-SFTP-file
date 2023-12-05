@@ -326,7 +326,7 @@ try {
                     }
 
                     if ($fileLocked) {
-                        throw "Failed removing duplicate file from the local file system after multiple attempts within ($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds: $errorMessage"
+                        throw "Failed removing duplicate file from the local file system after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds: $errorMessage"
                     }
                 }
                 else {

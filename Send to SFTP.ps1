@@ -376,7 +376,7 @@ try {
                     }
 
                     if ($fileLocked) {
-                        throw "Failed removing duplicate file from the SFTP server after multiple attempts within ($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds: $errorMessage"
+                        throw "Failed removing duplicate file from the SFTP server after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds: $errorMessage"
                     }
                 }
                 else {
