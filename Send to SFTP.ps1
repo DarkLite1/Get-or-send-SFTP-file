@@ -219,15 +219,20 @@ try {
     #endregion
 
     #region Only select the required files for upload
-    $filesToUpload = $allFiles | Where-Object {
-        $_.Name -notLike "*$PartialFileExtension"
-    }
-
-    if ($FileExtensions) {
-        Write-Verbose "Only include files with extension '$FileExtensions'"
-        $filesToUpload = $filesToUpload | Where-Object {
-            $FileExtensions -contains $_.Extension
+    try {
+        $filesToUpload = $allFiles | Where-Object {
+            $_.Name -notLike "*$PartialFileExtension"
         }
+
+        if ($FileExtensions) {
+            Write-Verbose "Only include files with extension '$FileExtensions'"
+            $filesToUpload = $filesToUpload | Where-Object {
+                $FileExtensions -contains $_.Extension
+            }
+        }
+    }
+    catch {
+        throw "Failed selecting the required files for upload: $_"
     }
     #endregion
 
@@ -284,8 +289,16 @@ try {
     }
     #endregion
 
+    #region Get all SFTP files
+    try {
+        $sftpFiles = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
+    }
+    catch {
+        throw "Failed retrieving SFTP files: $_"
+    }
+    #endregion
+
     #region Remove partial files that failed uploading from the SFTP server
-    $sftpFiles = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
 
     if ($RemoveFailedPartialFiles) {
         foreach (

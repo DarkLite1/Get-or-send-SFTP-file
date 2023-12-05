@@ -173,9 +173,16 @@ try {
     }
     #endregion
 
-    #region Remove partial files that failed downloading
-    $localFiles = Get-ChildItem -LiteralPath $Path -File
+    #region Get all local files
+    try {
+        $localFiles = Get-ChildItem -LiteralPath $Path -File
+    }
+    catch {
+        throw "Failed retrieving all local files: $_"
+    }
+    #endregion
 
+    #region Remove partial files that failed downloading
     if ($RemoveFailedPartialFiles) {
         #region From the SFTP server
         foreach (
@@ -250,20 +257,24 @@ try {
     #endregion
 
     #region Only select the required files for download
-    $filesToDownload = $allFiles | Where-Object {
-        $_.Name -notmatch "$PartialFileExtension$"
-    }
-
-
-    if ($FileExtensions) {
-        Write-Verbose "Only include files with extension '$FileExtensions'"
-        $fileExtensionFilter = (
-            $FileExtensions | ForEach-Object { "$_$" }
-        ) -join '|'
-
-        $filesToDownload = $filesToDownload | Where-Object {
-            $_.Name -match $fileExtensionFilter
+    try {
+        $filesToDownload = $allFiles | Where-Object {
+            $_.Name -notmatch "$PartialFileExtension$"
         }
+
+        if ($FileExtensions) {
+            Write-Verbose "Only include files with extension '$FileExtensions'"
+            $fileExtensionFilter = (
+                $FileExtensions | ForEach-Object { "$_$" }
+            ) -join '|'
+
+            $filesToDownload = $filesToDownload | Where-Object {
+                $_.Name -match $fileExtensionFilter
+            }
+        }
+    }
+    catch {
+        throw "Failed selecting the required files for download: $_"
     }
     #endregion
 
