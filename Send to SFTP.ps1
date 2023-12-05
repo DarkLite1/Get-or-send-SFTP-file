@@ -426,10 +426,6 @@ try {
 
             #region Rename file on SFTP server
             try {
-                if ($OverwriteFileOnSftpServer) {
-
-
-                }
                 $params = @{
                     Path    = $SftpPath + $tempFile.UploadFileName
                     NewName = $result.FileName
