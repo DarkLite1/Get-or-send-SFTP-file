@@ -87,7 +87,7 @@ Describe 'generate an error when' {
         $testResult.Error | Should -BeLike '*upload failed'
 
         $error | Should -HaveCount 0
-    } -Tag test
+    }
 }
 Describe 'do not start an SFTP sessions when' {
     It 'there is nothing to upload' {
