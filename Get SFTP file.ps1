@@ -305,8 +305,9 @@ try {
 
             #region Test file already present
             if (
-                $localFile = $localFiles.where(
-                    { $_.Name -eq $file.Name }, 'First')
+                $localFile = $localFiles | Where-Object {
+                    $_.Name -eq $file.Name
+                }
             ) {
                 Write-Verbose 'Duplicate file on local file system'
 

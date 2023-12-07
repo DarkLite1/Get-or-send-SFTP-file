@@ -356,8 +356,9 @@ try {
 
             #region Overwrite file on SFTP server
             if (
-                $sftpFile = $sftpFiles.where(
-                    { $_.Name -eq $file.Name }, 'First')
+                $sftpFile = $sftpFiles | Where-Object {
+                    $_.Name -eq $file.Name
+                }
             ) {
                 Write-Verbose 'Duplicate file on SFTP server'
 
