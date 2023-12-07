@@ -106,7 +106,9 @@ try {
         $sftpCredential = New-Object @params
     }
     catch {
-        throw "Failed creating the SFTP credential with user name '$($SftpUserName)' and password '$SftpPassword': $_"
+        $errorMessage = "Failed creating the SFTP credential with user name '$($SftpUserName)' and password '$SftpPassword': $_"
+        $Error.RemoveAt(0)
+        throw $errorMessage
     }
     #endregion
 
@@ -127,7 +129,9 @@ try {
         $sftpSession = New-SFTPSession @params
     }
     catch {
-        throw "Failed creating an SFTP session to '$SftpComputerName': $_"
+        $errorMessage = "Failed creating an SFTP session to '$SftpComputerName': $_"
+        $Error.RemoveAt(0)
+        throw $errorMessage
     }
     #endregion
 
@@ -158,18 +162,9 @@ try {
         $allFiles = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
     }
     catch {
-        [PSCustomObject]@{
-            DateTime   = Get-Date
-            LocalPath  = $P
-            SftpPath   = $SftpPath
-            FileName   = $null
-            FileLength = $null
-            Downloaded = $false
-            Action     = $null
-            Error      = $_
-        }
-        Write-Warning $_
+        $errorMessage = "Failed to get a list of files on the SFTP server: $_"
         $Error.RemoveAt(0)
+        throw $errorMessage
     }
     #endregion
 
@@ -178,7 +173,9 @@ try {
         $localFiles = Get-ChildItem -LiteralPath $Path -File
     }
     catch {
-        throw "Failed retrieving all local files: $_"
+        $errorMessage = "Failed retrieving all local files: $_"
+        $Error.RemoveAt(0)
+        throw $errorMessage
     }
     #endregion
 
@@ -274,7 +271,9 @@ try {
         }
     }
     catch {
-        throw "Failed selecting the required files for download: $_"
+        $errorMessage = "Failed selecting the required files for download: $_"
+        $Error.RemoveAt(0)
+        throw $errorMessage
     }
     #endregion
 
@@ -394,7 +393,9 @@ try {
                 $result.Action += 'temp file downloaded'
             }
             catch {
-                throw "Failed to download file '$($tempFile.DownloadFilePath)': $_"
+                $errorMessage = "Failed to download file '$($tempFile.DownloadFilePath)': $_"
+                $Error.RemoveAt(0)
+                throw $errorMessage
             }
             #endregion
 
@@ -406,7 +407,9 @@ try {
                 $result.Action += 'temp file removed'
             }
             catch {
-                throw "Failed to remove file '$($tempFile.DownloadFilePath)': $_"
+                $errorMessage = "Failed to remove file '$($tempFile.DownloadFilePath)': $_"
+                $Error.RemoveAt(0)
+                throw $errorMessage
             }
             #endregion
 
@@ -422,7 +425,9 @@ try {
                 $result.Action += 'temp file renamed'
             }
             catch {
-                throw "Failed to rename the file '$($params.LiteralPath)' to '$($result.FileName)': $_"
+                $errorMessage = "Failed to rename the file '$($params.LiteralPath)' to '$($result.FileName)': $_"
+                $Error.RemoveAt(0)
+                throw $errorMessage
             }
             #endregion
 
