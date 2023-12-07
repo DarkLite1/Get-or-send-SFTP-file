@@ -80,10 +80,14 @@ Describe 'generate an error when' {
         $testNewParams = $testParams.Clone()
         $testNewParams.Path = $testParams.Path[0]
 
+        $Error.Clear()
+
         $testResult = .$testScript @testNewParams
 
         $testResult.Error | Should -BeLike '*upload failed'
-    }
+
+        $error | Should -HaveCount 0
+    } -Tag test
 }
 Describe 'do not start an SFTP sessions when' {
     It 'there is nothing to upload' {

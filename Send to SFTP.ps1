@@ -232,7 +232,9 @@ try {
         }
     }
     catch {
-        throw "Failed selecting the required files for upload: $_"
+        $errorMessage = "Failed selecting the required files for upload: $_"
+        $Error.RemoveAt(0)
+        throw $errorMessage
     }
     #endregion
 
@@ -252,7 +254,9 @@ try {
         $sftpCredential = New-Object @params
     }
     catch {
-        throw "Failed creating the SFTP credential with user name '$($SftpUserName)' and password '$SftpPassword': $_"
+        $errorMessage = "Failed creating the SFTP credential with user name '$($SftpUserName)' and password '$SftpPassword': $_"
+        $Error.RemoveAt(0)
+        throw $errorMessage
     }
     #endregion
 
@@ -273,7 +277,9 @@ try {
         $sftpSession = New-SFTPSession @params
     }
     catch {
-        throw "Failed creating an SFTP session to '$SftpComputerName': $_"
+        $errorMessage = "Failed creating an SFTP session to '$SftpComputerName': $_"
+        $Error.RemoveAt(0)
+        throw $errorMessage
     }
     #endregion
 
@@ -294,7 +300,9 @@ try {
         $sftpFiles = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
     }
     catch {
-        throw "Failed retrieving SFTP files: $_"
+        $errorMessage = "Failed retrieving SFTP files: $_"
+        $Error.RemoveAt(0)
+        throw $errorMessage
     }
     #endregion
 
@@ -441,7 +449,9 @@ try {
                 $result.Action += 'temp file uploaded'
             }
             catch {
-                throw "Failed to upload file '$($tempFile.UploadFilePath)': $_"
+                $errorMessage = "Failed to upload file '$($tempFile.UploadFilePath)': $_"
+                $Error.RemoveAt(0)
+                throw $errorMessage
             }
             #endregion
 
@@ -453,7 +463,9 @@ try {
                 $result.Action += 'temp file removed'
             }
             catch {
-                throw "Failed to remove file '$($tempFile.UploadFilePath)': $_"
+                $errorMessage = "Failed to remove file '$($tempFile.UploadFilePath)': $_"
+                $Error.RemoveAt(0)
+                throw $errorMessage
             }
             #endregion
 
@@ -468,7 +480,9 @@ try {
                 $result.Action += 'temp file renamed on SFTP server'
             }
             catch {
-                throw "Failed to rename the file '$($tempFile.UploadFileName)' to '$($result.FileName)' on the SFTP server: $_"
+                $errorMessage = "Failed to rename the file '$($tempFile.UploadFileName)' to '$($result.FileName)' on the SFTP server: $_"
+                $Error.RemoveAt(0)
+                throw $errorMessage
             }
             #endregion
 
