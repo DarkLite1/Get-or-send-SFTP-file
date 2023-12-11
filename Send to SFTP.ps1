@@ -94,6 +94,9 @@ Param (
 try {
     $ErrorActionPreference = 'Stop'
 
+    # workaround for https://github.com/PowerShell/PowerShell/issues/16894
+    $ProgressPreference = 'SilentlyContinue'
+
     #region Get files to upload
     $allFiles = @()
 
