@@ -1,6 +1,6 @@
 ﻿#Requires -Version 5.1
 #Requires -Modules Toolbox.HTML, Toolbox.EventLog, ImportExcel
-#Requires -Modules Toolbox.Remoting
+#Requires -Modules Toolbox.Remoting, Posh-SSH
 
 <#
 .SYNOPSIS
@@ -480,6 +480,13 @@ Process {
     Try {
         foreach ($task in $Tasks) {
             foreach ($action in $task.Actions) {
+                $action | Add-Member -NotePropertyMembers @{
+                    Job = @{
+                        Object  = $null
+                        Results = @()
+                    }
+                }
+
                 #region Create job parameters
                 switch ($action.Type) {
                     'Upload' {
@@ -555,29 +562,16 @@ Process {
                 }
                 #endregion
 
-                $action | Add-Member -NotePropertyMembers @{
-                    Job = @{
-                        Object  = $null
-                        Results = @()
-                    }
-                }
-
                 #region Start job
-                $computerName = $action.Parameter.ComputerName
-
-                $action.Job.Object = if (
-                    ($computerName) -and
-                    ($computerName -ne 'localhost') -and
-                    ($computerName -ne $ENV:COMPUTERNAME) -and
-                    ($computerName -ne "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
-                ) {
-                    $invokeParams.ComputerName = $computerName
-                    $invokeParams.AsJob = $true
-                    Invoke-Command @invokeParams
+                try {
+                    $invokeParams += @{
+                        Session = New-PSSessionHC -ComputerName $action.Parameter.ComputerName
+                        AsJob   = $true
+                    }
+                    $action.Job.Object = Invoke-Command @invokeParams
                 }
-                else {
-                    $action.Parameter.ComputerName = $ENV:COMPUTERNAME
-                    Start-Job @invokeParams
+                catch {
+                    throw "Failed running Invoke-Command: $_"
                 }
                 #endregion
 
