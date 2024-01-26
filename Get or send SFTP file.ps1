@@ -572,6 +572,7 @@ Process {
                 }
                 catch {
                     Write-Warning "Failed running Invoke-Command: $_"
+                    Continue
                 }
                 #endregion
 
@@ -748,7 +749,6 @@ End {
                 #endregion
 
                 #region Create Excel objects
-
                 $exportToExcel += $action.Job.Results | Select-Object DateTime,
                 @{
                     Name       = 'Type'
