@@ -571,29 +571,40 @@ Process {
                     $action.Job.Object = Invoke-Command @invokeParams
                 }
                 catch {
-                    throw "Failed running Invoke-Command: $_"
+                    Write-Warning "Failed running Invoke-Command: $_"
                 }
                 #endregion
 
                 #region Wait for max running jobs
-                $params = @{
-                    Name       = $Tasks.Actions.Job.Object | Where-Object { $_ }
+                $waitJobParams = @{
+                    Job       = $Tasks.Actions.Job.Object | Where-Object { $_ }
                     MaxThreads = $MaxConcurrentJobs
                 }
-                Wait-MaxRunningJobsHC @params
+
+                if ($waitJobParams.Job) {
+                    Wait-MaxRunningJobsHC @waitJobParams
+                }
                 #endregion
             }
         }
 
         #region Wait for all jobs to finish
-        Write-Verbose 'Wait for all jobs to finish'
+        $waitJobParams = @{
+            Job = $Tasks.Actions.Job.Object | Where-Object { $_ }
+        }
+        if ($waitJobParams.Job) {
+            Write-Verbose 'Wait for all jobs to finish'
 
-        $null = $Tasks.Actions.Job.Object | Wait-Job
+            $null = Wait-Job @waitJobParams
+        }
         #endregion
 
         #region Get job results
         foreach ($task in $Tasks) {
-            foreach ($action in $task.Actions) {
+            foreach (
+                $action in
+                $task.Actions | Where-Object { $_.Job.Object }
+            ) {
                 $action.Job.Results += Receive-Job -Job $action.Job.Object
 
                 $M = "Task '{0}' type '{1}' {2} job result{3}" -f
