@@ -802,8 +802,12 @@ Describe 'execute the SFTP script' {
                 $ComputerName -eq 'PC1'
             }
 
-            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments[0]
-        }
+            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
+                (& $testJobArguments[0]) -and
+                ($AsJob) -and
+                ($Session)
+            }
+        } -Tag test
         It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
@@ -830,8 +834,12 @@ Describe 'execute the SFTP script' {
                 $ComputerName -eq 'PC1'
             }
 
-            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
-        }
+            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
+                (& $testJobArguments[1]) -and
+                ($AsJob) -and
+                ($Session)
+            }
+        } -Tag test
         It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[1].Parameter.ComputerName = 'localhost'

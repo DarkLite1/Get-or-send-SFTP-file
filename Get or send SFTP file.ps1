@@ -481,10 +481,11 @@ Process {
         foreach ($task in $Tasks) {
             foreach ($action in $task.Actions) {
                 $action | Add-Member -NotePropertyMembers @{
-                    Job = @{
+                    Job     = @{
                         Object  = $null
                         Results = @()
                     }
+                    Session = $null
                 }
 
                 #region Create job parameters
@@ -575,12 +576,15 @@ Process {
                 }
                 else {
                     try {
-                        $invokeParams.Session = New-PSSessionHC -ComputerName $computerName
-                        $invokeParams.AsJob = $true
+                        $action.Session = New-PSSessionHC -ComputerName $computerName
+                        $invokeParams += @{
+                            Session = $action.Session
+                            AsJob   = $true
+                        }
                         Invoke-Command @invokeParams
                     }
                     catch {
-                        Write-Warning "Failed running Invoke-Command: $_"
+                        Write-Warning "Failed creating a session to '$computerName': $_"
                         Continue
                     }
                 }
