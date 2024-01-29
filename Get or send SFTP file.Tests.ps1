@@ -4,6 +4,7 @@
 
 BeforeAll {
     $realCmdLet = @{
+        StartJob      = Get-Command Start-Job
         InvokeCommand = Get-Command Invoke-Command
     }
 
@@ -177,7 +178,10 @@ BeforeAll {
     } -ParameterFilter {
         $String -eq 'bobPassword'
     }
-    Mock Invoke-Command {
+    Mock New-PSSessionHC {
+        New-PSSession -ComputerName 'localhost'
+    }
+    Mock Start-Job {
         & $realCmdLet.InvokeCommand -Scriptblock {
             $using:testData[0]
             $using:testData[1]
@@ -185,7 +189,7 @@ BeforeAll {
     } -ParameterFilter {
         $FilePath -eq $testParams.Path.UploadScript
     }
-    Mock Invoke-Command {
+    Mock Start-Job {
         & $realCmdLet.InvokeCommand -Scriptblock {
             $using:testData[2]
         } -AsJob -ComputerName $env:COMPUTERNAME
@@ -196,9 +200,6 @@ BeforeAll {
         & $realCmdLet.InvokeCommand -Scriptblock {
 
         } -AsJob -ComputerName $env:COMPUTERNAME
-    }
-    Mock New-PSSessionHC {
-        New-PSSession -ComputerName $env:COMPUTERNAME
     }
     Mock Send-MailHC
     Mock Write-EventLog
@@ -787,8 +788,23 @@ Describe 'execute the SFTP script' {
             }
         )
     }
-    Context 'call Invoke-Command with the correct arguments for' {
-        It 'Upload' {
+    Context "for Tasks.Actions.Type 'Upload'" {
+        It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'PC1'
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
+            Out-File @testOutParams
+
+            .$testScript @testParams
+
+            Should -Invoke New-PSSessionHC -Times 1 -Exactly -ParameterFilter {
+                $ComputerName -eq 'PC1'
+            }
+
+            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments[0]
+        }
+        It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
 
@@ -797,9 +813,26 @@ Describe 'execute the SFTP script' {
 
             .$testScript @testParams
 
-            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments[0]
+            Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[0]
         }
-        It 'Download' {
+    }
+    Context "for Tasks.Actions.Type 'Download'" {
+        It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
+            $testNewInputFile = Copy-ObjectHC $testInputFile
+            $testNewInputFile.Tasks[0].Actions[1].Parameter.ComputerName = 'PC1'
+
+            $testNewInputFile | ConvertTo-Json -Depth 7 |
+            Out-File @testOutParams
+
+            .$testScript @testParams
+
+            Should -Invoke New-PSSessionHC -Times 1 -Exactly -ParameterFilter {
+                $ComputerName -eq 'PC1'
+            }
+
+            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
+        }
+        It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[1].Parameter.ComputerName = 'localhost'
 
@@ -808,7 +841,7 @@ Describe 'execute the SFTP script' {
 
             .$testScript @testParams
 
-            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
+            Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter $testJobArguments[1]
         }
     }
     It 'with Tasks.Sftp.Credential.PasswordKeyFile and a blank secure string for Tasks.Sftp.Credential.Password' {
@@ -823,7 +856,7 @@ Describe 'execute the SFTP script' {
 
         .$testScript @testParams
 
-        Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
+        Should -Invoke Start-Job -Times 1 -Exactly -ParameterFilter {
             ($FilePath -eq $testParams.Path.UploadScript) -and
             ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0]) -and
             ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1]) -and
@@ -916,7 +949,7 @@ Describe 'ExportExcelFile.When' {
             Should -BeNullOrEmpty
         }
         It "'OnlyOnErrorOrAction' and there are no errors and no actions" {
-            Mock Invoke-Command {
+            Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock {
 
                 } -AsJob -ComputerName $env:COMPUTERNAME
@@ -939,7 +972,7 @@ Describe 'ExportExcelFile.When' {
     }
     Context 'create an Excel file' {
         It "'OnlyOnError' and there are errors" {
-            Mock Invoke-Command {
+            Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
@@ -965,7 +998,7 @@ Describe 'ExportExcelFile.When' {
             Should -Not -BeNullOrEmpty
         }
         It "'OnlyOnErrorOrAction' and there are actions but no errors" {
-            Mock Invoke-Command {
+            Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
@@ -992,7 +1025,7 @@ Describe 'ExportExcelFile.When' {
             Should -Not -BeNullOrEmpty
         }
         It "'OnlyOnErrorOrAction' and there are errors but no actions" {
-            Mock Invoke-Command {
+            Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
@@ -1050,7 +1083,7 @@ Describe 'SendMail.When' {
             Should -Not -Invoke Send-MailHC
         }
         It "'OnlyOnErrorOrAction' and there are no errors and no actions" {
-            Mock Invoke-Command {
+            Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock {
 
                 } -AsJob -ComputerName $env:COMPUTERNAME
@@ -1072,7 +1105,7 @@ Describe 'SendMail.When' {
     }
     Context 'send an e-mail to the user' {
         It "'OnlyOnError' and there are errors" {
-            Mock Invoke-Command {
+            Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
@@ -1097,7 +1130,7 @@ Describe 'SendMail.When' {
             Should -Invoke Send-MailHC @testParamFilter
         }
         It "'OnlyOnErrorOrAction' and there are actions but no errors" {
-            Mock Invoke-Command {
+            Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'
@@ -1123,7 +1156,7 @@ Describe 'SendMail.When' {
             Should -Invoke Send-MailHC @testParamFilter
         }
         It "'OnlyOnErrorOrAction' and there are errors but no actions" {
-            Mock Invoke-Command {
+            Mock Start-Job {
                 & $realCmdLet.InvokeCommand -Scriptblock {
                     [PSCustomObject]@{
                         Path     = 'a'

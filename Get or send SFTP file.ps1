@@ -1,6 +1,6 @@
 ﻿#Requires -Version 5.1
 #Requires -Modules Toolbox.HTML, Toolbox.EventLog, ImportExcel
-#Requires -Modules Toolbox.Remoting, Posh-SSH
+#Requires -Modules Toolbox.Remoting
 
 <#
 .SYNOPSIS
@@ -563,22 +563,32 @@ Process {
                 #endregion
 
                 #region Start job
-                try {
-                    $invokeParams += @{
-                        Session = New-PSSessionHC -ComputerName $action.Parameter.ComputerName
-                        AsJob   = $true
-                    }
-                    $action.Job.Object = Invoke-Command @invokeParams
+                $computerName = $action.Parameter.ComputerName
+
+                $action.Job.Object = if (
+                    ($computerName -eq 'localhost') -or
+                    ($computerName -eq $ENV:COMPUTERNAME) -or
+                    ($computerName -eq "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
+                ) {
+                    $action.Parameter.ComputerName = $ENV:COMPUTERNAME
+                    Start-Job @invokeParams
                 }
-                catch {
-                    Write-Warning "Failed running Invoke-Command: $_"
-                    Continue
+                else {
+                    try {
+                        $invokeParams.Session = New-PSSessionHC -ComputerName $computerName
+                        $invokeParams.AsJob = $true
+                        Invoke-Command @invokeParams
+                    }
+                    catch {
+                        Write-Warning "Failed running Invoke-Command: $_"
+                        Continue
+                    }
                 }
                 #endregion
 
                 #region Wait for max running jobs
                 $waitJobParams = @{
-                    Job       = $Tasks.Actions.Job.Object | Where-Object { $_ }
+                    Job        = $Tasks.Actions.Job.Object | Where-Object { $_ }
                     MaxThreads = $MaxConcurrentJobs
                 }
 
