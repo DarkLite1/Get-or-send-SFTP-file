@@ -807,7 +807,7 @@ Describe 'execute the SFTP script' {
                 ($AsJob) -and
                 ($Session)
             }
-        } -Tag test
+        }
         It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
@@ -839,7 +839,7 @@ Describe 'execute the SFTP script' {
                 ($AsJob) -and
                 ($Session)
             }
-        } -Tag test
+        }
         It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[1].Parameter.ComputerName = 'localhost'
