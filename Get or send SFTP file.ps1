@@ -277,7 +277,7 @@ Begin {
                     switch ($action.Type) {
                         'Download' {
                             @(
-                                'SftpPath', 'ComputerName',
+                                'SftpPath',
                                 'Path', 'Option',
                                 'FileExtensions', 'PartialFileExtension'
                             ).Where(
@@ -306,7 +306,7 @@ Begin {
                         }
                         'Upload' {
                             @(
-                                'SftpPath', 'ComputerName',
+                                'SftpPath',
                                 'Paths', 'Option', 'PartialFileExtension'
                             ).Where(
                                 { -not $action.Parameter.$_ }
@@ -407,6 +407,18 @@ Begin {
 
         try {
             foreach ($task in $Tasks) {
+                #region Set ComputerName if there is none
+                foreach ($action in $task.Actions) {
+                    if (
+                        (-not $action.Parameter.ComputerName) -or
+                        ($action.Parameter.ComputerName -eq 'localhost') -or
+                        ($action.Parameter.ComputerName -eq "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
+                    ) {
+                        $action.Parameter.ComputerName = $env:COMPUTERNAME
+                    }
+                }
+                #endregion
+
                 #region Set secure string as password
                 if ($task.Sftp.Credential.PasswordKeyFile) {
                     try {
@@ -567,11 +579,8 @@ Process {
                 $computerName = $action.Parameter.ComputerName
 
                 $action.Job.Object = if (
-                    ($computerName -eq 'localhost') -or
-                    ($computerName -eq $ENV:COMPUTERNAME) -or
-                    ($computerName -eq "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
+                    $computerName -eq $ENV:COMPUTERNAME
                 ) {
-                    $action.Parameter.ComputerName = $ENV:COMPUTERNAME
                     Start-Job @invokeParams
                 }
                 else {

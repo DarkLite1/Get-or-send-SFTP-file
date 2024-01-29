@@ -16,7 +16,7 @@
           "Type": "Upload",
           "Parameter": {
             "SftpPath": "/reports/",
-            "ComputerName": "localhost",
+            "ComputerName": null,
             "Paths": ["C:\\File1.xlsx", "C:\\File2.xlsx", "C:\\Folder"],
             "FileExtensions": [".xml", ".dat"],
             "PartialFileExtension": ".UploadInProgress",
@@ -34,7 +34,7 @@
           "Type": "Download",
           "Parameter": {
             "SftpPath": "/data/",
-            "ComputerName": "localhost",
+            "ComputerName": "PC1",
             "Path": "C:\\Folder",
             "FileExtensions": [".xlsx", ".txt"],
             "PartialFileExtension": ".DownloadInProgress",
@@ -42,7 +42,7 @@
               "OverwriteFile": false,
               "RemoveFailedPartialFiles": false
             },
-            "?": "Type: Upload | Download"
+            "?": "Type: Upload | Download, make sure that the module Posh-SSH is installed on PC1"
           }
         }
       ],
