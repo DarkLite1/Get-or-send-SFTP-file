@@ -628,6 +628,8 @@ Process {
                 $action.Job.Results.Count,
                 $(if ($action.Job.Results.Count -ne 1) { 's' })
                 Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
+
+                $action.Session | Remove-PSSession -ErrorAction Ignore
             }
         }
         #endregion
