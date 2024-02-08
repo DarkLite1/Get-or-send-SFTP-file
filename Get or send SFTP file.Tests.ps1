@@ -178,9 +178,6 @@ BeforeAll {
     } -ParameterFilter {
         $String -eq 'bobPassword'
     }
-    Mock New-PSSessionHC {
-        New-PSSession -ComputerName 'localhost'
-    }
     Mock Start-Job {
         & $realCmdLet.InvokeCommand -Scriptblock {
             $using:testData[0]
@@ -200,6 +197,9 @@ BeforeAll {
         & $realCmdLet.InvokeCommand -Scriptblock {
 
         } -AsJob -ComputerName $env:COMPUTERNAME
+    }
+    Mock Get-PowerShellConnectableEndpointNameHC {
+        'PowerShell.Version.X'
     }
     Mock Send-MailHC
     Mock Write-EventLog
@@ -798,14 +798,14 @@ Describe 'execute the SFTP script' {
 
             .$testScript @testParams
 
-            Should -Invoke New-PSSessionHC -Times 1 -Exactly -ParameterFilter {
+            Should -Invoke Get-PowerShellConnectableEndpointNameHC -Times 1 -Exactly -ParameterFilter {
                 $ComputerName -eq 'PC1'
             }
 
             Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
                 (& $testJobArguments[0]) -and
-                ($AsJob) -and
-                ($Session)
+                ($ComputerName -eq 'PC1') -and
+                ($AsJob)
             }
         }
         It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
@@ -830,14 +830,14 @@ Describe 'execute the SFTP script' {
 
             .$testScript @testParams
 
-            Should -Invoke New-PSSessionHC -Times 1 -Exactly -ParameterFilter {
+            Should -Invoke Get-PowerShellConnectableEndpointNameHC -Times 1 -Exactly -ParameterFilter {
                 $ComputerName -eq 'PC1'
             }
 
             Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
                 (& $testJobArguments[1]) -and
-                ($AsJob) -and
-                ($Session)
+                ($ComputerName -eq 'PC1') -and
+                ($AsJob)
             }
         }
         It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {

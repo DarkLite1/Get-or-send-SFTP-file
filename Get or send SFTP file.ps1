@@ -493,11 +493,10 @@ Process {
         foreach ($task in $Tasks) {
             foreach ($action in $task.Actions) {
                 $action | Add-Member -NotePropertyMembers @{
-                    Job     = @{
+                    Job = @{
                         Object  = $null
                         Results = @()
                     }
-                    Session = $null
                 }
 
                 #region Create job parameters
@@ -585,20 +584,21 @@ Process {
                 }
                 else {
                     try {
-                        $sessionParams = @{
+                        $getEndpointParams = @{
                             ComputerName = $computerName
                             ScriptName   = $ScriptName
+                            ErrorAction  = 'Stop'
                         }
-                        $action.Session = New-PSSessionHC @sessionParams
 
                         $invokeParams += @{
-                            Session = $action.Session
-                            AsJob   = $true
+                            ConfigurationName = Get-PowerShellConnectableEndpointNameHC @getEndpointParams
+                            ComputerName      = $computerName
+                            AsJob             = $true
                         }
                         Invoke-Command @invokeParams
                     }
                     catch {
-                        Write-Warning "Failed creating a session to '$computerName': $_"
+                        Write-Warning "Failed connecting to '$computerName': $_"
                         Continue
                     }
                 }
@@ -642,8 +642,6 @@ Process {
                 $action.Job.Results.Count,
                 $(if ($action.Job.Results.Count -ne 1) { 's' })
                 Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-
-                $action.Session | Remove-PSSession -ErrorAction Ignore
             }
         }
         #endregion
