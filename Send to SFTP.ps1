@@ -271,6 +271,7 @@ try {
             ComputerName = $SftpComputerName
             Credential   = $sftpCredential
             AcceptKey    = $true
+            Force        = $true
         }
 
         if ($SftpOpenSshKeyFile) {
