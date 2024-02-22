@@ -474,6 +474,17 @@ Begin {
                     $action.Parameter.SftpPath = '/' + $action.Parameter.SftpPath.TrimStart('/')
                 }
                 #endregion
+
+                #region Add properties
+                $task.Actions | ForEach-Object {
+                    $_ | Add-Member -NotePropertyMembers @{
+                        Job = @{
+                            Object  = $null
+                            Results = @()
+                        }
+                    }
+                }
+                #endregion
             }
         }
         catch {
@@ -490,141 +501,145 @@ Begin {
 
 Process {
     Try {
-        foreach ($task in $Tasks) {
-            foreach ($action in $task.Actions) {
-                $action | Add-Member -NotePropertyMembers @{
-                    Job = @{
-                        Object  = $null
-                        Results = @()
+        $scriptBlock = {
+            $action = $_
+
+            #region Declare variables for code running in parallel
+            if (-not $MaxConcurrentJobs) {
+                $PathItem = $using:PathItem
+                $task = $using:task
+                $ScriptName = $using:ScriptName
+                $EventVerboseParams = $using:EventVerboseParams
+            }
+            #endregion
+
+            #region Create job parameters
+            switch ($action.Type) {
+                'Upload' {
+                    $invokeParams = @{
+                        FilePath     = $PathItem.UploadScript
+                        ArgumentList = $action.Parameter.Paths,
+                        $task.Sftp.ComputerName,
+                        $action.Parameter.SftpPath,
+                        $task.Sftp.Credential.UserName,
+                        $action.Parameter.PartialFileExtension,
+                        $task.Sftp.Credential.Password,
+                        $task.Sftp.Credential.PasswordKeyFile,
+                        $action.Parameter.Option.OverwriteFile,
+                        $action.Parameter.Option.ErrorWhen.PathIsNotFound,
+                        $action.Parameter.Option.RemoveFailedPartialFiles,
+                        $action.Parameter.FileExtensions
                     }
+
+                    $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Paths '{9}' FileExtensions '{11}'" -f
+                    $task.TaskName,
+                    $action.Parameter.ComputerName,
+                    $invokeParams.ArgumentList[1],
+                    $invokeParams.ArgumentList[2],
+                    $invokeParams.ArgumentList[3],
+                    $invokeParams.ArgumentList[4],
+                    $invokeParams.ArgumentList[7],
+                    $invokeParams.ArgumentList[8],
+                    $invokeParams.ArgumentList[9],
+                    $($invokeParams.ArgumentList[0] -join "', '"),
+                    $invokeParams.FilePath,
+                    $($invokeParams.ArgumentList[10] -join "', '")
+
+                    Write-Verbose $M
+                    Write-EventLog @EventVerboseParams -Message $M
+
+                    break
                 }
-
-                #region Create job parameters
-                switch ($action.Type) {
-                    'Upload' {
-                        $invokeParams = @{
-                            FilePath     = $PathItem.UploadScript
-                            ArgumentList = $action.Parameter.Paths,
-                            $task.Sftp.ComputerName,
-                            $action.Parameter.SftpPath,
-                            $task.Sftp.Credential.UserName,
-                            $action.Parameter.PartialFileExtension,
-                            $task.Sftp.Credential.Password,
-                            $task.Sftp.Credential.PasswordKeyFile,
-                            $action.Parameter.Option.OverwriteFile,
-                            $action.Parameter.Option.ErrorWhen.PathIsNotFound,
-                            $action.Parameter.Option.RemoveFailedPartialFiles,
-                            $action.Parameter.FileExtensions
-                        }
-
-                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Paths '{9}' FileExtensions '{11}'" -f
-                        $task.TaskName,
-                        $action.Parameter.ComputerName,
-                        $invokeParams.ArgumentList[1],
-                        $invokeParams.ArgumentList[2],
-                        $invokeParams.ArgumentList[3],
-                        $invokeParams.ArgumentList[4],
-                        $invokeParams.ArgumentList[7],
-                        $invokeParams.ArgumentList[8],
-                        $invokeParams.ArgumentList[9],
-                        $($invokeParams.ArgumentList[0] -join "', '"),
-                        $invokeParams.FilePath,
-                        $($invokeParams.ArgumentList[10] -join "', '")
-
-                        Write-Verbose $M;
-                        Write-EventLog @EventVerboseParams -Message $M
-
-                        break
+                'Download' {
+                    $invokeParams = @{
+                        FilePath     = $PathItem.DownloadScript
+                        ArgumentList = $action.Parameter.Path,
+                        $task.Sftp.ComputerName,
+                        $action.Parameter.SftpPath,
+                        $task.Sftp.Credential.UserName,
+                        $action.Parameter.PartialFileExtension,
+                        $task.Sftp.Credential.Password,
+                        $task.Sftp.Credential.PasswordKeyFile,
+                        $action.Parameter.FileExtensions,
+                        $action.Parameter.Option.OverwriteFile,
+                        $action.Parameter.Option.RemoveFailedPartialFiles
                     }
-                    'Download' {
-                        $invokeParams = @{
-                            FilePath     = $PathItem.DownloadScript
-                            ArgumentList = $action.Parameter.Path,
-                            $task.Sftp.ComputerName,
-                            $action.Parameter.SftpPath,
-                            $task.Sftp.Credential.UserName,
-                            $action.Parameter.PartialFileExtension,
-                            $task.Sftp.Credential.Password,
-                            $task.Sftp.Credential.PasswordKeyFile,
-                            $action.Parameter.FileExtensions,
-                            $action.Parameter.Option.OverwriteFile,
-                            $action.Parameter.Option.RemoveFailedPartialFiles
-                        }
 
-                        $M = "Start SFTP download job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' Option.OverwriteFile '{8}' Option.RemoveFailedPartialFiles '{9}' Path '{10}'" -f
-                        $task.TaskName,
-                        $action.Parameter.ComputerName,
-                        $invokeParams.FilePath,
-                        $invokeParams.ArgumentList[1],
-                        $invokeParams.ArgumentList[2],
-                        $invokeParams.ArgumentList[3],
-                        $invokeParams.ArgumentList[4],
-                        $($invokeParams.ArgumentList[7] -join ', '),
-                        $invokeParams.ArgumentList[8],
-                        $invokeParams.ArgumentList[9],
-                        $invokeParams.ArgumentList[0]
-                        Write-Verbose $M;
-                        Write-EventLog @EventVerboseParams -Message $M
+                    $M = "Start SFTP download job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' Option.OverwriteFile '{8}' Option.RemoveFailedPartialFiles '{9}' Path '{10}'" -f
+                    $task.TaskName,
+                    $action.Parameter.ComputerName,
+                    $invokeParams.FilePath,
+                    $invokeParams.ArgumentList[1],
+                    $invokeParams.ArgumentList[2],
+                    $invokeParams.ArgumentList[3],
+                    $invokeParams.ArgumentList[4],
+                    $($invokeParams.ArgumentList[7] -join ', '),
+                    $invokeParams.ArgumentList[8],
+                    $invokeParams.ArgumentList[9],
+                    $invokeParams.ArgumentList[0]
+                    Write-Verbose $M;
+                    Write-EventLog @EventVerboseParams -Message $M
 
-                        break
+                    break
+                }
+                Default {
+                    throw "Tasks.Actions.Type '$_' not supported."
+                }
+            }
+            #endregion
+
+            #region Start job
+            $computerName = $action.Parameter.ComputerName
+
+            $action.Job.Object = if (
+                $computerName -eq $ENV:COMPUTERNAME
+            ) {
+                Start-Job @invokeParams
+            }
+            else {
+                try {
+                    $getEndpointParams = @{
+                        ComputerName = $computerName
+                        ScriptName   = $ScriptName
+                        ErrorAction  = 'Stop'
                     }
-                    Default {
-                        throw "Tasks.Actions.Type '$_' not supported."
+
+                    $invokeParams += @{
+                        ConfigurationName = Get-PowerShellConnectableEndpointNameHC @getEndpointParams
+                        ComputerName      = $computerName
+                        AsJob             = $true
                     }
+                    Invoke-Command @invokeParams
                 }
-                #endregion
-
-                #region Start job
-                $computerName = $action.Parameter.ComputerName
-
-                $action.Job.Object = if (
-                    $computerName -eq $ENV:COMPUTERNAME
-                ) {
-                    Start-Job @invokeParams
+                catch {
+                    Write-Warning "Failed connecting to '$computerName': $_"
+                    Continue
                 }
-                else {
-                    try {
-                        $getEndpointParams = @{
-                            ComputerName = $computerName
-                            ScriptName   = $ScriptName
-                            ErrorAction  = 'Stop'
-                        }
+            }
+            #endregion
 
-                        $invokeParams += @{
-                            ConfigurationName = Get-PowerShellConnectableEndpointNameHC @getEndpointParams
-                            ComputerName      = $computerName
-                            AsJob             = $true
-                        }
-                        Invoke-Command @invokeParams
-                    }
-                    catch {
-                        Write-Warning "Failed connecting to '$computerName': $_"
-                        Continue
-                    }
-                }
-                #endregion
+            #region Wait for job to finish
+            if ($action.Job.Object) {
+                $null = $action.Job.Object | Wait-Job
+            }
+            #endregion
+        }
 
-                #region Wait for max running jobs
-                $waitJobParams = @{
-                    Job        = $Tasks.Actions.Job.Object | Where-Object { $_ }
-                    MaxThreads = $MaxConcurrentJobs
-                }
-
-                if ($waitJobParams.Job) {
-                    Wait-MaxRunningJobsHC @waitJobParams
-                }
-                #endregion
+        #region Run code serial or parallel
+        $foreachParams = if ($MaxConcurrentJobs -eq 1) {
+            @{
+                Process = $scriptBlock
+            }
+        }
+        else {
+            @{
+                Parallel      = $scriptBlock
+                ThrottleLimit = $MaxConcurrentJobs
             }
         }
 
-        #region Wait for all jobs to finish
-        $waitJobParams = @{
-            Job = $Tasks.Actions.Job.Object | Where-Object { $_ }
-        }
-        if ($waitJobParams.Job) {
-            Write-Verbose 'Wait for all jobs to finish'
-
-            $null = Wait-Job @waitJobParams
+        foreach ($task in $Tasks) {
+            $task.Actions | ForEach-Object @foreachParams
         }
         #endregion
 

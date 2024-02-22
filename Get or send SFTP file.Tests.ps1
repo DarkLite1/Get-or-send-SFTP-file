@@ -803,7 +803,8 @@ Describe 'execute the SFTP script' {
             .$testScript @testParams
 
             Should -Invoke Get-PowerShellConnectableEndpointNameHC -Times 1 -Exactly -ParameterFilter {
-                $ComputerName -eq 'PC1'
+                ($ComputerName -eq 'PC1') -and
+                ($ScriptName -eq $testParams.ScriptName)
             }
 
             Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
@@ -811,7 +812,7 @@ Describe 'execute the SFTP script' {
                 ($ComputerName -eq 'PC1') -and
                 ($AsJob)
             }
-        }
+        } -Tag test
         It 'with Start-Job when Tasks.Actions.Parameter.ComputerName is the localhost' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
