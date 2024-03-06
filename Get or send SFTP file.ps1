@@ -511,8 +511,8 @@ Process {
 
             #region Declare variables for code running in parallel
             if (-not $MaxConcurrentJobs) {
-                $PathItem = $using:PathItem
                 $task = $using:task
+                $PathItem = $using:PathItem
                 $PSSessionConfiguration = $using:PSSessionConfiguration
                 $EventVerboseParams = $using:EventVerboseParams
             }
@@ -611,11 +611,7 @@ Process {
             }
             #endregion
 
-            #region Wait for job to finish
-            if ($action.Job.Object) {
-                $null = $action.Job.Object | Wait-Job
-            }
-            #endregion
+            $null = $action.Job.Object | Wait-Job
         }
 
         #region Run code serial or parallel
