@@ -613,6 +613,19 @@ Process {
 
             #region Get job results
             $action.Job.Results += $action.Job.Object | Wait-Job | Receive-Job
+
+            if ($action.Job.Results.Count -ne 0) {
+                $M = "Task '{0}' Type '{1}' SftpPath '{2}' ComputerName '{3}' Path '{4}': {5} job result{6}" -f
+                $task.TaskName, $action.Type, $action.Parameter.SftpPath,
+                $action.Parameter.ComputerName,
+                $(
+                    if ($action.Parameter.Path) { $action.Parameter.Path }
+                    else { $action.Parameter.Paths -join ', ' }
+                ),
+                $action.Job.Results.Count,
+                $(if ($action.Job.Results.Count -ne 1) { 's' })
+                Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
+            }
             #endregion
         }
 
@@ -631,26 +644,6 @@ Process {
 
         foreach ($task in $Tasks) {
             $task.Actions | ForEach-Object @foreachParams
-        }
-        #endregion
-
-        #region Verbose messages
-        foreach ($task in $Tasks) {
-            foreach (
-                $action in
-                $task.Actions | Where-Object { $_.Job.Results.Count -ne 0 }
-            ) {
-                $M = "Task '{0}' Type '{1}' SftpPath '{2}' ComputerName '{3}' Path '{4}': {5} job result{6}" -f
-                $task.TaskName, $action.Type, $action.Parameter.SftpPath,
-                $action.Parameter.ComputerName,
-                $(
-                    if ($action.Parameter.Path) { $action.Parameter.Path }
-                    else { $action.Parameter.Paths -join ', ' }
-                ),
-                $action.Job.Results.Count,
-                $(if ($action.Job.Results.Count -ne 1) { 's' })
-                Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-            }
         }
         #endregion
     }
