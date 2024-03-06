@@ -611,7 +611,9 @@ Process {
             }
             #endregion
 
-            $null = $action.Job.Object | Wait-Job
+            #region Get job results
+            $action.Job.Results += $action.Job.Object | Wait-Job | Receive-Job
+            #endregion
         }
 
         #region Run code serial or parallel
@@ -632,17 +634,19 @@ Process {
         }
         #endregion
 
-        #region Get job results
+        #region Verbose messages
         foreach ($task in $Tasks) {
             foreach (
                 $action in
-                $task.Actions | Where-Object { $_.Job.Object }
+                $task.Actions | Where-Object { $_.Job.Results.Count -ne 0 }
             ) {
-                $action.Job.Results += Receive-Job -Job $action.Job.Object
-
-                $M = "Task '{0}' type '{1}' {2} job result{3}" -f
-                $task.TaskName,
-                $action.Type,
+                $M = "Task '{0}' Type '{1}' SftpPath '{2}' ComputerName '{3}' Path '{4}': {5} job result{6}" -f
+                $task.TaskName, $action.Type, $action.Parameter.SftpPath,
+                $action.Parameter.ComputerName,
+                $(
+                    if ($action.Parameter.Path) { $action.Parameter.Path }
+                    else { $action.Parameter.Paths -join ', ' }
+                ),
                 $action.Job.Results.Count,
                 $(if ($action.Job.Results.Count -ne 1) { 's' })
                 Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
