@@ -126,6 +126,10 @@
                             errors where detected
     - OnlyOnErrorOrAction : Only create an Excel log file when
                             errors where detected or when items were uploaded
+
+.PARAMETER PSSessionConfiguration
+    The version of PowerShell on the remote endpoint as returned by
+    Get-PSSessionConfiguration.
 #>
 
 [CmdLetBinding()]
@@ -138,6 +142,7 @@ Param (
         UploadScript   = "$PSScriptRoot\Send to SFTP.ps1"
         DownloadScript = "$PSScriptRoot\Get SFTP file.ps1"
     },
+    [String]$PSSessionConfiguration = 'PowerShell.7',
     [String]$LogFolder = "$env:POWERSHELL_LOG_FOLDER\File or folder\Get or send SFTP file\$ScriptName",
     [String[]]$ScriptAdmin = @(
         $env:POWERSHELL_SCRIPT_ADMIN,
@@ -508,7 +513,7 @@ Process {
             if (-not $MaxConcurrentJobs) {
                 $PathItem = $using:PathItem
                 $task = $using:task
-                $ScriptName = $using:ScriptName
+                $PSSessionConfiguration = $using:PSSessionConfiguration
                 $EventVerboseParams = $using:EventVerboseParams
             }
             #endregion
@@ -597,24 +602,12 @@ Process {
                 Start-Job @invokeParams
             }
             else {
-                try {
-                    $getEndpointParams = @{
-                        ComputerName = $computerName
-                        ScriptName   = $ScriptName
-                        ErrorAction  = 'Stop'
-                    }
-
-                    $invokeParams += @{
-                        ConfigurationName = Get-PowerShellConnectableEndpointNameHC @getEndpointParams
-                        ComputerName      = $computerName
-                        AsJob             = $true
-                    }
-                    Invoke-Command @invokeParams
+                $invokeParams += @{
+                    ConfigurationName = $PSSessionConfiguration
+                    ComputerName      = $computerName
+                    AsJob             = $true
                 }
-                catch {
-                    Write-Warning "Failed connecting to '$computerName': $_"
-                    Continue
-                }
+                Invoke-Command @invokeParams
             }
             #endregion
 

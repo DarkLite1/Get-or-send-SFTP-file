@@ -198,13 +198,6 @@ BeforeAll {
 
         } -AsJob -ComputerName $env:COMPUTERNAME
     }
-    $testLatestPSSessionConfiguration = Get-PSSessionConfiguration |
-    Sort-Object -Property 'Name' -Descending |
-    Select-Object -ExpandProperty 'Name' -First 1
-
-    Mock Get-PowerShellConnectableEndpointNameHC {
-        $testLatestPSSessionConfiguration
-    }
     Mock Send-MailHC
     Mock Write-EventLog
 }
@@ -802,11 +795,6 @@ Describe 'execute the SFTP script' {
 
             .$testScript @testParams
 
-            Should -Invoke Get-PowerShellConnectableEndpointNameHC -Times 1 -Exactly -ParameterFilter {
-                ($ComputerName -eq 'PC1') -and
-                ($ScriptName -eq $testParams.ScriptName)
-            }
-
             Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
                 (& $testJobArguments[0]) -and
                 ($ComputerName -eq 'PC1') -and
@@ -834,10 +822,6 @@ Describe 'execute the SFTP script' {
             Out-File @testOutParams
 
             .$testScript @testParams
-
-            Should -Invoke Get-PowerShellConnectableEndpointNameHC -Times 1 -Exactly -ParameterFilter {
-                $ComputerName -eq 'PC1'
-            }
 
             Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
                 (& $testJobArguments[1]) -and
