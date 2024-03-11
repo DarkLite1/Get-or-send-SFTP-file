@@ -484,7 +484,6 @@ Begin {
                 $task.Actions | ForEach-Object {
                     $_ | Add-Member -NotePropertyMembers @{
                         Job = @{
-                            Object  = $null
                             Results = @()
                         }
                     }
@@ -507,126 +506,141 @@ Begin {
 Process {
     Try {
         $scriptBlock = {
-            $action = $_
+            try {
+                $action = $_
 
-            #region Declare variables for code running in parallel
-            if (-not $MaxConcurrentJobs) {
-                $task = $using:task
-                $PathItem = $using:PathItem
-                $PSSessionConfiguration = $using:PSSessionConfiguration
-                $EventVerboseParams = $using:EventVerboseParams
-            }
-            #endregion
+                #region Declare variables for code running in parallel
+                if (-not $MaxConcurrentJobs) {
+                    $task = $using:task
+                    $PathItem = $using:PathItem
+                    $PSSessionConfiguration = $using:PSSessionConfiguration
+                    $EventVerboseParams = $using:EventVerboseParams
+                }
+                #endregion
 
-            #region Create job parameters
-            switch ($action.Type) {
-                'Upload' {
-                    $invokeParams = @{
-                        FilePath     = $PathItem.UploadScript
-                        ArgumentList = $action.Parameter.Paths,
-                        $task.Sftp.ComputerName,
-                        $action.Parameter.SftpPath,
-                        $task.Sftp.Credential.UserName,
-                        $action.Parameter.PartialFileExtension,
-                        $task.Sftp.Credential.Password,
-                        $task.Sftp.Credential.PasswordKeyFile,
-                        $action.Parameter.Option.OverwriteFile,
-                        $action.Parameter.Option.ErrorWhen.PathIsNotFound,
-                        $action.Parameter.Option.RemoveFailedPartialFiles,
-                        $action.Parameter.FileExtensions
+                #region Create job parameters
+                switch ($action.Type) {
+                    'Upload' {
+                        $invokeParams = @{
+                            FilePath     = $PathItem.UploadScript
+                            ArgumentList = $action.Parameter.Paths,
+                            $task.Sftp.ComputerName,
+                            $action.Parameter.SftpPath,
+                            $task.Sftp.Credential.UserName,
+                            $action.Parameter.PartialFileExtension,
+                            $task.Sftp.Credential.Password,
+                            $task.Sftp.Credential.PasswordKeyFile,
+                            $action.Parameter.Option.OverwriteFile,
+                            $action.Parameter.Option.ErrorWhen.PathIsNotFound,
+                            $action.Parameter.Option.RemoveFailedPartialFiles,
+                            $action.Parameter.FileExtensions
+                        }
+
+                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Paths '{9}' FileExtensions '{11}'" -f
+                        $task.TaskName,
+                        $action.Parameter.ComputerName,
+                        $invokeParams.ArgumentList[1],
+                        $invokeParams.ArgumentList[2],
+                        $invokeParams.ArgumentList[3],
+                        $invokeParams.ArgumentList[4],
+                        $invokeParams.ArgumentList[7],
+                        $invokeParams.ArgumentList[8],
+                        $invokeParams.ArgumentList[9],
+                        $($invokeParams.ArgumentList[0] -join "', '"),
+                        $invokeParams.FilePath,
+                        $($invokeParams.ArgumentList[10] -join "', '")
+
+                        Write-Verbose $M
+                        Write-EventLog @EventVerboseParams -Message $M
+
+                        break
                     }
+                    'Download' {
+                        $invokeParams = @{
+                            FilePath     = $PathItem.DownloadScript
+                            ArgumentList = $action.Parameter.Path,
+                            $task.Sftp.ComputerName,
+                            $action.Parameter.SftpPath,
+                            $task.Sftp.Credential.UserName,
+                            $action.Parameter.PartialFileExtension,
+                            $task.Sftp.Credential.Password,
+                            $task.Sftp.Credential.PasswordKeyFile,
+                            $action.Parameter.FileExtensions,
+                            $action.Parameter.Option.OverwriteFile,
+                            $action.Parameter.Option.RemoveFailedPartialFiles
+                        }
 
-                    $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Paths '{9}' FileExtensions '{11}'" -f
-                    $task.TaskName,
-                    $action.Parameter.ComputerName,
-                    $invokeParams.ArgumentList[1],
-                    $invokeParams.ArgumentList[2],
-                    $invokeParams.ArgumentList[3],
-                    $invokeParams.ArgumentList[4],
-                    $invokeParams.ArgumentList[7],
-                    $invokeParams.ArgumentList[8],
-                    $invokeParams.ArgumentList[9],
-                    $($invokeParams.ArgumentList[0] -join "', '"),
-                    $invokeParams.FilePath,
-                    $($invokeParams.ArgumentList[10] -join "', '")
+                        $M = "Start SFTP download job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' Option.OverwriteFile '{8}' Option.RemoveFailedPartialFiles '{9}' Path '{10}'" -f
+                        $task.TaskName,
+                        $action.Parameter.ComputerName,
+                        $invokeParams.FilePath,
+                        $invokeParams.ArgumentList[1],
+                        $invokeParams.ArgumentList[2],
+                        $invokeParams.ArgumentList[3],
+                        $invokeParams.ArgumentList[4],
+                        $($invokeParams.ArgumentList[7] -join ', '),
+                        $invokeParams.ArgumentList[8],
+                        $invokeParams.ArgumentList[9],
+                        $invokeParams.ArgumentList[0]
+                        Write-Verbose $M;
+                        Write-EventLog @EventVerboseParams -Message $M
 
-                    Write-Verbose $M
-                    Write-EventLog @EventVerboseParams -Message $M
-
-                    break
-                }
-                'Download' {
-                    $invokeParams = @{
-                        FilePath     = $PathItem.DownloadScript
-                        ArgumentList = $action.Parameter.Path,
-                        $task.Sftp.ComputerName,
-                        $action.Parameter.SftpPath,
-                        $task.Sftp.Credential.UserName,
-                        $action.Parameter.PartialFileExtension,
-                        $task.Sftp.Credential.Password,
-                        $task.Sftp.Credential.PasswordKeyFile,
-                        $action.Parameter.FileExtensions,
-                        $action.Parameter.Option.OverwriteFile,
-                        $action.Parameter.Option.RemoveFailedPartialFiles
+                        break
                     }
+                    Default {
+                        throw "Tasks.Actions.Type '$_' not supported."
+                    }
+                }
+                #endregion
 
-                    $M = "Start SFTP download job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' Option.OverwriteFile '{8}' Option.RemoveFailedPartialFiles '{9}' Path '{10}'" -f
-                    $task.TaskName,
+                #region Start job
+                $computerName = $action.Parameter.ComputerName
+
+                $action.Job.Results += if (
+                    $computerName -eq $ENV:COMPUTERNAME
+                ) {
+                    $params = $invokeParams.ArgumentList
+                    & $invokeParams.FilePath @params
+                }
+                else {
+                    $invokeParams += @{
+                        ConfigurationName = $PSSessionConfiguration
+                        ComputerName      = $computerName
+                        ErrorAction       = 'Stop'
+                    }
+                    Invoke-Command @invokeParams
+                }
+                #endregion
+
+                #region Get job results
+                if ($action.Job.Results.Count -ne 0) {
+                    $M = "Task '{0}' Type '{1}' SftpPath '{2}' ComputerName '{3}' Path '{4}': {5} job result{6}" -f
+                    $task.TaskName, $action.Type, $action.Parameter.SftpPath,
                     $action.Parameter.ComputerName,
-                    $invokeParams.FilePath,
-                    $invokeParams.ArgumentList[1],
-                    $invokeParams.ArgumentList[2],
-                    $invokeParams.ArgumentList[3],
-                    $invokeParams.ArgumentList[4],
-                    $($invokeParams.ArgumentList[7] -join ', '),
-                    $invokeParams.ArgumentList[8],
-                    $invokeParams.ArgumentList[9],
-                    $invokeParams.ArgumentList[0]
-                    Write-Verbose $M;
-                    Write-EventLog @EventVerboseParams -Message $M
-
-                    break
+                    $(
+                        if ($action.Parameter.Path) { $action.Parameter.Path }
+                        else { $action.Parameter.Paths -join ', ' }
+                    ),
+                    $action.Job.Results.Count,
+                    $(if ($action.Job.Results.Count -ne 1) { 's' })
+                    Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
                 }
-                Default {
-                    throw "Tasks.Actions.Type '$_' not supported."
+                #endregion
+            }
+            catch {
+                $action.Job.Results += [PSCustomObject]@{
+                    DateTime   = Get-Date
+                    LocalPath  = $invokeParams.ArgumentList[0]
+                    SftpPath   = $invokeParams.ArgumentList[2]
+                    FileName   = $null
+                    FileLength = $null
+                    Downloaded = $false
+                    Uploaded   = $false
+                    Action     = $null
+                    Error      = "General error: $_"
                 }
+                $Error.RemoveAt(0)
             }
-            #endregion
-
-            #region Start job
-            $computerName = $action.Parameter.ComputerName
-
-            $action.Job.Object = if (
-                $computerName -eq $ENV:COMPUTERNAME
-            ) {
-                Start-Job @invokeParams
-            }
-            else {
-                $invokeParams += @{
-                    ConfigurationName = $PSSessionConfiguration
-                    ComputerName      = $computerName
-                    AsJob             = $true
-                }
-                Invoke-Command @invokeParams
-            }
-            #endregion
-
-            #region Get job results
-            $action.Job.Results += $action.Job.Object | Wait-Job | Receive-Job
-
-            if ($action.Job.Results.Count -ne 0) {
-                $M = "Task '{0}' Type '{1}' SftpPath '{2}' ComputerName '{3}' Path '{4}': {5} job result{6}" -f
-                $task.TaskName, $action.Type, $action.Parameter.SftpPath,
-                $action.Parameter.ComputerName,
-                $(
-                    if ($action.Parameter.Path) { $action.Parameter.Path }
-                    else { $action.Parameter.Paths -join ', ' }
-                ),
-                $action.Job.Results.Count,
-                $(if ($action.Job.Results.Count -ne 1) { 's' })
-                Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
-            }
-            #endregion
         }
 
         #region Run code serial or parallel
@@ -782,9 +796,10 @@ End {
                 @{
                     Name       = 'Type'
                     Expression = { $action.Type }
-                }, @{
+                },
+                @{
                     Name       = 'ComputerName'
-                    Expression = { $_.PSComputerName }
+                    Expression = { $action.Parameter.ComputerName }
                 },
                 @{
                     Name       = 'Source'
