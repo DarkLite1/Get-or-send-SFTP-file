@@ -551,7 +551,7 @@ Process {
                         $($invokeParams.ArgumentList[10] -join "', '")
 
                         Write-Verbose $M
-                        Write-EventLog @EventVerboseParams -Message $M
+                        # Write-EventLog @EventVerboseParams -Message $M
 
                         break
                     }
@@ -582,8 +582,8 @@ Process {
                         $invokeParams.ArgumentList[8],
                         $invokeParams.ArgumentList[9],
                         $invokeParams.ArgumentList[0]
-                        Write-Verbose $M;
-                        Write-EventLog @EventVerboseParams -Message $M
+                        Write-Verbose $M
+                        # Write-EventLog @EventVerboseParams -Message $M
 
                         break
                     }
