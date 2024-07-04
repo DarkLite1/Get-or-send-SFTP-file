@@ -994,17 +994,19 @@ End {
 
             #region Send mail
             $mailParams += @{
-                To        = $task.SendMail.To
-                Message   = "
+                To             = $task.SendMail.To
+                Message        = "
                         $systemErrorsHtmlList
                         <p>Summary of all SFTP actions.</p>
                         $summaryHtmlTable
                         <p>Action details.</p>
                         $htmlTableActions"
 
-                LogFolder = $LogParams.LogFolder
-                Header    = $ScriptName
-                Save      = $LogFile + ' - Mail.html'
+                LogFolder      = $LogParams.LogFolder
+                Header         = $ScriptName
+                EventLogSource = $ScriptName
+                Save           = $LogFile + ' - Mail.html'
+                ErrorAction    = 'Stop'
             }
 
             if ($mailParams.Attachments) {
