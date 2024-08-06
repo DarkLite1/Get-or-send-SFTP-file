@@ -680,11 +680,21 @@ Process {
 
 End {
     try {
+        #region Counter
+        $counter = @{
+            Total = @{
+                Errors          = $countSystemErrors
+                UploadedFiles   = 0
+                DownloadedFiles = 0
+            }
+        }
+        #endregion
+
+        #region Create system error html lists
         $countSystemErrors = (
             $Error.Exception.Message | Measure-Object
         ).Count
 
-        #region Create error html lists
         $systemErrorsHtmlList = if ($countSystemErrors) {
             "<p>Detected <b>{0} system error{1}</b>:{2}</p>" -f $countSystemErrors,
             $(
@@ -697,29 +707,33 @@ End {
         }
         #endregion
 
-        foreach ($task in $Tasks) {
-            $mailParams = @{}
+        $mailParams = @{}
+        $htmlTable = @()
+        $exportToExcel = @()
 
-            #region Counter
-            $counter = @{
-                Total  = @{
-                    Errors          = $countSystemErrors
-                    UploadedFiles   = 0
-                    DownloadedFiles = 0
-                    Actions         = 0
-                }
-                Action = @{
+        $htmlTable += '<table>'
+
+        foreach ($task in $Tasks) {
+            $htmlTable += "
+                <tr>
+                    <th style=`"text-align: center; background-color: lightgray;`" colspan=`"4`">$($task.TaskName) - SFTP Server: $($task.SFTP.ComputerName)</th>
+                </tr>
+                <tr>
+                    <th>ComputerName</th>
+                    <th>Source</th>
+                    <th>Destination</th>
+                    <th>Result</th>
+                </tr>"
+
+            foreach ($action in $task.Actions) {
+                #region Counter
+                $counter.Action = @{
                     Errors          = 0
                     UploadedFiles   = 0
                     DownloadedFiles = 0
                 }
-            }
-            #endregion
+                #endregion
 
-            $htmlTableActions = @()
-            $exportToExcel = @()
-
-            foreach ($action in $task.Actions) {
                 #region Update counters
                 $counter.Action.UploadedFiles = $action.Job.Results.Where(
                     { $_.Uploaded }).Count
@@ -731,80 +745,79 @@ End {
                 $counter.Total.Errors += $counter.Action.Errors
                 $counter.Total.UploadedFiles += $counter.Action.UploadedFiles
                 $counter.Total.DownloadedFiles += $counter.Action.DownloadedFiles
-                $counter.Total.Actions += $counter.Action.UploadedFiles
-                $counter.Total.Actions += $counter.Action.DownloadedFiles
                 #endregion
 
-                #region Create HTML table
-                $htmlTableActions += "
-                <table>
-                    <tr>
-                        <th colspan=`"2`">
-                            $(
-                                if ($action.Type -eq 'Upload') {
-                                    'UPLOAD FILES TO THE SFTP SERVER'
-                                }
-                            )
-                            $(
-                                if ($action.Type -eq 'Download') {
-                                    'DOWNLOAD FILES FROM THE SFTP SERVER'
-                                }
-                            )
-                        </th>
-                    </tr>
-                    <tr>
-                        <td>SFTP path</td>
-                        <td>$($action.Parameter.SftpPath)</td>
-                    </tr>
-                    <tr>
-                        <td>Computer name</td>
-                        <td>$($action.Parameter.ComputerName)</td>
-                    </tr>
-                    <tr>
-                        <td>Path</td>
-                        <td>$(
-                            if ($action.Type -eq 'Upload') {
-                                $action.Parameter.Paths -join '<br>'
+                #region Create HTML table row
+                $htmlTable += "
+                        $(
+                            if ($counter.Action.Errors) {
+                                '<tr style="background-color: red">'
                             }
                             else {
-                                $action.Parameter.Path -join '<br>'
+                                '<tr>'
                             }
+                        )
+                        <td>
+                            $($action.Parameter.ComputerName)
+                        </td>
+                        <td>
+                            $(
+                                if ($action.Type -eq 'Upload') {
+                                    $action.Parameter.Paths -join ', '
+                                }
+                                else {
+                                    $action.Parameter.SftpPath
+                                }
+                            )
+                        </td>
+                        <td>
+                            $(
+                                if ($action.Type -eq 'Download') {
+                                    $action.Parameter.SftpPath
+                                }
+                                else {
+                                    $action.Parameter.Path
+                                }
+                            )
+                        </td>
+                        <td>
+                            $(
+                                $result = if ($action.Type -eq 'Download') {
+                                    "$($counter.Action.DownloadedFiles) downloaded"
+                                }
+                                else {
+                                    "$($counter.Action.UploadedFiles) uploaded"
+                                }
 
-                        )</td>
-                    </tr>
-                    $(
-                        if ($counter.Action.Errors) {
-                            "<tr>
-                                <td style=``"background-color: red``">Errors</td>
-                                <td style=``"background-color: red``">$($counter.Action.Errors)</td>
-                            </tr>"
-                        }
-                    )
-                    $(
-                        if ($action.Type -eq 'Upload') {
-                            "<tr>
-                                <td>Files uploaded</td>
-                                <td>$($counter.Action.UploadedFiles)</td>
-                            </tr>"
-                        }
-                    )
-                    $(
-                        if ($action.Type -eq 'Download') {
-                            "<tr>
-                                <td>Files downloaded</td>
-                                <td>$($counter.Action.DownloadedFiles)</td>
-                            </tr>"
-                        }
-                    )
-                </table>
-                "
+                                if ($counter.Action.Errors) {
+                                    $result += ", {0} error{1}" -f
+                                    $(
+                                        $counter.Action.Errors
+                                    ),
+                                    $(
+                                        if($counter.Action.Errors -ne 1) {'s'}
+                                    )
+                                }
+
+                                $result
+                            )
+                        </td>
+                    </tr>"
                 #endregion
 
                 #region Create Excel objects
                 $exportToExcel += $action.Job.Results | Select-Object DateTime,
                 @{
+                    Name       = 'TaskName'
+                    Expression = { $task.TaskName }
+                },
+                @{
                     Name       = 'Type'
                     Expression = { $action.Type }
+                },
+                @{
+                    Name       = 'SFTP Server'
+                    Expression = { $task.SFTP.ComputerName }
                 },
                 @{
                     Name       = 'ComputerName'
@@ -855,195 +868,196 @@ End {
                 Error
                 #endregion
             }
+        }
 
-            $htmlTableActions = $htmlTableActions -join '<br>'
+        $htmlTable += '</table>'
+        $htmlTable = $htmlTable -join '<br>'
 
-            #region Create Excel worksheet Overview
-            $createExcelFile = $false
+        #region Create Excel worksheet Overview
+        $createExcelFile = $false
 
-            if (
+        if (
+            (
+                ($file.ExportExcelFile.When -eq 'OnlyOnError') -and
+                ($counter.Total.Errors)
+            ) -or
+            (
+                ($file.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and
                 (
-                    ($file.ExportExcelFile.When -eq 'OnlyOnError') -and
-                    ($counter.Total.Errors)
-                ) -or
-                (
-                    ($file.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and
-                    (
-                        ($counter.Total.Errors) -or ($counter.Total.Actions)
-                    )
+                    ($counter.Total.Errors) -or ($counter.Total.Actions)
                 )
-            ) {
-                $createExcelFile = $true
+            )
+        ) {
+            $createExcelFile = $true
+        }
+
+        if ($createExcelFile) {
+            $excelFileLogParams = @{
+                LogFolder    = $logParams.LogFolder
+                Format       = 'yyyy-MM-dd'
+                Name         = "$ScriptName - $($task.TaskName) - Log.xlsx"
+                Date         = 'ScriptStartTime'
+                NoFormatting = $true
             }
 
-            if ($createExcelFile) {
-                $excelFileLogParams = @{
-                    LogFolder    = $logParams.LogFolder
-                    Format       = 'yyyy-MM-dd'
-                    Name         = "$ScriptName - $($task.TaskName) - Log.xlsx"
-                    Date         = 'ScriptStartTime'
-                    NoFormatting = $true
+            $excelParams = @{
+                Path          = New-LogFileNameHC @excelFileLogParams
+                AutoNameRange = $true
+                Append        = $true
+                AutoSize      = $true
+                FreezeTopRow  = $true
+                WorksheetName = 'Overview'
+                TableName     = 'Overview'
+                Verbose       = $false
+            }
+
+            $M = "Export {0} rows to Excel sheet '{1}'" -f
+            $exportToExcel.Count, $excelParams.WorksheetName
+            Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
+
+            $exportToExcel | Export-Excel @excelParams -CellStyleSB {
+                Param (
+                    $WorkSheet,
+                    $TotalRows,
+                    $LastColumn
+                )
+
+                @($WorkSheet.Names['FileSize'].Style).ForEach(
+                    { $_.NumberFormat.Format = '0.00\ \K\B' }
+                )
+            }
+
+            $mailParams.Attachments = $excelParams.Path
+        }
+        #endregion
+
+        #region Mail subject and priority
+        $mailParams.Priority = 'Normal'
+        $mailParams.Subject = @()
+
+        if ($task.Actions.Type -contains 'Upload') {
+            $mailParams.Subject += "$($counter.Total.UploadedFiles) uploaded"
+        }
+        if ($task.Actions.Type -contains 'Download') {
+            $mailParams.Subject += "$($counter.Total.DownloadedFiles) downloaded"
+        }
+
+        if ($counter.Total.Errors) {
+            $mailParams.Priority = 'High'
+            $mailParams.Subject += "{0} error{1}" -f
+            $counter.Total.Errors,
+            $(if ($counter.Total.Errors -ne 1) { 's' })
+        }
+
+        $mailParams.Subject = $mailParams.Subject -join ', '
+        #endregion
+
+        #region Check to send mail to user
+        $sendMailToUser = $false
+
+        if (
+            (
+                ($file.SendMail.When -eq 'Always')
+            ) -or
+            (
+                ($file.SendMail.When -eq 'OnlyOnError') -and
+                ($counter.Total.Errors)
+            ) -or
+            (
+                ($file.SendMail.When -eq 'OnlyOnErrorOrAction') -and
+                (
+                ($counter.Total.Actions) -or ($counter.Total.Errors)
+                )
+            )
+        ) {
+            $sendMailToUser = $true
+        }
+        #endregion
+
+        #region Create html summary table
+        $summaryHtmlTable = "
+        <table>
+            <tr>
+                <th colspan=`"2`">$($task.TaskName)</th>
+            </tr>
+            <tr>
+                <td>SFTP Server</td>
+                <td>$($task.Sftp.ComputerName)</td>
+            </tr>
+            <tr>
+                <td>SFTP User name</td>
+                <td>$($task.Sftp.Credential.UserName)</td>
+            </tr>
+            $(
+                if ($task.Actions.Type -contains 'Upload') {
+                    "<tr>
+                        <td>Total files uploaded</td>
+                        <td>$($counter.Total.UploadedFiles)</td>
+                    </tr>"
                 }
-
-                $excelParams = @{
-                    Path          = New-LogFileNameHC @excelFileLogParams
-                    AutoNameRange = $true
-                    Append        = $true
-                    AutoSize      = $true
-                    FreezeTopRow  = $true
-                    WorksheetName = 'Overview'
-                    TableName     = 'Overview'
-                    Verbose       = $false
+            )
+            $(
+                if ($task.Actions.Type -contains 'Download') {
+                    "<tr>
+                        <td>Total files downloaded</td>
+                        <td>$($counter.Total.DownloadedFiles)</td>
+                    </tr>"
                 }
-
-                $M = "Export {0} rows to Excel sheet '{1}'" -f
-                $exportToExcel.Count, $excelParams.WorksheetName
-                Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
-
-                $exportToExcel | Export-Excel @excelParams -CellStyleSB {
-                    Param (
-                        $WorkSheet,
-                        $TotalRows,
-                        $LastColumn
-                    )
-
-                    @($WorkSheet.Names['FileSize'].Style).ForEach(
-                        { $_.NumberFormat.Format = '0.00\ \K\B' }
-                    )
+            )
+            $(
+                if ($counter.Total.Errors) {
+                    "<tr>
+                        <td style=``"background-color: red``">Total errors</td>
+                        <td style=``"background-color: red``">$($counter.Total.Errors)</td>
+                    </tr>"
                 }
+            )
+        </table>"
+        #endregion
 
-                $mailParams.Attachments = $excelParams.Path
-            }
-            #endregion
+        #region Send mail
+        $mailParams += @{
+            To             = $file.SendMail.To
+            Message        = "
+                                $systemErrorsHtmlList
+                                <p>Summary of all SFTP actions.</p>
+                                $summaryHtmlTable
+                                <p>Action details.</p>
+                                $htmlTable"
 
-            #region Mail subject and priority
-            $mailParams.Priority = 'Normal'
-            $mailParams.Subject = @()
+            LogFolder      = $LogParams.LogFolder
+            Header         = $ScriptName
+            EventLogSource = $ScriptName
+            Save           = $LogFile + ' - Mail.html'
+            ErrorAction    = 'Stop'
+        }
 
-            if ($task.Actions.Type -contains 'Upload') {
-                $mailParams.Subject += "$($counter.Total.UploadedFiles) uploaded"
-            }
-            if ($task.Actions.Type -contains 'Download') {
-                $mailParams.Subject += "$($counter.Total.DownloadedFiles) downloaded"
-            }
+        if ($mailParams.Attachments) {
+            $mailParams.Message +=
+            "<p><i>* Check the attachment for details</i></p>"
+        }
+
+        Get-ScriptRuntimeHC -Stop
+
+        if ($sendMailToUser) {
+            Write-Verbose 'Send e-mail to the user'
 
             if ($counter.Total.Errors) {
-                $mailParams.Priority = 'High'
-                $mailParams.Subject += "{0} error{1}" -f
-                $counter.Total.Errors,
-                $(if ($counter.Total.Errors -ne 1) { 's' })
+                $mailParams.Bcc = $ScriptAdmin
             }
+            Send-MailHC @mailParams
+        }
+        else {
+            Write-Verbose 'Send no e-mail to the user'
 
-            $mailParams.Subject = $mailParams.Subject -join ', '
-            #endregion
+            if ($counter.Total.Errors) {
+                Write-Verbose 'Send e-mail to admin only with errors'
 
-            #region Check to send mail to user
-            $sendMailToUser = $false
-
-            if (
-                (
-                    ($file.SendMail.When -eq 'Always')
-                ) -or
-                (
-                    ($file.SendMail.When -eq 'OnlyOnError') -and
-                    ($counter.Total.Errors)
-                ) -or
-                (
-                    ($file.SendMail.When -eq 'OnlyOnErrorOrAction') -and
-                    (
-                        ($counter.Total.Actions) -or ($counter.Total.Errors)
-                    )
-                )
-            ) {
-                $sendMailToUser = $true
-            }
-            #endregion
-
-            #region Create html summary table
-            $summaryHtmlTable = "
-            <table>
-                <tr>
-                    <th colspan=`"2`">$($task.TaskName)</th>
-                </tr>
-                <tr>
-                    <td>SFTP Server</td>
-                    <td>$($task.Sftp.ComputerName)</td>
-                </tr>
-                <tr>
-                    <td>SFTP User name</td>
-                    <td>$($task.Sftp.Credential.UserName)</td>
-                </tr>
-                $(
-                    if ($task.Actions.Type -contains 'Upload') {
-                        "<tr>
-                            <td>Total files uploaded</td>
-                            <td>$($counter.Total.UploadedFiles)</td>
-                        </tr>"
-                    }
-                )
-                $(
-                    if ($task.Actions.Type -contains 'Download') {
-                        "<tr>
-                            <td>Total files downloaded</td>
-                            <td>$($counter.Total.DownloadedFiles)</td>
-                        </tr>"
-                    }
-                )
-                $(
-                    if ($counter.Total.Errors) {
-                        "<tr>
-                            <td style=``"background-color: red``">Total errors</td>
-                            <td style=``"background-color: red``">$($counter.Total.Errors)</td>
-                        </tr>"
-                    }
-                )
-            </table>"
-            #endregion
-
-            #region Send mail
-            $mailParams += @{
-                To             = $file.SendMail.To
-                Message        = "
-                        $systemErrorsHtmlList
-                        <p>Summary of all SFTP actions.</p>
-                        $summaryHtmlTable
-                        <p>Action details.</p>
-                        $htmlTableActions"
-
-                LogFolder      = $LogParams.LogFolder
-                Header         = $ScriptName
-                EventLogSource = $ScriptName
-                Save           = $LogFile + ' - Mail.html'
-                ErrorAction    = 'Stop'
-            }
-
-            if ($mailParams.Attachments) {
-                $mailParams.Message +=
-                "<p><i>* Check the attachment for details</i></p>"
-            }
-
-            Get-ScriptRuntimeHC -Stop
-
-            if ($sendMailToUser) {
-                Write-Verbose 'Send e-mail to the user'
-
-                if ($counter.Total.Errors) {
-                    $mailParams.Bcc = $ScriptAdmin
-                }
+                $mailParams.To = $ScriptAdmin
                 Send-MailHC @mailParams
             }
-            else {
-                Write-Verbose 'Send no e-mail to the user'
-
-                if ($counter.Total.Errors) {
-                    Write-Verbose 'Send e-mail to admin only with errors'
-
-                    $mailParams.To = $ScriptAdmin
-                    Send-MailHC @mailParams
-                }
-            }
-            #endregion
         }
+        #endregion
     }
     catch {
         Write-Warning $_
