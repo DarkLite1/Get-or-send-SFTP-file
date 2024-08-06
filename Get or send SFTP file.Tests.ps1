@@ -464,7 +464,7 @@ Describe 'send an e-mail to the admin when' {
             Context "Tasks.Actions.Type is 'Download'" {
                 It 'Tasks.Actions.Parameter.<_> not found' -ForEach @(
                     'SftpPath', 'Path', 'Option',
-                    'FileExtensions', 'PartialFileExtension'
+                    'PartialFileExtension'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[1].Parameter.$_ = $null

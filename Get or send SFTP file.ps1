@@ -280,40 +280,66 @@ Begin {
                         { throw "Property 'Tasks.Actions.$_' not found" }
                     )
 
+                    @(
+                        'SftpPath', 'Option', 'PartialFileExtension'
+                    ).Where(
+                        { -not $action.Parameter.$_ }
+                    ).foreach(
+                        {
+                            throw "Property 'Tasks.Actions.Parameter.$_' not found"
+                        }
+                    )
+
+                    #region Test partial file extensions
+                    @(
+                        'PartialFileExtension'
+                    ).Where(
+                        { $action.Parameter.$_ -notLike '.*' }
+                    ).foreach(
+                        { throw "Property 'Tasks.Actions.Parameter.$_' needs to start with a dot. For example: '.txt', '.xml', ..." }
+                    )
+                    #endregion
+
+                    #region Test file extensions
+                    $action.Parameter.FileExtensions.Where(
+                        { $_ -and ($_ -notLike '.*') }
+                    ).foreach(
+                        { throw "Property 'Tasks.Actions.Parameter.FileExtensions' needs to start with a dot. For example: '.txt', '.xml', ..." }
+                    )
+                    #endregion
+
+                    #region Test boolean values
+                    foreach (
+                        $boolean in
+                        @(
+                            'OverwriteFile',
+                            'RemoveFailedPartialFiles'
+                        )
+                    ) {
+                        try {
+                            $null = [Boolean]::Parse($action.Parameter.Option.$boolean)
+                        }
+                        catch {
+                            throw "Property 'Tasks.Actions.Parameter.Option.$boolean' is not a boolean value"
+                        }
+                    }
+                    #endregion
+
                     switch ($action.Type) {
                         'Download' {
                             @(
-                                'SftpPath',
-                                'Path', 'Option',
-                                'FileExtensions', 'PartialFileExtension'
+                                'Path'
                             ).Where(
                                 { -not $action.Parameter.$_ }
                             ).foreach(
                                 { throw "Property 'Tasks.Actions.Parameter.$_' not found" }
                             )
 
-                            #region Test boolean values
-                            foreach (
-                                $boolean in
-                                @(
-                                    'OverwriteFile',
-                                    'RemoveFailedPartialFiles'
-                                )
-                            ) {
-                                try {
-                                    $null = [Boolean]::Parse($action.Parameter.Option.$boolean)
-                                }
-                                catch {
-                                    throw "Property 'Tasks.Actions.Parameter.Option.$boolean' is not a boolean value"
-                                }
-                            }
-                            #endregion
                             break
                         }
                         'Upload' {
                             @(
-                                'SftpPath',
-                                'Paths', 'Option', 'PartialFileExtension'
+                                'Paths'
                             ).Where(
                                 { -not $action.Parameter.$_ }
                             ).foreach(
@@ -321,21 +347,6 @@ Begin {
                             )
 
                             #region Test boolean values
-                            foreach (
-                                $boolean in
-                                @(
-                                    'OverwriteFile',
-                                    'RemoveFailedPartialFiles'
-                                )
-                            ) {
-                                try {
-                                    $null = [Boolean]::Parse($action.Parameter.Option.$boolean)
-                                }
-                                catch {
-                                    throw "Property 'Tasks.Actions.Parameter.Option.$boolean' is not a boolean value"
-                                }
-                            }
-
                             foreach (
                                 $boolean in
                                 @(
@@ -349,22 +360,6 @@ Begin {
                                     throw "Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$boolean' is not a boolean value"
                                 }
                             }
-                            #endregion
-
-                            #region Test file extensions
-                            @(
-                                'PartialFileExtension'
-                            ).Where(
-                                { $action.Parameter.$_ -notLike '.*' }
-                            ).foreach(
-                                { throw "Property 'Tasks.Actions.Parameter.$_' needs to start with a dot. For example: '.txt', '.xml', ..." }
-                            )
-
-                            $action.Parameter.FileExtensions.Where(
-                                { $_ -and ($_ -notLike '.*') }
-                            ).foreach(
-                                { throw "Property 'Tasks.Actions.Parameter.FileExtensions' needs to start with a dot. For example: '.txt', '.xml', ..." }
-                            )
                             #endregion
 
                             break
