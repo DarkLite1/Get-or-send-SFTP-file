@@ -203,8 +203,7 @@ Begin {
         #endregion
 
         #region Import .json file
-        $M = "Import .json file '$ImportFile'"
-        Write-Verbose $M
+        Write-Verbose "Import .json file '$ImportFile'"
         # Write-EventLog @EventVerboseParams -Message $M
 
         $file = Get-Content $ImportFile -Raw -EA Stop -Encoding UTF8 |
@@ -212,6 +211,8 @@ Begin {
         #endregion
 
         #region Test .json file properties
+        Write-Verbose 'Test .json file properties'
+
         try {
             if (-not ($Tasks = $file.Tasks)) {
                 throw "Property 'Tasks' not found"
@@ -406,6 +407,9 @@ Begin {
         }
         #endregion
 
+        #region Convert .json file
+        Write-Verbose 'Convert .json file'
+
         try {
             foreach ($task in $Tasks) {
                 #region Set ComputerName if there is none
@@ -490,6 +494,7 @@ Begin {
         catch {
             throw "Input file '$ImportFile': $_"
         }
+        #endregion
     }
     catch {
         Write-Warning $_
@@ -653,8 +658,12 @@ Process {
         }
 
         foreach ($task in $Tasks) {
+            Write-Verbose "Execute task '$($task.TaskName)' with $($task.Actions.Count) actions"
+
             $task.Actions | ForEach-Object @foreachParams
         }
+
+        Write-Verbose 'All tasks finished'
         #endregion
     }
     Catch {
