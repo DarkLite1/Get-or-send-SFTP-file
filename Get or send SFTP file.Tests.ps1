@@ -52,15 +52,15 @@ BeforeAll {
                         }
                     }
                 )
-                SendMail        = @{
-                    To   = 'bob@contoso.com'
-                    When = 'Always'
-                }
-                ExportExcelFile = @{
-                    When = 'OnlyOnErrorOrAction'
-                }
             }
         )
+        SendMail        = @{
+            To   = 'bob@contoso.com'
+            When = 'Always'
+        }
+        ExportExcelFile = @{
+            When = 'OnlyOnErrorOrAction'
+        }
     }
 
     $testData = @(
@@ -262,7 +262,7 @@ Describe 'send an e-mail to the admin when' {
         }
         Context 'property' {
             It '<_> not found' -ForEach @(
-                'MaxConcurrentJobs', 'Tasks'
+                'MaxConcurrentJobs', 'Tasks', 'SendMail', 'ExportExcelFile'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.$_ = $null
@@ -298,7 +298,7 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
             It 'Tasks.<_> not found' -ForEach @(
-                'TaskName', 'Sftp', 'Actions', 'SendMail', 'ExportExcelFile'
+                'TaskName', 'Sftp', 'Actions'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].$_ = $null
@@ -309,13 +309,13 @@ Describe 'send an e-mail to the admin when' {
                 .$testScript @testParams
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.$_' not found*")
+                    (&$MailAdminParams) -and
+                    ($Message -like "*$ImportFile*Property 'Tasks.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
                 }
-            }
+            } -Tag test
             It 'Tasks.TaskName not found' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].TaskName = $null
@@ -557,11 +557,11 @@ Describe 'send an e-mail to the admin when' {
                     }
                 }
             }
-            It 'Tasks.SendMail.<_> not found' -ForEach @(
+            It 'SendMail.<_> not found' -ForEach @(
                 'To', 'When'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Tasks[0].SendMail.$_ = $null
+                $testNewInputFile.SendMail.$_ = $null
 
                 $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
@@ -570,17 +570,17 @@ Describe 'send an e-mail to the admin when' {
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.SendMail.$_' not found*")
+                        ($Message -like "*$ImportFile*Property 'SendMail.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
                 }
             }
-            It 'Tasks.ExportExcelFile.<_> not found' -ForEach @(
+            It 'ExportExcelFile.<_> not found' -ForEach @(
                 'When'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Tasks[0].ExportExcelFile.$_ = $null
+                $testNewInputFile.ExportExcelFile.$_ = $null
 
                 $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
@@ -589,15 +589,15 @@ Describe 'send an e-mail to the admin when' {
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.ExportExcelFile.$_' not found*")
+                        ($Message -like "*$ImportFile*Property 'ExportExcelFile.$_' not found*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
                 }
             }
-            It 'Tasks.ExportExcelFile.When is not valid' {
+            It 'ExportExcelFile.When is not valid' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Tasks[0].ExportExcelFile.When = 'wrong'
+                $testNewInputFile.ExportExcelFile.When = 'wrong'
 
                 $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
@@ -606,15 +606,15 @@ Describe 'send an e-mail to the admin when' {
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.ExportExcelFile.When' with value 'wrong' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'*")
+                        ($Message -like "*$ImportFile*Property 'ExportExcelFile.When' with value 'wrong' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
                 }
             }
-            It 'Tasks.SendMail.When is not valid' {
+            It 'SendMail.When is not valid' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Tasks[0].SendMail.When = 'wrong'
+                $testNewInputFile.SendMail.When = 'wrong'
 
                 $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
@@ -623,7 +623,7 @@ Describe 'send an e-mail to the admin when' {
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.SendMail.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'*")
+                        ($Message -like "*$ImportFile*Property 'SendMail.When' with value 'wrong' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'*")
                 }
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
@@ -899,7 +899,7 @@ Describe 'when the SFTP script runs successfully' {
     Context 'send an e-mail' {
         It 'with attachment to the user' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
-            ($To -eq $testInputFile.Tasks[0].SendMail.To) -and
+            ($To -eq $testInputFile.SendMail.To) -and
             ($Priority -eq 'Normal') -and
             ($Subject -eq '2 uploaded, 1 downloaded') -and
             ($Attachments -like '*- Log.xlsx') -and
@@ -912,7 +912,7 @@ Describe 'ExportExcelFile.When' {
     Context 'create no Excel file' {
         It "'Never'" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'Never'
+            $testNewInputFile.ExportExcelFile.When = 'Never'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -924,7 +924,7 @@ Describe 'ExportExcelFile.When' {
         }
         It "'OnlyOnError' and no errors are found" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnError'
+            $testNewInputFile.ExportExcelFile.When = 'OnlyOnError'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -942,7 +942,7 @@ Describe 'ExportExcelFile.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrAction'
+            $testNewInputFile.ExportExcelFile.When = 'OnlyOnErrorOrAction'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -968,7 +968,7 @@ Describe 'ExportExcelFile.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnError'
+            $testNewInputFile.ExportExcelFile.When = 'OnlyOnError'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -993,7 +993,7 @@ Describe 'ExportExcelFile.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrAction'
+            $testNewInputFile.ExportExcelFile.When = 'OnlyOnErrorOrAction'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -1018,7 +1018,7 @@ Describe 'ExportExcelFile.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].ExportExcelFile.When = 'OnlyOnErrorOrAction'
+            $testNewInputFile.ExportExcelFile.When = 'OnlyOnErrorOrAction'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -1029,17 +1029,17 @@ Describe 'ExportExcelFile.When' {
             Should -Not -BeNullOrEmpty
         }
     }
-} -Tag test
+}
 Describe 'SendMail.When' {
     BeforeAll {
         $testParamFilter = @{
-            ParameterFilter = { $To -eq $testNewInputFile.Tasks[0].SendMail.To }
+            ParameterFilter = { $To -eq $testNewInputFile.SendMail.To }
         }
     }
     Context 'send no e-mail to the user' {
         It "'Never'" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].SendMail.When = 'Never'
+            $testNewInputFile.SendMail.When = 'Never'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -1050,7 +1050,7 @@ Describe 'SendMail.When' {
         }
         It "'OnlyOnError' and no errors are found" {
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnError'
+            $testNewInputFile.SendMail.When = 'OnlyOnError'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -1067,7 +1067,7 @@ Describe 'SendMail.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrAction'
+            $testNewInputFile.SendMail.When = 'OnlyOnErrorOrAction'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -1092,7 +1092,7 @@ Describe 'SendMail.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnError'
+            $testNewInputFile.SendMail.When = 'OnlyOnError'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -1116,7 +1116,7 @@ Describe 'SendMail.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrAction'
+            $testNewInputFile.SendMail.When = 'OnlyOnErrorOrAction'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -1139,7 +1139,7 @@ Describe 'SendMail.When' {
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].SendMail.When = 'OnlyOnErrorOrAction'
+            $testNewInputFile.SendMail.When = 'OnlyOnErrorOrAction'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams

@@ -7,15 +7,15 @@
     Download files from an SFTP server or upload files to an SFTP server.
 
 .DESCRIPTION
-    Read an input file that contains all the required parameters for this
-    script. Then based on the action, a file is uploaded or downloaded.
-
-    Based on the input file parameters a summary e-mail is sent to the user or
-    not. In any case, when there is an error, there's always an e-mail sent to
-    the admin.
+    Read an input file that contains all the parameters for this script. The
+    Action.Type defines if it's an upload or a download. When SendMail.When is
+    used, a summary e-mail is sent.
 
     The computer that is running the SFTP code should have the module 'Posh-SSH'
     installed.
+
+    Actions run in parallel when MaxConcurrentJobs is more than 1. Tasks
+    run sequentially.
 
 .PARAMETER ImportFile
     A .JSON file that contains all the parameters used by the script.
@@ -214,13 +214,37 @@ Begin {
         Write-Verbose 'Test .json file properties'
 
         try {
-            if (-not ($Tasks = $file.Tasks)) {
-                throw "Property 'Tasks' not found"
-            }
+            @(
+                'MaxConcurrentJobs', 'SendMail', 'ExportExcelFile', 'Tasks'
+            ).where(
+                { -not $file.$_ }
+            ).foreach(
+                { throw "Property '$_' not found" }
+            )
 
-            if (-not $file.MaxConcurrentJobs) {
-                throw "Property 'MaxConcurrentJobs' not found"
+            #region Test SendMail
+            @('To', 'When').Where(
+                { -not $file.SendMail.$_ }
+            ).foreach(
+                { throw "Property 'SendMail.$_' not found" }
+            )
+
+            if ($file.SendMail.When -notMatch '^Never$|^Always$|^OnlyOnError$|^OnlyOnErrorOrAction$') {
+                throw "Property 'SendMail.When' with value '$($file.SendMail.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'"
             }
+            #endregion
+
+            #region Test ExportExcelFile
+            @('When').Where(
+                { -not $file.ExportExcelFile.$_ }
+            ).foreach(
+                { throw "Property 'ExportExcelFile.$_' not found" }
+            )
+
+            if ($file.ExportExcelFile.When -notMatch '^Never$|^OnlyOnError$|^OnlyOnErrorOrAction$') {
+                throw "Property 'ExportExcelFile.When' with value '$($file.ExportExcelFile.When)' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'"
+            }
+            #endregion
 
             #region Test integer value
             try {
@@ -231,9 +255,11 @@ Begin {
             }
             #endregion
 
+            $Tasks = $file.Tasks
+
             foreach ($task in $Tasks) {
                 @(
-                    'TaskName', 'Sftp', 'Actions', 'SendMail', 'ExportExcelFile'
+                    'TaskName', 'Sftp', 'Actions'
                 ).where(
                     { -not $task.$_ }
                 ).foreach(
@@ -370,28 +396,6 @@ Begin {
                         }
                     }
                 }
-
-                @('To', 'When').Where(
-                    { -not $task.SendMail.$_ }
-                ).foreach(
-                    { throw "Property 'Tasks.SendMail.$_' not found" }
-                )
-
-                @('When').Where(
-                    { -not $task.ExportExcelFile.$_ }
-                ).foreach(
-                    { throw "Property 'Tasks.ExportExcelFile.$_' not found" }
-                )
-
-                #region Test When is valid
-                if ($task.SendMail.When -notMatch '^Never$|^Always$|^OnlyOnError$|^OnlyOnErrorOrAction$') {
-                    throw "Property 'Tasks.SendMail.When' with value '$($task.SendMail.When)' is not valid. Accepted values are 'Always', 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'"
-                }
-
-                if ($task.ExportExcelFile.When -notMatch '^Never$|^OnlyOnError$|^OnlyOnErrorOrAction$') {
-                    throw "Property 'Tasks.ExportExcelFile.When' with value '$($task.ExportExcelFile.When)' is not valid. Accepted values are 'Never', 'OnlyOnError' or 'OnlyOnErrorOrAction'"
-                }
-                #endregion
             }
 
             #region Test unique TaskName
@@ -859,11 +863,11 @@ End {
 
             if (
                 (
-                    ($task.ExportExcelFile.When -eq 'OnlyOnError') -and
+                    ($file.ExportExcelFile.When -eq 'OnlyOnError') -and
                     ($counter.Total.Errors)
                 ) -or
                 (
-                    ($task.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and
+                    ($file.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and
                     (
                         ($counter.Total.Errors) -or ($counter.Total.Actions)
                     )
@@ -938,14 +942,14 @@ End {
 
             if (
                 (
-                    ($task.SendMail.When -eq 'Always')
+                    ($file.SendMail.When -eq 'Always')
                 ) -or
                 (
-                    ($task.SendMail.When -eq 'OnlyOnError') -and
+                    ($file.SendMail.When -eq 'OnlyOnError') -and
                     ($counter.Total.Errors)
                 ) -or
                 (
-                    ($task.SendMail.When -eq 'OnlyOnErrorOrAction') -and
+                    ($file.SendMail.When -eq 'OnlyOnErrorOrAction') -and
                     (
                         ($counter.Total.Actions) -or ($counter.Total.Errors)
                     )
@@ -998,7 +1002,7 @@ End {
 
             #region Send mail
             $mailParams += @{
-                To             = $task.SendMail.To
+                To             = $file.SendMail.To
                 Message        = "
                         $systemErrorsHtmlList
                         <p>Summary of all SFTP actions.</p>

@@ -49,16 +49,16 @@
             "?": "Type: Upload | Download, make sure that the module Posh-SSH is installed on PC1"
           }
         }
-      ],
-      "SendMail": {
-        "To": ["bob@contoso.com"],
-        "When": "Always",
-        "?": "When: Never | OnlyOnError | OnlyOnErrorOrAction | Always"
-      },
-      "ExportExcelFile": {
-        "When": "OnlyOnErrorOrAction",
-        "?": "When: Never | OnlyOnError | OnlyOnErrorOrAction"
-      }
+      ]
     }
-  ]
+  ],
+  "SendMail": {
+    "To": ["bob@contoso.com"],
+    "When": "Always",
+    "?": "When: Never | OnlyOnError | OnlyOnErrorOrAction | Always"
+  },
+  "ExportExcelFile": {
+    "When": "OnlyOnErrorOrAction",
+    "?": "When: Never | OnlyOnError | OnlyOnErrorOrAction"
+  }
 }
