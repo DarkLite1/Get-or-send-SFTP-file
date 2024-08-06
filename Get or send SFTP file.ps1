@@ -686,6 +686,7 @@ End {
                 Errors          = $countSystemErrors
                 UploadedFiles   = 0
                 DownloadedFiles = 0
+                Actions         = 0
             }
         }
         #endregion
@@ -714,6 +715,7 @@ End {
         $htmlTable += '<table>'
 
         foreach ($task in $Tasks) {
+            #region Create HTML table header
             $htmlTable += "
                 <tr>
                     <th style=`"text-align: center; background-color: lightgray;`" colspan=`"4`">$($task.TaskName) - SFTP Server: $($task.SFTP.ComputerName)</th>
@@ -724,6 +726,7 @@ End {
                     <th>Destination</th>
                     <th>Result</th>
                 </tr>"
+            #endregion
 
             foreach ($action in $task.Actions) {
                 #region Counter
@@ -732,9 +735,7 @@ End {
                     UploadedFiles   = 0
                     DownloadedFiles = 0
                 }
-                #endregion
 
-                #region Update counters
                 $counter.Action.UploadedFiles = $action.Job.Results.Where(
                     { $_.Uploaded }).Count
                 $counter.Action.DownloadedFiles = $action.Job.Results.Where(
@@ -745,6 +746,8 @@ End {
                 $counter.Total.Errors += $counter.Action.Errors
                 $counter.Total.UploadedFiles += $counter.Action.UploadedFiles
                 $counter.Total.DownloadedFiles += $counter.Action.DownloadedFiles
+                $counter.Total.Actions += $counter.Action.UploadedFiles
+                $counter.Total.Actions += $counter.Action.DownloadedFiles
                 #endregion
 
                 #region Create HTML table row
@@ -772,7 +775,7 @@ End {
                         </td>
                         <td>
                             $(
-                                if ($action.Type -eq 'Download') {
+                                if ($action.Type -eq 'Upload') {
                                     $action.Parameter.SftpPath
                                 }
                                 else {
@@ -816,7 +819,7 @@ End {
                     Expression = { $action.Type }
                 },
                 @{
-                    Name       = 'SFTP Server'
+                    Name       = 'SftpServer'
                     Expression = { $task.SFTP.ComputerName }
                 },
                 @{
@@ -871,7 +874,6 @@ End {
         }
 
         $htmlTable += '</table>'
-        $htmlTable = $htmlTable -join '<br>'
 
         #region Create Excel worksheet Overview
         $createExcelFile = $false
@@ -935,10 +937,10 @@ End {
         $mailParams.Priority = 'Normal'
         $mailParams.Subject = @()
 
-        if ($task.Actions.Type -contains 'Upload') {
+        if ($counter.Total.UploadedFiles) {
             $mailParams.Subject += "$($counter.Total.UploadedFiles) uploaded"
         }
-        if ($task.Actions.Type -contains 'Download') {
+        if ($counter.Total.DownloadedFiles) {
             $mailParams.Subject += "$($counter.Total.DownloadedFiles) downloaded"
         }
 
@@ -950,6 +952,10 @@ End {
         }
 
         $mailParams.Subject = $mailParams.Subject -join ', '
+
+        if (-not $mailParams.Subject) {
+            $mailParams.Subject = 'Nothing done'
+        }
         #endregion
 
         #region Check to send mail to user
@@ -974,57 +980,13 @@ End {
         }
         #endregion
 
-        #region Create html summary table
-        $summaryHtmlTable = "
-        <table>
-            <tr>
-                <th colspan=`"2`">$($task.TaskName)</th>
-            </tr>
-            <tr>
-                <td>SFTP Server</td>
-                <td>$($task.Sftp.ComputerName)</td>
-            </tr>
-            <tr>
-                <td>SFTP User name</td>
-                <td>$($task.Sftp.Credential.UserName)</td>
-            </tr>
-            $(
-                if ($task.Actions.Type -contains 'Upload') {
-                    "<tr>
-                        <td>Total files uploaded</td>
-                        <td>$($counter.Total.UploadedFiles)</td>
-                    </tr>"
-                }
-            )
-            $(
-                if ($task.Actions.Type -contains 'Download') {
-                    "<tr>
-                        <td>Total files downloaded</td>
-                        <td>$($counter.Total.DownloadedFiles)</td>
-                    </tr>"
-                }
-            )
-            $(
-                if ($counter.Total.Errors) {
-                    "<tr>
-                        <td style=``"background-color: red``">Total errors</td>
-                        <td style=``"background-color: red``">$($counter.Total.Errors)</td>
-                    </tr>"
-                }
-            )
-        </table>"
-        #endregion
-
         #region Send mail
         $mailParams += @{
             To             = $file.SendMail.To
             Message        = "
-                                $systemErrorsHtmlList
-                                <p>Summary of all SFTP actions.</p>
-                                $summaryHtmlTable
-                                <p>Action details.</p>
-                                $htmlTable"
-
+                            $systemErrorsHtmlList
+                            <p>Find a summary of all SFTP actions below:</p>
+                            $htmlTable"
             LogFolder      = $LogParams.LogFolder
             Header         = $ScriptName
             EventLogSource = $ScriptName

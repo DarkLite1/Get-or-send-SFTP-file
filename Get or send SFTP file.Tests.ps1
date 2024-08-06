@@ -315,7 +315,7 @@ Describe 'send an e-mail to the admin when' {
                 Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                     $EntryType -eq 'Error'
                 }
-            } -Tag test
+            }
             It 'Tasks.TaskName not found' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].TaskName = $null
@@ -903,7 +903,7 @@ Describe 'when the SFTP script runs successfully' {
             ($Priority -eq 'Normal') -and
             ($Subject -eq '2 uploaded, 1 downloaded') -and
             ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*SFTP User name*bobUserName*Total files uploaded*2*UPLOAD FILES TO THE SFTP SERVER*SFTP path*$($testInputFile.Tasks[0].Actions[0].SftpPath)*$($testInputFile.Tasks[0].Actions[0].ComputerName)*Path*$($testInputFile.Tasks[0].Actions[0].Parameter.Paths[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Paths[1])*DOWNLOAD FILES FROM THE SFTP SERVER*")
+            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*ComputerName*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].ComputerName)*$($testInputFile.Tasks[0].Actions[0].Parameter.Paths[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Paths[1])*$($testInputFile.Tasks[0].Actions[0].Parameter.SftpPath)*2 uploaded*$($testInputFile.Tasks[0].Actions[1].ComputerName)*$($testInputFile.Tasks[0].Actions[1].Parameter.SftpPath)*$($testInputFile.Tasks[0].Actions[1].Parameter.Path)*1 downloaded*")
             }
         }
     }
