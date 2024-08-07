@@ -717,8 +717,9 @@ End {
         foreach ($task in $Tasks) {
             #region Create HTML table header
             $htmlTable += "
-                <tr>
-                    <th style=`"text-align: center; background-color: lightgray;`" colspan=`"4`">$($task.TaskName) - SFTP Server: $($task.SFTP.ComputerName)</th>
+                <tr style=`"background-color: lightgrey;`">
+                    <th style=`"text-align: center;`" colspan=`"3`">$($task.TaskName)</th>
+                    <th style=`"text-align: left;`">SFTP Server: $($task.SFTP.ComputerName)</th>
                 </tr>
                 <tr>
                     <th>ComputerName</th>
