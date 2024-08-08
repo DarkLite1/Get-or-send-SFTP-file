@@ -50,7 +50,7 @@
     Only the files with a matching file extension will be uploaded. If blank,
     all files will be uploaded.
 
-.PARAMETER OverwriteFileOnSftpServer
+.PARAMETER OverwriteFile
     Overwrite the file on the SFTP server in case it already exists.
 
 .PARAMETER ErrorWhenUploadPathIsNotFound
@@ -84,7 +84,7 @@ Param (
     [SecureString]$SftpPassword,
     [String[]]$SftpOpenSshKeyFile,
     [String[]]$FileExtensions,
-    [Boolean]$OverwriteFileOnSftpServer,
+    [Boolean]$OverwriteFile,
     [Boolean]$RemoveFailedPartialFiles,
     [Int]$RetryCountOnLockedFiles = 3,
     [Int]$RetryWaitSeconds = 3
@@ -323,7 +323,7 @@ try {
             ) {
                 Write-Verbose 'Duplicate file on SFTP server'
 
-                if ($OverwriteFileOnSftpServer) {
+                if ($OverwriteFile) {
                     $retryCount = 0
                     $fileLocked = $true
 
