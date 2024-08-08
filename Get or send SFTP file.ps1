@@ -89,11 +89,7 @@
     is 'Download'. For type 'Upload' the source file is always removed after a
     successful upload.
 
-.PARAMETER Tasks.Actions.Parameter.Option.ErrorWhen.PathIsNotFound
-    Throw an error when the file to upload is not found. When Path is a folder
-    this option is ignored, because a folder can be empty.
-
-.PARAMETER Tasks.Actions.Parameter.Option.ErrorWhen.RemoveFailedPartialFiles
+.PARAMETER Tasks.Actions.Parameter.Option.RemoveFailedPartialFiles
     When the upload process is interrupted, it is possible that files are not
     completely uploaded and that there are sill partial files present on the
     SFTP server or in the local folder.
@@ -350,22 +346,6 @@ Begin {
                             throw "Property 'Tasks.Actions.Parameter.Option.$boolean' is not a boolean value"
                         }
                     }
-
-                    if ($action.Type -eq 'Upload') {
-                        foreach (
-                            $boolean in
-                            @(
-                                'PathIsNotFound'
-                            )
-                        ) {
-                            try {
-                                $null = [Boolean]::Parse($action.Parameter.Option.ErrorWhen.$boolean)
-                            }
-                            catch {
-                                throw "Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$boolean' is not a boolean value"
-                            }
-                        }
-                    }
                     #endregion
                 }
             }
@@ -508,12 +488,11 @@ Process {
                             $task.Sftp.Credential.Password,
                             $task.Sftp.Credential.PasswordKeyFile,
                             $action.Parameter.Option.OverwriteFile,
-                            $action.Parameter.Option.ErrorWhen.PathIsNotFound,
                             $action.Parameter.Option.RemoveFailedPartialFiles,
                             $action.Parameter.FileExtensions
                         }
 
-                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Path '{9}' FileExtensions '{11}'" -f
+                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' RemoveFailedPartialFiles '{7}' Path '{8}' FileExtensions '{10}'" -f
                         $task.TaskName,
                         $action.Parameter.ComputerName,
                         $invokeParams.ArgumentList[1],
@@ -523,7 +502,7 @@ Process {
                         $invokeParams.ArgumentList[7],
                         $invokeParams.ArgumentList[8],
                         $invokeParams.ArgumentList[9],
-                        $($invokeParams.ArgumentList[0] -join "', '"),
+                        $invokeParams.ArgumentList[0],
                         $invokeParams.FilePath,
                         $($invokeParams.ArgumentList[10] -join "', '")
 

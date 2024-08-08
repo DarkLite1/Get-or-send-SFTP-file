@@ -22,10 +22,7 @@
             "PartialFileExtension": ".UploadInProgress",
             "Option": {
               "OverwriteFile": false,
-              "RemoveFailedPartialFiles": false,
-              "ErrorWhen": {
-                "PathIsNotFound": false
-              }
+              "RemoveFailedPartialFiles": false
             },
             "?": "Type: Upload | Download, FileExtensions: empty is all files"
           }

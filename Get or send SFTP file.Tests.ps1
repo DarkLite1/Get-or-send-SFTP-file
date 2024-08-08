@@ -28,9 +28,6 @@ BeforeAll {
                             Option               = @{
                                 OverwriteFile            = $false
                                 RemoveFailedPartialFiles = $false
-                                ErrorWhen                = @{
-                                    PathIsNotFound = $true
-                                }
                             }
                         }
                     }
@@ -513,25 +510,6 @@ Describe 'send an e-mail to the admin when' {
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.Option.$_' is not a boolean value*")
                     }
                 }
-                It 'Tasks.Actions.Parameter.Option.ErrorWhen.<_> not a boolean' -ForEach @(
-                    'PathIsNotFound'
-                ) {
-                    $testNewInputFile = Copy-ObjectHC $testInputFile
-                    $testNewInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.$_ = $null
-
-                    $testNewInputFile | ConvertTo-Json -Depth 7 |
-                    Out-File @testOutParams
-
-                    .$testScript @testParams
-
-                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$_' is not a boolean value*")
-                    }
-                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                        $EntryType -eq 'Error'
-                    }
-                }
             }
             It 'SendMail.<_> not found' -ForEach @(
                 'To', 'When'
@@ -727,9 +705,8 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[5] -eq 'bobPasswordEncrypted') -and
                 (-not $ArgumentList[6]) -and
                 ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
-                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound) -and
-                ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles) -and
-                ($ArgumentList[10] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions)
+                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles) -and
+                ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions)
             }
             {
                 ($FilePath -eq $testParams.Path.DownloadScript) -and
@@ -827,12 +804,11 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[5] -is 'SecureString') -and
             ($ArgumentList[6] -eq 'passKeyContent') -and
             ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
-            ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.ErrorWhen.PathIsNotFound) -and
-            ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles) -and
-            ($ArgumentList[10] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions)
+            ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles) -and
+            ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions)
         }
     }
-}
+} -tag test
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 7 |
@@ -869,7 +845,7 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow.FileName | Should -Be $testRow.FileName
                 $actualRow.FileSize | Should -Be $testRow.FileSize
             }
-        } -Tag test
+        }
     }
     Context 'send an e-mail' {
         It 'with attachment to the user' {
