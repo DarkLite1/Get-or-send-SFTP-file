@@ -704,9 +704,9 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
                 ($ArgumentList[5] -eq 'bobPasswordEncrypted') -and
                 (-not $ArgumentList[6]) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
-                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles) -and
-                ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions)
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions) -and
+                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
+                ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles)
             }
             {
                 ($FilePath -eq $testParams.Path.DownloadScript) -and
@@ -803,9 +803,9 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
             ($ArgumentList[5] -is 'SecureString') -and
             ($ArgumentList[6] -eq 'passKeyContent') -and
-            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
-            ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles) -and
-            ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions)
+            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions) -and
+            ($ArgumentList[8] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.OverwriteFile) -and
+            ($ArgumentList[9] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Option.RemoveFailedPartialFiles)
         }
     }
 } -tag test

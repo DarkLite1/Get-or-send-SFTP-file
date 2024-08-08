@@ -83,9 +83,9 @@ Param (
     [String]$PartialFileExtension,
     [SecureString]$SftpPassword,
     [String[]]$SftpOpenSshKeyFile,
+    [String[]]$FileExtensions,
     [Boolean]$OverwriteFileOnSftpServer,
     [Boolean]$RemoveFailedPartialFiles,
-    [String[]]$FileExtensions,
     [Int]$RetryCountOnLockedFiles = 3,
     [Int]$RetryWaitSeconds = 3
 )
