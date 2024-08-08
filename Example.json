@@ -17,11 +17,7 @@
           "Parameter": {
             "SftpPath": "/reports/",
             "ComputerName": null,
-            "Paths": [
-              "\\SERVER\\C$\\File1.xlsx",
-              "\\SERVER\\C$\\File2.xlsx",
-              "\\SERVER\\C$\\File3.xlsx"
-            ],
+            "Path": "\\SERVER\\C$\\Folder",
             "FileExtensions": [],
             "PartialFileExtension": ".UploadInProgress",
             "Option": {

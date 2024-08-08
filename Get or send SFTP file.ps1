@@ -308,7 +308,7 @@ Begin {
                     )
 
                     @(
-                        'SftpPath', 'Option', 'PartialFileExtension'
+                        'SftpPath', 'Path', 'Option', 'PartialFileExtension'
                     ).Where(
                         { -not $action.Parameter.$_ }
                     ).foreach(
@@ -350,51 +350,23 @@ Begin {
                             throw "Property 'Tasks.Actions.Parameter.Option.$boolean' is not a boolean value"
                         }
                     }
-                    #endregion
 
-                    switch ($action.Type) {
-                        'Download' {
+                    if ($action.Type -eq 'Upload') {
+                        foreach (
+                            $boolean in
                             @(
-                                'Path'
-                            ).Where(
-                                { -not $action.Parameter.$_ }
-                            ).foreach(
-                                { throw "Property 'Tasks.Actions.Parameter.$_' not found" }
+                                'PathIsNotFound'
                             )
-
-                            break
-                        }
-                        'Upload' {
-                            @(
-                                'Paths'
-                            ).Where(
-                                { -not $action.Parameter.$_ }
-                            ).foreach(
-                                { throw "Property 'Tasks.Actions.Parameter.$_' not found" }
-                            )
-
-                            #region Test boolean values
-                            foreach (
-                                $boolean in
-                                @(
-                                    'PathIsNotFound'
-                                )
-                            ) {
-                                try {
-                                    $null = [Boolean]::Parse($action.Parameter.Option.ErrorWhen.$boolean)
-                                }
-                                catch {
-                                    throw "Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$boolean' is not a boolean value"
-                                }
+                        ) {
+                            try {
+                                $null = [Boolean]::Parse($action.Parameter.Option.ErrorWhen.$boolean)
                             }
-                            #endregion
-
-                            break
-                        }
-                        Default {
-                            throw "Tasks.Actions.Type '$_' not supported. Only the values 'Upload' or 'Download' are supported."
+                            catch {
+                                throw "Property 'Tasks.Actions.Parameter.Option.ErrorWhen.$boolean' is not a boolean value"
+                            }
                         }
                     }
+                    #endregion
                 }
             }
 
@@ -528,7 +500,7 @@ Process {
                     'Upload' {
                         $invokeParams = @{
                             FilePath     = $PathItem.UploadScript
-                            ArgumentList = $action.Parameter.Paths,
+                            ArgumentList = $action.Parameter.Path,
                             $task.Sftp.ComputerName,
                             $action.Parameter.SftpPath,
                             $task.Sftp.Credential.UserName,
@@ -541,7 +513,7 @@ Process {
                             $action.Parameter.FileExtensions
                         }
 
-                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Paths '{9}' FileExtensions '{11}'" -f
+                        $M = "Start SFTP upload job '{0}' on '{1}' script '{10}' with arguments: Sftp.ComputerName '{2}' SftpPath '{3}' Sftp.UserName '{4}' PartialFileExtension '{5}' Option.OverwriteFile '{6}' Option.ErrorWhen.PathIsNotFound '{7}' RemoveFailedPartialFiles '{8}' Path '{9}' FileExtensions '{11}'" -f
                         $task.TaskName,
                         $action.Parameter.ComputerName,
                         $invokeParams.ArgumentList[1],
@@ -622,10 +594,7 @@ Process {
                     $M = "Task '{0}' Type '{1}' SftpPath '{2}' ComputerName '{3}' Path '{4}': {5} job result{6}" -f
                     $task.TaskName, $action.Type, $action.Parameter.SftpPath,
                     $action.Parameter.ComputerName,
-                    $(
-                        if ($action.Parameter.Path) { $action.Parameter.Path }
-                        else { $action.Parameter.Paths -join ', ' }
-                    ),
+                    $action.Parameter.Path,
                     $action.Job.Results.Count,
                     $(if ($action.Job.Results.Count -ne 1) { 's' })
                     Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
@@ -760,7 +729,7 @@ End {
                             $M = "Error for TaskName '$($task.TaskName)' Type '$($action.Type)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.Parameter.ComputerName)' Source '{0}' Destination '{1}': $($_.Error)" -f
                             $(
                                 if ($action.Type -eq 'Upload') {
-                                    $action.Parameter.Paths -join ', '
+                                    $action.Parameter.Path
                                 }
                                 else {
                                     $action.Parameter.SftpPath
@@ -797,7 +766,7 @@ End {
                         <td>
                             $(
                                 if ($action.Type -eq 'Upload') {
-                                    $action.Parameter.Paths -join ', '
+                                    $action.Parameter.Path
                                 }
                                 else {
                                     $action.Parameter.SftpPath

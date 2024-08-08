@@ -7,25 +7,22 @@ BeforeAll {
         MaxConcurrentJobs = 1
         Tasks             = @(
             @{
-                TaskName        = 'App x'
-                Sftp            = @{
-                    ComputerName = 'PC1'
+                TaskName = 'App x'
+                Sftp     = @{
+                    ComputerName = 'sftp.server.com'
                     Credential   = @{
                         UserName        = 'envVarBob'
                         Password        = 'envVarPasswordBob'
                         PasswordKeyFile = $null
                     }
                 }
-                Actions         = @(
+                Actions  = @(
                     @{
                         Type      = 'Upload'
                         Parameter = @{
                             SftpPath             = '/SFTP/folder/'
                             ComputerName         = 'PC1'
-                            Paths                = @(
-                                (New-Item 'TestDrive:\a.txt').FullName
-                                (New-Item 'TestDrive:\b.txt').FullName
-                            )
+                            Path                 = (New-Item 'TestDrive:\a' -ItemType Directory).FullName
                             FileExtension        = $null
                             PartialFileExtension = '.UploadInProgress'
                             Option               = @{
@@ -54,31 +51,21 @@ BeforeAll {
                 )
             }
         )
-        SendMail        = @{
+        SendMail          = @{
             To   = 'bob@contoso.com'
             When = 'Always'
         }
-        ExportExcelFile = @{
+        ExportExcelFile   = @{
             When = 'OnlyOnErrorOrAction'
         }
     }
 
     $testData = @(
         [PSCustomObject]@{
-            LocalPath  = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0]
+            LocalPath  = $testInputFile.Tasks[0].Actions[0].Parameter.Path
             SftpPath   = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
-            FileName   = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0] | Split-Path -Leaf
+            FileName   = $testInputFile.Tasks[0].Actions[0].Parameter.Path | Split-Path -Leaf
             FileLength = 5KB
-            DateTime   = Get-Date
-            Uploaded   = $true
-            Action     = @('file uploaded', 'file removed')
-            Error      = $null
-        }
-        [PSCustomObject]@{
-            LocalPath  = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1]
-            SftpPath   = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
-            FileName   = $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1] | Split-Path -Leaf
-            FileLength = 9KB
             DateTime   = Get-Date
             Uploaded   = $true
             Action     = @('file uploaded', 'file removed')
@@ -98,6 +85,7 @@ BeforeAll {
 
     $testExportedExcelRows = @(
         [PSCustomObject]@{
+            SftpServer   = $testInputFile.Tasks[0].Sftp.ComputerName
             ComputerName = $testInputFile.Tasks[0].Actions[0].Parameter.ComputerName
             Source       = $testData[0].LocalPath
             Destination  = $testData[0].SftpPath
@@ -110,27 +98,16 @@ BeforeAll {
             Error        = $null
         }
         [PSCustomObject]@{
-            ComputerName = $testInputFile.Tasks[0].Actions[0].Parameter.ComputerName
-            Source       = $testData[1].LocalPath
-            Destination  = $testData[1].SftpPath
+            SftpServer   = $testInputFile.Tasks[0].Sftp.ComputerName
+            ComputerName = $testInputFile.Tasks[0].Actions[1].Parameter.ComputerName
+            Source       = $testData[1].SftpPath
+            Destination  = $testData[1].LocalPath
             FileName     = $testData[1].FileName
             FileSize     = $testData[1].FileLength / 1KB
             DateTime     = $testData[1].DateTime
-            Type         = 'Upload'
-            Successful   = $true
-            Action       = $testData[1].Action -join ', '
-            Error        = $null
-        }
-        [PSCustomObject]@{
-            ComputerName = $testInputFile.Tasks[0].Actions[1].Parameter.ComputerName
-            Source       = $testData[2].SftpPath
-            Destination  = $testData[2].LocalPath
-            FileName     = $testData[2].FileName
-            FileSize     = $testData[2].FileLength / 1KB
-            DateTime     = $testData[2].DateTime
             Type         = 'Download'
             Successful   = $true
-            Action       = $testData[2].Action -join ', '
+            Action       = $testData[1].Action -join ', '
             Error        = $null
         }
     )
@@ -175,12 +152,11 @@ BeforeAll {
     }
     Mock Invoke-Command {
         $testData[0]
-        $testData[1]
     } -ParameterFilter {
         $FilePath -eq $testParams.Path.UploadScript
     }
     Mock Invoke-Command {
-        $testData[2]
+        $testData[1]
     } -ParameterFilter {
         $FilePath -eq $testParams.Path.DownloadScript
     }
@@ -502,7 +478,7 @@ Describe 'send an e-mail to the admin when' {
             }
             Context "Tasks.Actions.Type is 'Upload'" {
                 It 'Tasks.Actions.Parameter.<_> not found' -ForEach @(
-                    'SftpPath', 'Paths', 'Option', 'PartialFileExtension'
+                    'SftpPath', 'Path', 'Option', 'PartialFileExtension'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.$_ = $null
@@ -743,8 +719,7 @@ Describe 'execute the SFTP script' {
         $testJobArguments = @(
             {
                 ($FilePath -eq $testParams.Path.UploadScript) -and
-                ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0]) -and
-                ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1]) -and
+                ($ArgumentList[0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path) -and
                 ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
                 ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
                 ($ArgumentList[3] -eq 'bobUserName') -and
@@ -844,8 +819,7 @@ Describe 'execute the SFTP script' {
 
         Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
             ($FilePath -eq $testParams.Path.UploadScript) -and
-            ($ArgumentList[0][0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Paths[0]) -and
-            ($ArgumentList[0][1] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Paths[1]) -and
+            ($ArgumentList[0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path) -and
             ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
             ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
             ($ArgumentList[3] -eq 'bobUserName') -and
@@ -883,6 +857,7 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow = $actual | Where-Object {
                     $_.Source -eq $testRow.Source
                 }
+                $actualRow.SftpServer | Should -Be $testRow.SftpServer
                 $actualRow.ComputerName | Should -Be $testRow.ComputerName
                 $actualRow.Destination | Should -Be $testRow.Destination
                 $actualRow.DateTime.ToString('yyyyMMdd') |
@@ -894,16 +869,16 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow.FileName | Should -Be $testRow.FileName
                 $actualRow.FileSize | Should -Be $testRow.FileSize
             }
-        }
+        } -Tag test
     }
     Context 'send an e-mail' {
         It 'with attachment to the user' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
             ($To -eq $testInputFile.SendMail.To) -and
             ($Priority -eq 'Normal') -and
-            ($Subject -eq '2 uploaded, 1 downloaded') -and
+            ($Subject -eq '1 uploaded, 1 downloaded') -and
             ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*ComputerName*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].ComputerName)*$($testInputFile.Tasks[0].Actions[0].Parameter.Paths[0])*$($testInputFile.Tasks[0].Actions[0].Parameter.Paths[1])*$($testInputFile.Tasks[0].Actions[0].Parameter.SftpPath)*2 uploaded*$($testInputFile.Tasks[0].Actions[1].ComputerName)*$($testInputFile.Tasks[0].Actions[1].Parameter.SftpPath)*$($testInputFile.Tasks[0].Actions[1].Parameter.Path)*1 downloaded*")
+            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*ComputerName*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].ComputerName)*$($testInputFile.Tasks[0].Actions[0].Parameter.Path)*$($testInputFile.Tasks[0].Actions[0].Parameter.SftpPath)*1 uploaded*$($testInputFile.Tasks[0].Actions[1].ComputerName)*$($testInputFile.Tasks[0].Actions[1].Parameter.SftpPath)*$($testInputFile.Tasks[0].Actions[1].Parameter.Path)*1 downloaded*")
             }
         }
     }
