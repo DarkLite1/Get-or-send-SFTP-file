@@ -751,6 +751,36 @@ End {
                 $counter.Total.Actions += $counter.Action.DownloadedFiles
                 #endregion
 
+                #region Log errors
+                if ($counter.Action.Errors) {
+                    $action.Job.Results.Where(
+                        { $_.Error }
+                    ).foreach(
+                        {
+                            $M = "Error for TaskName '$($task.TaskName)' Type '$($action.Type)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.Parameter.ComputerName)' Source '{0}' Destination '{1}': $($_.Error)" -f
+                            $(
+                                if ($action.Type -eq 'Upload') {
+                                    $action.Parameter.Paths -join ', '
+                                }
+                                else {
+                                    $action.Parameter.SftpPath
+                                }
+                            ),
+                            $(
+                                if ($action.Type -eq 'Upload') {
+                                    $action.Parameter.SftpPath
+                                }
+                                else {
+                                    $action.Parameter.Path
+                                }
+                            )
+                            Write-Warning $M
+                            Write-EventLog @EventErrorParams -Message $M
+                        }
+                    )
+                }
+                #endregion
+
                 #region Create HTML table row
                 $htmlTable += "
                         $(
