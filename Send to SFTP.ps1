@@ -91,83 +91,73 @@ Param (
 )
 
 try {
+    #region Set defaults
     $ErrorActionPreference = 'Stop'
 
     # workaround for https://github.com/PowerShell/PowerShell/issues/16894
     $ProgressPreference = 'SilentlyContinue'
+    #endregion
+
+    #region Test path exists
+    Write-Verbose "Test path '$Path' exists"
+
+    if (-not (Test-Path -LiteralPath $Path -PathType 'Container')) {
+        throw "Path '$Path' not found"
+    }
+    #endregion
 
     #region Get files to upload
-    $allFiles = @()
-
     try {
-        #region Test path exists
-        Write-Verbose "Test path '$Path' exists"
-
-        if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
-            throw "Path '$Path' not found"
-        }
-        #endregion
-
-        #region Get local files
         Write-Verbose "Get files in folder '$Path'"
 
-        $allFiles += Get-ChildItem -LiteralPath $Path -File
-
-        #region Remove partial files from the local folder
-        if ($RemoveFailedPartialFiles) {
-            foreach (
-                $partialFile in
-                $allFiles | Where-Object {
-                    $_.Name -like "*$PartialFileExtension"
-                }
-            ) {
-                try {
-                    $result = [PSCustomObject]@{
-                        DateTime   = Get-Date
-                        LocalPath  = $null
-                        SftpPath   = $SftpPath
-                        FileName   = $partialFile.Name
-                        FileLength = $partialFile.Length
-                        Uploaded   = $false
-                        Action     = @()
-                        Error      = $null
-                    }
-
-                    Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
-
-                    Remove-Item -LiteralPath $partialFile.FullName
-
-                    $result.Action = "removed failed uploaded partial file '$($partialFile.FullName)'"
-                }
-                catch {
-                    $result.Error = "Failed removing uploaded partial file: $_"
-                    Write-Warning $result.Error
-                    $Error.RemoveAt(0)
-                }
-                finally {
-                    $result
-                }
-            }
+        if (-not ($allFiles = Get-ChildItem -LiteralPath $Path -File)) {
+            Write-Verbose 'No files to upload'
+            Exit
         }
-        #endregion
-
-        #endregion
     }
     catch {
-        [PSCustomObject]@{
-            DateTime   = Get-Date
-            LocalPath  = $Path
-            SftpPath   = $SftpPath
-            FileName   = $null
-            FileLength = $null
-            Uploaded   = $false
-            Action     = $null
-            Error      = $_
-        }
-        Write-Warning $_
+        $M = "Failed to retrieve files in '$Path': $_"
         $Error.RemoveAt(0)
+        throw $M
     }
+    #endregion
 
+    #region Remove partial files from the local folder
+    if ($RemoveFailedPartialFiles) {
+        foreach (
+            $partialFile in
+            $allFiles | Where-Object {
+                $_.Name -like "*$PartialFileExtension"
+            }
+        ) {
+            try {
+                $result = [PSCustomObject]@{
+                    DateTime   = Get-Date
+                    LocalPath  = $null
+                    SftpPath   = $SftpPath
+                    FileName   = $partialFile.Name
+                    FileLength = $partialFile.Length
+                    Uploaded   = $false
+                    Action     = @()
+                    Error      = $null
+                }
+
+                Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
+
+                Remove-Item -LiteralPath $partialFile.FullName
+
+                $result.Action = "removed failed uploaded partial file '$($partialFile.FullName)'"
+            }
+            catch {
+                $result.Error = "Failed removing uploaded partial file: $_"
+                Write-Warning $result.Error
+                $Error.RemoveAt(0)
+            }
+            finally {
+                $result
+            }
+        }
+    }
     #endregion
 
     #region Only select the required files for upload
@@ -259,7 +249,7 @@ try {
     }
     #endregion
 
-    #region Remove partial files that failed uploading from the SFTP server
+    #region Remove partial files from the SFTP server
     if ($RemoveFailedPartialFiles) {
         foreach (
             $partialFile in
@@ -461,7 +451,7 @@ catch {
         FileLength = $null
         Uploaded   = $false
         Action     = $null
-        Error      = "General error: $_"
+        Error      = $_
     }
     Write-Warning $_
     $Error.RemoveAt(0)

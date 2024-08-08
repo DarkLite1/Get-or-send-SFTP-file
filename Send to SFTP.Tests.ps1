@@ -3,12 +3,17 @@
 #Requires -Version 5.1
 
 BeforeAll {
+    $testData = @{
+        Folder = (New-Item 'TestDrive:/folder' -ItemType 'Directory').FullName
+        File   = @(
+            (New-Item 'TestDrive:/folder/a.txt' -ItemType 'File').FullName
+            (New-Item 'TestDrive:/folder/b.txt' -ItemType 'File').FullName
+        )
+    }
+
     $testScript = $PSCommandPath.Replace('.Tests.ps1', '.ps1')
     $testParams = @{
-        Path                 = @(
-            (New-Item 'TestDrive:/a.txt' -ItemType 'File').FullName
-            (New-Item 'TestDrive:/b.txt' -ItemType 'File').FullName
-        )
+        Path                 = $testData.Folder
         SftpComputerName     = 'PC1'
         SftpPath             = '/out/'
         FileExtensions       = @()
@@ -51,7 +56,7 @@ Describe 'generate an error when' {
 
         $testResult = .$testScript @testParams
 
-        $testResult.Error | Should -Be "General error: Failed creating an SFTP session to '$($testParams.SftpComputerName)': Failed authenticating"
+        $testResult.Error | Should -Be "Failed creating an SFTP session to '$($testParams.SftpComputerName)': Failed authenticating"
     }
     It 'the upload path on the SFTP server does not exist' {
         Mock Test-SFTPPath {
@@ -60,12 +65,11 @@ Describe 'generate an error when' {
 
         $testResult = .$testScript @testParams
 
-        $testResult.Error | Should -Be "General error: Path '$($testParams.SftpPath)' not found on SFTP server"
+        $testResult.Error | Should -Be "Path '$($testParams.SftpPath)' not found on SFTP server"
     }
-    It 'Path does not exist and ErrorWhenUploadPathIsNotFound is true' {
+    It 'Path does not exist' {
         $testNewParams = $testParams.Clone()
         $testNewParams.Path = 'c:\doesNotExist'
-        $testNewParams.ErrorWhenUploadPathIsNotFound = $true
 
         $testResult = .$testScript @testNewParams
 
@@ -74,17 +78,15 @@ Describe 'generate an error when' {
     }
     It 'the upload fails' {
         Mock Set-SFTPItem {
-            throw 'upload failed'
+            throw 'Oops'
         }
-
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = $testParams.Path[0]
 
         $Error.Clear()
 
-        $testResult = .$testScript @testNewParams
+        $testResult = .$testScript @testParams
 
-        $testResult.Error | Should -BeLike '*upload failed'
+        $testResult[0].Error | Should -BeLike "*$($testData.File[0])*Oops"
+        $testResult[1].Error | Should -BeLike "*$($testData.File[1])*Oops"
 
         $error | Should -HaveCount 0
     }
@@ -92,19 +94,7 @@ Describe 'generate an error when' {
 Describe 'do not start an SFTP sessions when' {
     It 'there is nothing to upload' {
         $testNewParams = $testParams.Clone()
-        $testNewParams.Path = (New-Item 'TestDrive:/f' -ItemType 'Directory').FullName
-
-        .$testScript @testNewParams
-
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = 'c:\doesNotExist.txt'
-        $testNewParams.ErrorWhenUploadPathIsNotFound = $true
-
-        .$testScript @testNewParams
-
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = 'c:\doesNotExist.txt'
-        $testNewParams.ErrorWhenUploadPathIsNotFound = $false
+        $testNewParams.Path = (New-Item 'TestDrive:/emptyFolder' -ItemType 'Directory').FullName
 
         .$testScript @testNewParams
 
@@ -117,29 +107,32 @@ Describe 'do not start an SFTP sessions when' {
 Describe 'when a file is uploaded' {
     BeforeAll {
         $testNewParams = $testParams.Clone()
-        $testNewParams.Path = (New-Item 'TestDrive:/c.txt' -ItemType 'File').FullName
+        $testNewParams.Path = (New-Item 'TestDrive:/c' -ItemType 'Directory').FullName
+
+        $testFile = (New-Item "$($testNewParams.Path)\a.txt" -ItemType 'File')
 
         $testResults = .$testScript @testNewParams
     }
     It 'it is renamed to extension .UploadInProgress' {
-        'TestDrive:/c.txt' | Should -Not -Exist
+        $testFile.FullName | Should -Not -Exist
     }
     It 'it is uploaded to the SFTP server with extension .UploadInProgress' {
         Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
-            ($Path -like '*\c.txt.UploadInProgress') -and
+            ($Path -eq "$($testFile.FullName).UploadInProgress") -and
             ($Destination -eq $testNewParams.SftpPath) -and
             ($SessionId -eq 1)
         }
     }
     It 'it is renamed on the SFTP server to its original name' {
         Should -Invoke Rename-SFTPFile -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
-            ($NewName -eq 'c.txt') -and
-            ($Path -eq ($testNewParams.SftpPath + 'c.txt.UploadInProgress')) -and
+            ($NewName -eq $testFile.Name) -and
+            ($Path -eq ($testNewParams.SftpPath + $testFile.Name + '.UploadInProgress')) -and
             ($SessionId -eq 1)
         }
     }
     It 'it is removed after a successful upload' {
-        'TestDrive:/c.txt.UploadInProgress' | Should -Not -Exist
+        "$($testFile.FullName).UploadInProgress" | Should -Not -Exist
+        $testFile.FullName | Should -Not -Exist
     }
     Context 'an object is returned with property' {
         It 'DateTime' {
@@ -161,12 +154,10 @@ Describe 'when a file is uploaded' {
             $testResults.Uploaded | Should -BeTrue
         }
         It 'LocalPath' {
-            $testResults.LocalPath |
-            Should -Be ($testNewParams.Path | Split-Path -Parent)
+            $testResults.LocalPath | Should -Be $testNewParams.Path
         }
         It 'FileName' {
-            $testResults.FileName |
-            Should -Be ($testNewParams.Path | Split-Path -Leaf)
+            $testResults.FileName | Should -Be $testFile.Name
         }
         It 'SftpPath' {
             $testResults.SftpPath | Should -Be $testNewParams.SftpPath
@@ -182,50 +173,25 @@ Describe 'when a file is uploaded' {
 }
 Describe 'upload to the SFTP server' {
     BeforeAll {
-    }
-    BeforeEach {
-        $testFolder = 'TestDrive:/a'
-        Remove-Item $testFolder -Recurse -ErrorAction Ignore
-        $null = New-Item $testFolder -ItemType 'Directory'
+        $testNewParams = $testParams.Clone()
+        $testNewParams.Path = (New-Item 'TestDrive:/z' -ItemType 'Directory').FullName
 
         $testFiles = @('file1.txt', 'file2.txt', 'file3.txt') | ForEach-Object {
-            New-Item "$testFolder\$_" -ItemType 'File'
+            New-Item "$($testNewParams.Path)\$_" -ItemType 'File'
         }
+
+        $testResults = .$testScript @testNewParams
     }
-    It 'all files in a folder when Path is a folder' {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = $testFolder
-
-        .$testScript @testNewParams
-
+    It 'all files in the Path folder' {
         $testFiles | ForEach-Object {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -like "*\$($_.Name).UploadInProgress") -and
-                ($Destination -eq $testNewParams.SftpPath) -and
-                ($SessionId -eq 1)
-            }
-        }
-    }
-    It 'all files defined in Path' {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = $testFiles.FullName
-
-        .$testScript @testNewParams
-
-        $testFiles | ForEach-Object {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Path -like "*\$($_.Name).UploadInProgress") -and
+            Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope Describe -ParameterFilter {
+                ($Path -eq "$($_.FullName).UploadInProgress") -and
                 ($Destination -eq $testNewParams.SftpPath) -and
                 ($SessionId -eq 1)
             }
         }
     }
     It 'Return an object with results' {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = $testFiles
-
-        $testResults = .$testScript @testNewParams
-
         $testResults | Should -HaveCount $testFiles.Count
 
         $testResults | ForEach-Object {
@@ -239,40 +205,34 @@ Describe 'upload to the SFTP server' {
         }
     }
 }
-Describe 'OverwriteFileOnSftpServer' {
-    BeforeEach {
-        $testParams.Path | ForEach-Object {
-            New-Item $_ -ItemType 'File' -ErrorAction Ignore
+Describe 'OverwriteFile' {
+    BeforeAll {
+        $testSFtpFile = @{
+            Name     = 'a.txt'
+            FullName = 'sftpPath\a.txt'
+        }
+
+        Mock Get-SFTPChildItem {
+            $testSFtpFile
         }
     }
     It 'when true the file on the SFTP server is overwritten' {
-        Mock Get-SFTPChildItem {
-            @{
-                Name = 'a.txt'
-                FullName = 'sftpPath\a.txt'
-            }
-        }
-
         $testNewParams = $testParams.Clone()
-        $testNewParams.OverwriteFileOnSftpServer = $true
+        $testNewParams.OverwriteFile = $true
+        $testNewParams.Path = (New-Item 'TestDrive:/y' -ItemType 'Directory').FullName
+
+        $testFile = New-Item "$($testNewParams.Path)\$($testSFtpFile.Name)" -ItemType 'File'
 
         .$testScript @testNewParams
 
         Should -Invoke Remove-SFTPItem -Times 1 -Exactly -ParameterFilter {
-            ($Path -eq 'sftpPath\a.txt') -and
+            ($Path -eq $testSFtpFile.FullName) -and
             ($SessionId -eq 1)
         }
     }
     It 'when false the file on the SFTP server is not overwritten' {
-        Mock Get-SFTPChildItem {
-            @{
-                Name = 'a.txt'
-                FullName = 'sftpPath\a.txt'
-            }
-        }
-
         $testNewParams = $testParams.Clone()
-        $testNewParams.OverwriteFileOnSftpServer = $false
+        $testNewParams.OverwriteFile = $false
 
         .$testScript @testNewParams
 
@@ -281,10 +241,10 @@ Describe 'OverwriteFileOnSftpServer' {
 }
 Describe 'when RemoveFailedPartialFiles is true' {
     Context 'remove partial files that are not completely uploaded' {
-        It 'from the local folder in Path' {
+        It 'from the folder in Path' {
             $testNewParams = $testParams.Clone()
             $testNewParams.RemoveFailedPartialFiles = $true
-            $testNewParams.Path = (New-Item 'TestDrive:\Upload' -ItemType 'Directory').FullName
+            $testNewParams.Path = (New-Item 'TestDrive:\k' -ItemType 'Directory').FullName
 
             $testFiles = @(
                 Join-Path $testNewParams.Path "file.txt"
@@ -303,45 +263,31 @@ Describe 'when RemoveFailedPartialFiles is true' {
 
             $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFiles[1].FullName)'"
         }
-        It 'with the same name as a file in Path' {
-            $testNewParams = $testParams.Clone()
-            $testNewParams.RemoveFailedPartialFiles = $true
-            $testNewParams.Path = (New-Item 'TestDrive:\u.txt' -ItemType 'File').FullName
-
-            $testFile = New-Item -Path "$($testNewParams.Path)$($testParams.PartialFileExtension)" -ItemType 'File'
-
-            $testResults = .$testScript @testNewParams
-
-            $testFile.FullName | Should -Not -Exist
-
-            $testResult = $testResults | Where-Object {
-                $_.FileName -eq $testFile.Name
-            }
-
-            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFile.FullName)'"
-        }
         It 'from the SFTP server' {
-            $testFile = [PSCustomObject]@{
-                Name     = "file.txt$($testParams.PartialFileExtension)"
-                FullName = $testParams.SftpPath + "file.txt$($testParams.PartialFileExtension)"
+            $testSFtpFile = @{
+                Name     = "c.txt$($testParams.PartialFileExtension)"
+                FullName = "sftpPath\c.txt$($testParams.PartialFileExtension)"
             }
 
             Mock Get-SFTPChildItem {
-                $testFile
+                $testSFtpFile
             }
 
             $testNewParams = $testParams.Clone()
             $testNewParams.RemoveFailedPartialFiles = $true
-            $testNewParams.Path = (New-Item 'TestDrive:\o.txt' -ItemType 'File').FullName
+
+            $testNewParams.Path = (New-Item 'TestDrive:/p' -ItemType 'Directory').FullName
+
+            $testFile = New-Item "$($testNewParams.Path)\b.txt" -ItemType 'File'
 
             $testResults = .$testScript @testNewParams
 
             $testResult = $testResults | Where-Object {
-                $_.FileName -eq $testFile.Name
+                $_.FileName -eq $testSFtpFile.Name
             }
 
             $testResult.Action |
-            Should -Be "removed partial file '$($testFile.FullName)'"
+            Should -Be "removed partial file '$($testSFtpFile.FullName)'"
         }
     }
 }
