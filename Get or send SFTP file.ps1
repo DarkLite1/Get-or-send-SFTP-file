@@ -81,15 +81,10 @@
     "PartialFileExtension". After a successful upload the file is then renamed
     on the SFTP server to its original name with the correct file extension.
 
-.PARAMETER Tasks.Actions.Parameter.Option.OverwriteFile
-    Overwrite a file on the SFTP server when it already exists.
+.PARAMETER Tasks.Option.OverwriteFile
+    Overwrite files on the SFTP server when they already exist.
 
-.PARAMETER Tasks.Actions.Parameter.Option.RemoveFileAfterwards
-    Remove a the file after a successful download from the SFTP server when type
-    is 'Download'. For type 'Upload' the source file is always removed after a
-    successful upload.
-
-.PARAMETER Tasks.Actions.Parameter.Option.RemoveFailedPartialFiles
+.PARAMETER Tasks.Option.RemoveFailedPartialFiles
     When the upload process is interrupted, it is possible that files are not
     completely uploaded and that there are sill partial files present on the
     SFTP server or in the local folder.
@@ -255,7 +250,7 @@ Begin {
 
             foreach ($task in $Tasks) {
                 @(
-                    'TaskName', 'Sftp', 'Actions'
+                    'TaskName', 'Sftp', 'Actions', 'Option'
                 ).where(
                     { -not $task.$_ }
                 ).foreach(
@@ -292,6 +287,23 @@ Begin {
                     throw "Property 'Tasks.Sftp.Credential.Password' or 'Tasks.Sftp.Credential.PasswordKeyFile' not found"
                 }
 
+                #region Test boolean values
+                foreach (
+                    $boolean in
+                    @(
+                        'OverwriteFile',
+                        'RemoveFailedPartialFiles'
+                    )
+                ) {
+                    try {
+                        $null = [Boolean]::Parse($task.Option.$boolean)
+                    }
+                    catch {
+                        throw "Property 'Tasks.Option.$boolean' is not a boolean value"
+                    }
+                }
+                #endregion
+
                 if (-not $task.Actions) {
                     throw 'Tasks.Actions is missing'
                 }
@@ -304,7 +316,7 @@ Begin {
                     )
 
                     @(
-                        'SftpPath', 'Path', 'Option', 'PartialFileExtension'
+                        'SftpPath', 'Path', 'PartialFileExtension'
                     ).Where(
                         { -not $action.Parameter.$_ }
                     ).foreach(
@@ -329,23 +341,6 @@ Begin {
                     ).foreach(
                         { throw "Property 'Tasks.Actions.Parameter.FileExtensions' needs to start with a dot. For example: '.txt', '.xml', ..." }
                     )
-                    #endregion
-
-                    #region Test boolean values
-                    foreach (
-                        $boolean in
-                        @(
-                            'OverwriteFile',
-                            'RemoveFailedPartialFiles'
-                        )
-                    ) {
-                        try {
-                            $null = [Boolean]::Parse($action.Parameter.Option.$boolean)
-                        }
-                        catch {
-                            throw "Property 'Tasks.Actions.Parameter.Option.$boolean' is not a boolean value"
-                        }
-                    }
                     #endregion
                 }
             }
@@ -491,8 +486,8 @@ Process {
                     $task.Sftp.Credential.Password,
                     $task.Sftp.Credential.PasswordKeyFile,
                     $action.Parameter.FileExtensions,
-                    $action.Parameter.Option.OverwriteFile,
-                    $action.Parameter.Option.RemoveFailedPartialFiles
+                    $task.Option.OverwriteFile,
+                    $task.Option.RemoveFailedPartialFiles
                 }
 
                 $M = "Start SFTP '{11}' job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' Option.OverwriteFile '{8}' Option.RemoveFailedPartialFiles '{9}' Path '{10}'" -f

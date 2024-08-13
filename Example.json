@@ -11,6 +11,10 @@
           "PasswordKeyFile": null
         }
       },
+      "Option": {
+        "OverwriteFile": false,
+        "RemoveFailedPartialFiles": false
+      },
       "Actions": [
         {
           "Type": "Upload",
@@ -20,10 +24,6 @@
             "Path": "\\SERVER\\C$\\Folder",
             "FileExtensions": [],
             "PartialFileExtension": ".UploadInProgress",
-            "Option": {
-              "OverwriteFile": false,
-              "RemoveFailedPartialFiles": false
-            },
             "?": "Type: Upload | Download, FileExtensions: empty is all files"
           }
         },
