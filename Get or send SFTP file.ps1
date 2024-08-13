@@ -304,6 +304,14 @@ Begin {
                 }
                 #endregion
 
+                #region Test file extensions
+                $task.Option.FileExtensions.Where(
+                    { $_ -and ($_ -notLike '.*') }
+                ).foreach(
+                    { throw "Property 'Tasks.Option.FileExtensions' needs to start with a dot. For example: '.txt', '.xml', ..." }
+                )
+                #endregion
+
                 if (-not $task.Actions) {
                     throw 'Tasks.Actions is missing'
                 }
@@ -335,13 +343,7 @@ Begin {
                     )
                     #endregion
 
-                    #region Test file extensions
-                    $action.Parameter.FileExtensions.Where(
-                        { $_ -and ($_ -notLike '.*') }
-                    ).foreach(
-                        { throw "Property 'Tasks.Actions.Parameter.FileExtensions' needs to start with a dot. For example: '.txt', '.xml', ..." }
-                    )
-                    #endregion
+
                 }
             }
 
@@ -485,12 +487,12 @@ Process {
                     $action.Parameter.PartialFileExtension,
                     $task.Sftp.Credential.Password,
                     $task.Sftp.Credential.PasswordKeyFile,
-                    $action.Parameter.FileExtensions,
+                    $task.Option.FileExtensions,
                     $task.Option.OverwriteFile,
                     $task.Option.RemoveFailedPartialFiles
                 }
 
-                $M = "Start SFTP '{11}' job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' Option.OverwriteFile '{8}' Option.RemoveFailedPartialFiles '{9}' Path '{10}'" -f
+                $M = "Start SFTP '{11}' job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' OverwriteFile '{8}' RemoveFailedPartialFiles '{9}' Path '{10}'" -f
                 $task.TaskName,
                 $action.Parameter.ComputerName,
                 $invokeParams.FilePath,

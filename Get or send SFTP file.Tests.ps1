@@ -597,7 +597,7 @@ Describe 'send an e-mail to the admin when' {
             }
             It 'Tasks.Actions.Parameter.FileExtension does not start with a dot' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Tasks[0].Actions[0].Parameter.FileExtensions = @('txt', '.xml')
+                $testNewInputFile.Tasks[0].Option.FileExtensions = @('txt', '.xml')
 
                 $testNewInputFile | ConvertTo-Json -Depth 7 |
                 Out-File @testOutParams
@@ -606,7 +606,7 @@ Describe 'send an e-mail to the admin when' {
 
                 Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.FileExtensions' needs to start with a dot. For example: '.txt', '.xml'*")
+                        ($Message -like "*$ImportFile*Property 'Tasks.Option.FileExtensions' needs to start with a dot. For example: '.txt', '.xml'*")
                 }
             }
         }
@@ -683,7 +683,7 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
                 ($ArgumentList[5] -eq 'bobPasswordEncrypted') -and
                 (-not $ArgumentList[6]) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions) -and
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
                 ($ArgumentList[8] -eq $testInputFile.Tasks[0].Option.OverwriteFile) -and
                 ($ArgumentList[9] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
             }
@@ -696,7 +696,7 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[1].Parameter.PartialFileExtension) -and
                 ($ArgumentList[5] -eq 'bobPasswordEncrypted') -and
                 (-not $ArgumentList[6]) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[1].Parameter.FileExtensions) -and
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
                 ($ArgumentList[8] -eq $testInputFile.Tasks[0].Option.OverwriteFile) -and
                 ($ArgumentList[9] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
             }
@@ -782,7 +782,7 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
             ($ArgumentList[5] -is 'SecureString') -and
             ($ArgumentList[6] -eq 'passKeyContent') -and
-            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Actions[0].Parameter.FileExtensions) -and
+            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
             ($ArgumentList[8] -eq $testInputFile.Tasks[0].Option.OverwriteFile) -and
             ($ArgumentList[9] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
         }

@@ -13,7 +13,9 @@
       },
       "Option": {
         "OverwriteFile": false,
-        "RemoveFailedPartialFiles": false
+        "RemoveFailedPartialFiles": false,
+        "FileExtensions": [],
+        "PartialFileExtension": ".UploadInProgress"
       },
       "Actions": [
         {
@@ -21,10 +23,7 @@
           "Parameter": {
             "SftpPath": "/reports/",
             "ComputerName": null,
-            "Path": "\\SERVER\\C$\\Folder",
-            "FileExtensions": [],
-            "PartialFileExtension": ".UploadInProgress",
-            "?": "Type: Upload | Download, FileExtensions: empty is all files"
+            "Path": "\\SERVER\\C$\\Folder"
           }
         },
         {
@@ -32,14 +31,7 @@
           "Parameter": {
             "SftpPath": "/data/",
             "ComputerName": "PC1",
-            "Path": "C:\\Folder",
-            "FileExtensions": [".xlsx", ".txt"],
-            "PartialFileExtension": ".DownloadInProgress",
-            "Option": {
-              "OverwriteFile": false,
-              "RemoveFailedPartialFiles": false
-            },
-            "?": "Type: Upload | Download, make sure that the module Posh-SSH is installed on PC1"
+            "Path": "C:\\Folder"
           }
         }
       ]
@@ -47,11 +39,15 @@
   ],
   "SendMail": {
     "To": ["bob@contoso.com"],
-    "When": "Always",
-    "?": "When: Never | OnlyOnError | OnlyOnErrorOrAction | Always"
+    "When": "Always"
   },
   "ExportExcelFile": {
-    "When": "OnlyOnErrorOrAction",
-    "?": "When: Never | OnlyOnError | OnlyOnErrorOrAction"
+    "When": "OnlyOnErrorOrAction"
+  },
+  "?": {
+    "Option.FileExtensions": "Empty will move all files",
+    "Actions.Type": "Upload | Download, FileExtensions: empty is all files",
+    "ExportExcelFile.When": "Never | OnlyOnError | OnlyOnErrorOrAction",
+    "SendMail.When": "Never | OnlyOnError | OnlyOnErrorOrAction | Always"
   }
 }
