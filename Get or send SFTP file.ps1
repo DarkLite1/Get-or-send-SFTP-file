@@ -539,10 +539,20 @@ Process {
 
                 #region Get job results
                 if ($action.Job.Results.Count -ne 0) {
-                    $M = "Task '{0}' Type '{1}' SftpPath '{2}' ComputerName '{3}' Path '{4}': {5} job result{6}" -f
-                    $task.TaskName, $action.Type, $action.Parameter.SftpPath,
+                    $M = "Job result '{7}' on '{8}' with: Sftp.ComputerName '{0}' Sftp.UserName '{1}' Paths {2} MaxConcurrentJobs '{3}' FileExtensions '{4}' OverwriteFile '{5}' RemoveFailedPartialFiles '{6}': {9} result{10}" -f
+                    $invokeParams.ArgumentList[0],
+                    $invokeParams.ArgumentList[1],
+                    $(
+                        $invokeParams.ArgumentList[2].foreach(
+                            {"Source '$($_.Source)' Destination '$($_.Destination)'"}
+                        ) -join ', '
+                    ),
+                    $invokeParams.ArgumentList[3],
+                    $($invokeParams.ArgumentList[6] -join ', '),
+                    $invokeParams.ArgumentList[7],
+                    $invokeParams.ArgumentList[8],
+                    $task.TaskName,
                     $action.ComputerName,
-                    $action.Parameter.Path,
                     $action.Job.Results.Count,
                     $(if ($action.Job.Results.Count -ne 1) { 's' })
                     Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
