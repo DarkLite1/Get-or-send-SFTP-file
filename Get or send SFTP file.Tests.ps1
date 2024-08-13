@@ -19,26 +19,24 @@ BeforeAll {
                 Option   = @{
                     OverwriteFile            = $false
                     RemoveFailedPartialFiles = $false
+                    FileExtensions           = @('.txt')
                 }
                 Actions  = @(
                     @{
                         Type      = 'Upload'
                         Parameter = @{
-                            SftpPath             = '/SFTP/folder/'
-                            ComputerName         = 'PC1'
-                            Path                 = (New-Item 'TestDrive:\a' -ItemType Directory).FullName
-                            FileExtension        = $null
-                            PartialFileExtension = '.UploadInProgress'
+                            SftpPath     = '/SFTP/folder/'
+                            ComputerName = 'PC1'
+                            Path         = (New-Item 'TestDrive:\a' -ItemType Directory).FullName
+
                         }
                     }
                     @{
                         Type      = 'Download'
                         Parameter = @{
-                            SftpPath             = '/SFTP/folder/'
-                            ComputerName         = 'PC2'
-                            Path                 = (New-Item 'TestDrive:\d' -ItemType Directory).FullName
-                            FileExtensions       = @('.txt')
-                            PartialFileExtension = '.DownloadInProgress'
+                            SftpPath     = '/SFTP/folder/'
+                            ComputerName = 'PC2'
+                            Path         = (New-Item 'TestDrive:\d' -ItemType Directory).FullName
                         }
                     }
                 )
@@ -432,8 +430,7 @@ Describe 'send an e-mail to the admin when' {
             }
             Context "Tasks.Actions.Type is 'Download'" {
                 It 'Tasks.Actions.Parameter.<_> not found' -ForEach @(
-                    'SftpPath', 'Path',
-                    'PartialFileExtension'
+                    'SftpPath', 'Path'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[1].Parameter.$_ = $null
@@ -454,7 +451,7 @@ Describe 'send an e-mail to the admin when' {
             }
             Context "Tasks.Actions.Type is 'Upload'" {
                 It 'Tasks.Actions.Parameter.<_> not found' -ForEach @(
-                    'SftpPath', 'Path', 'PartialFileExtension'
+                    'SftpPath', 'Path'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
                     $testNewInputFile.Tasks[0].Actions[0].Parameter.$_ = $null
@@ -581,20 +578,6 @@ Describe 'send an e-mail to the admin when' {
                         ($Message -like "*$ImportFile*Property 'Tasks.TaskName' with value 'Name1' is not unique*")
                 }
             }
-            It 'Tasks.Actions.Parameter.PartialFileExtension does not start with a dot' {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension = 'txt'
-
-                $testNewInputFile | ConvertTo-Json -Depth 7 |
-                Out-File @testOutParams
-
-                .$testScript @testParams
-
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.PartialFileExtension' needs to start with a dot. For example: '.txt', '.xml'*")
-                }
-            }
             It 'Tasks.Actions.Parameter.FileExtension does not start with a dot' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].Option.FileExtensions = @('txt', '.xml')
@@ -680,7 +663,7 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
                 ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
                 ($ArgumentList[3] -eq 'bobUserName') -and
-                ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
+                ($ArgumentList[4] -eq '.UploadInProgress') -and
                 ($ArgumentList[5] -eq 'bobPasswordEncrypted') -and
                 (-not $ArgumentList[6]) -and
                 ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
@@ -693,7 +676,7 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
                 ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath) -and
                 ($ArgumentList[3] -eq 'bobUserName') -and
-                ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[1].Parameter.PartialFileExtension) -and
+                ($ArgumentList[4] -eq '.DownloadInProgress') -and
                 ($ArgumentList[5] -eq 'bobPasswordEncrypted') -and
                 (-not $ArgumentList[6]) -and
                 ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
@@ -779,7 +762,7 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
             ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
             ($ArgumentList[3] -eq 'bobUserName') -and
-            ($ArgumentList[4] -eq $testInputFile.Tasks[0].Actions[0].Parameter.PartialFileExtension) -and
+            ($ArgumentList[4] -eq '.UploadInProgress') -and
             ($ArgumentList[5] -is 'SecureString') -and
             ($ArgumentList[6] -eq 'passKeyContent') -and
             ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and

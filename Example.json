@@ -14,8 +14,7 @@
       "Option": {
         "OverwriteFile": false,
         "RemoveFailedPartialFiles": false,
-        "FileExtensions": [],
-        "PartialFileExtension": ".UploadInProgress"
+        "FileExtensions": []
       },
       "Actions": [
         {
