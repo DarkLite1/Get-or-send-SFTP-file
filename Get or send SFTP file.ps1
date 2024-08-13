@@ -308,6 +308,10 @@ Begin {
                 }
 
                 foreach ($action in $task.Actions) {
+                    if ($action.PSObject.Properties.Name -notContains 'ComputerName') {
+                        throw "Property 'Tasks.Actions.ComputerName' not found"
+                    }
+
                     @('Paths').Where(
                         { -not $action.$_ }
                     ).foreach(
@@ -325,7 +329,28 @@ Begin {
                             }
                         )
 
-
+                        if (
+                            (
+                                ($path.Source -like '*/*') -and
+                                ($path.Destination -like '*/*')
+                            ) -or
+                            (
+                                ($path.Source -like '*\*') -and
+                                ($path.Destination -like '*\*')
+                            ) -or
+                            (
+                                ($path.Source -like 'sftp*') -and
+                                ($path.Destination -like 'sftp*')
+                            ) -or
+                            (
+                                -not (
+                                    ($path.Source -like 'sftp:/*') -or
+                                    ($path.Destination -like 'sftp:/*')
+                                )
+                            )
+                        ) {
+                            throw "Property 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' needs to have one SFTP path ('sftp:/....') and one folder path (c:\... or \\server$\...). Incorrect values: Source '$($path.Source)' Destination '$($path.Destination)'"
+                        }
                     }
                 }
             }

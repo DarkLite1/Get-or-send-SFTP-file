@@ -406,26 +406,44 @@ Describe 'send an e-mail to the admin when' {
                     }
                 }
             }
-            It 'Tasks.Actions.<_> not found' -ForEach @(
-                'Paths'
-            ) {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.Tasks[0].Actions[0].$_ = $null
 
-                $testNewInputFile | ConvertTo-Json -Depth 7 |
-                Out-File @testOutParams
+            Context "Tasks.Actions" {
+                It 'Tasks.Actions.<_> not found' -ForEach @(
+                    'Paths'
+                ) {
+                    $testNewInputFile = Copy-ObjectHC $testInputFile
+                    $testNewInputFile.Tasks[0].Actions[0].$_ = $null
 
-                .$testScript @testParams
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
+                    Out-File @testOutParams
 
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                    .$testScript @testParams
+
+                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and
                         ($Message -like "*$ImportFile*Property 'Tasks.Actions.$_' not found*")
+                    }
+                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                        $EntryType -eq 'Error'
+                    }
                 }
-                Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                    $EntryType -eq 'Error'
+                It 'Tasks.Actions.ComputerName not found' {
+                    $testNewInputFile = Copy-ObjectHC $testInputFile
+                    $testNewInputFile.Tasks[0].Actions[0].Remove('ComputerName')
+
+                    $testNewInputFile | ConvertTo-Json -Depth 7 |
+                    Out-File @testOutParams
+
+                    .$testScript @testParams
+
+                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                        (&$MailAdminParams) -and
+                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.ComputerName' not found*")
+                    }
+                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                        $EntryType -eq 'Error'
+                    }
                 }
-            }
-            Context "Tasks.Actions.Paths" {
                 It 'Tasks.Actions.Paths.<_> not found' -ForEach @(
                     'Source', 'Destination'
                 ) {
@@ -443,6 +461,80 @@ Describe 'send an e-mail to the admin when' {
                     }
                     Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                         $EntryType -eq 'Error'
+                    }
+                }
+                Context 'Tasks.Actions.Paths' {
+                    It 'Source + Destination are both local paths' {
+                        $testNewInputFile = Copy-ObjectHC $testInputFile
+                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Source = 'TestDrive:\a'
+                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Destination = 'TestDrive:\b'
+
+                        $testNewInputFile | ConvertTo-Json -Depth 7 |
+                        Out-File @testOutParams
+
+                        .$testScript @testParams
+
+                        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Property 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' needs to have one SFTP path ('sftp:/....') and one folder path (c:\... or \\server$\...)*")
+                        }
+                        Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                            $EntryType -eq 'Error'
+                        }
+                    }
+                    It 'Source + Destination are both SFTP paths' {
+                        $testNewInputFile = Copy-ObjectHC $testInputFile
+                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Source = '/out/a'
+                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Destination = '/out/b'
+
+                        $testNewInputFile | ConvertTo-Json -Depth 7 |
+                        Out-File @testOutParams
+
+                        .$testScript @testParams
+
+                        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Property 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' needs to have one SFTP path ('sftp:/....') and one folder path (c:\... or \\server$\...)*")
+                        }
+                        Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                            $EntryType -eq 'Error'
+                        }
+                    }
+                    It "Source + Destination both start with 'sftp'" {
+                        $testNewInputFile = Copy-ObjectHC $testInputFile
+                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Source = 'sftp/a'
+                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Destination = 'sftp\b'
+
+                        $testNewInputFile | ConvertTo-Json -Depth 7 |
+                        Out-File @testOutParams
+
+                        .$testScript @testParams
+
+                        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Property 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' needs to have one SFTP path ('sftp:/....') and one folder path (c:\... or \\server$\...)*")
+                        }
+                        Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                            $EntryType -eq 'Error'
+                        }
+                    }
+                    It "Source + Destination have not path starting with 'sftp:/'" {
+                        $testNewInputFile = Copy-ObjectHC $testInputFile
+                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Source = '/a/'
+                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Destination = 'TestDrive:\b'
+
+                        $testNewInputFile | ConvertTo-Json -Depth 7 |
+                        Out-File @testOutParams
+
+                        .$testScript @testParams
+
+                        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Property 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' needs to have one SFTP path ('sftp:/....') and one folder path (c:\... or \\server$\...)*")
+                        }
+                        Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                            $EntryType -eq 'Error'
+                        }
                     }
                 }
             }
