@@ -435,9 +435,14 @@ Begin {
 
                 #region Convert SFTP path to '/path/'
                 foreach ($action in $task.Actions) {
-                    $action.Parameter.SftpPath = $action.Parameter.SftpPath -replace '\\', '/'
-                    $action.Parameter.SftpPath = $action.Parameter.SftpPath.TrimEnd('/') + '/'
-                    $action.Parameter.SftpPath = '/' + $action.Parameter.SftpPath.TrimStart('/')
+                    foreach ($path in $action.Paths) {
+                        if ($path.Source -like 'sftp*') {
+                            $path.Source = $path.Source.TrimEnd('/') + '/'
+                        }
+                        if ($path.Destination -like 'sftp*') {
+                            $path.Destination = $path.Destination.TrimEnd('/') + '/'
+                        }
+                    }
                 }
                 #endregion
 
