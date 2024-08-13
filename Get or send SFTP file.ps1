@@ -121,8 +121,7 @@ Param (
     [Parameter(Mandatory)]
     [String]$ImportFile,
     [HashTable]$ScriptPath = @{
-        UploadScript   = "$PSScriptRoot\Send to SFTP.ps1"
-        DownloadScript = "$PSScriptRoot\Get SFTP file.ps1"
+        MoveFile = "$PSScriptRoot\Move file.ps1"
     },
     [String]$PSSessionConfiguration = 'PowerShell.7',
     [String]$LogFolder = "$env:POWERSHELL_LOG_FOLDER\File or folder\Get or send SFTP file\$ScriptName",
@@ -479,6 +478,7 @@ Process {
                 #region Declare variables for code running in parallel
                 if (-not $MaxConcurrentJobs) {
                     $task = $using:task
+                    $MaxConcurrentJobs = $using:MaxConcurrentJobs
                     $scriptPathItem = $using:scriptPathItem
                     $PSSessionConfiguration = $using:PSSessionConfiguration
                     $EventVerboseParams = $using:EventVerboseParams
@@ -487,22 +487,11 @@ Process {
 
                 #region Create job parameters
                 $invokeParams = @{
-                    FilePath     = if ($action.Type -eq 'Upload') {
-                        $scriptPathItem.UploadScript
-                    }
-                    else {
-                        $scriptPathItem.DownloadScript
-                    }
-                    ArgumentList = $action.Parameter.Path,
-                    $task.Sftp.ComputerName,
-                    $action.Parameter.SftpPath,
+                    FilePath     = $scriptPathItem.MoveFile
+                    ArgumentList = $task.Sftp.ComputerName,
                     $task.Sftp.Credential.UserName,
-                    $(if ($action.Type -eq 'Upload') {
-                            '.UploadInProgress'
-                        }
-                        else {
-                            '.DownloadInProgress'
-                        }),
+                    $action.Paths,
+                    $MaxConcurrentJobs,
                     $task.Sftp.Credential.Password,
                     $task.Sftp.Credential.PasswordKeyFile,
                     $task.Option.FileExtensions,
@@ -510,19 +499,20 @@ Process {
                     $task.Option.RemoveFailedPartialFiles
                 }
 
-                $M = "Start SFTP '{11}' job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' OverwriteFile '{8}' RemoveFailedPartialFiles '{9}' Path '{10}'" -f
-                $task.TaskName,
-                $action.ComputerName,
-                $invokeParams.FilePath,
-                $invokeParams.ArgumentList[1],
-                $invokeParams.ArgumentList[2],
-                $invokeParams.ArgumentList[3],
-                $invokeParams.ArgumentList[4],
-                $($invokeParams.ArgumentList[7] -join ', '),
-                $invokeParams.ArgumentList[8],
-                $invokeParams.ArgumentList[9],
+                $M = "Start SFTP job '{7}' on '{8}' with: Sftp.ComputerName '{0}' Sftp.UserName '{1}' Paths {2} MaxConcurrentJobs '{3}' FileExtensions '{4}' OverwriteFile '{5}' RemoveFailedPartialFiles '{6}'" -f
                 $invokeParams.ArgumentList[0],
-                $action.Type
+                $invokeParams.ArgumentList[1],
+                $(
+                    $invokeParams.ArgumentList[2].foreach(
+                        {"Source '$($_.Source)' Destination '$($_.Destination)'"}
+                    ) -join ', '
+                ),
+                $invokeParams.ArgumentList[3],
+                $($invokeParams.ArgumentList[6] -join ', '),
+                $invokeParams.ArgumentList[7],
+                $invokeParams.ArgumentList[8],
+                $task.TaskName,
+                $action.ComputerName
 
                 Write-Verbose $M
                 # Write-EventLog @EventVerboseParams -Message $M

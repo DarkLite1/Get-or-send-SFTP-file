@@ -29,11 +29,6 @@ BeforeAll {
                                 Source      = (New-Item 'TestDrive:\a' -ItemType Directory).FullName
                                 Destination = 'sftp:/folder/a/'
                             }
-                        )
-                    }
-                    @{
-                        ComputerName = 'PC2'
-                        Paths        = @(
                             @{
                                 Source      = 'sftp:/folder/b/'
                                 Destination = (New-Item 'TestDrive:\b' -ItemType Directory).FullName
@@ -63,8 +58,8 @@ BeforeAll {
             Error       = $null
         }
         [PSCustomObject]@{
-            Source      = $testInputFile.Tasks[0].Actions[1].Paths[0].Source
-            Destination = $testInputFile.Tasks[0].Actions[1].Paths[0].Destination
+            Source      = $testInputFile.Tasks[0].Actions[0].Paths[1].Source
+            Destination = $testInputFile.Tasks[0].Actions[0].Paths[1].Destination
             FileName    = 'b.txt'
             FileLength  = 3KB
             DateTime    = Get-Date
@@ -110,8 +105,7 @@ BeforeAll {
         ScriptName  = 'Test (Brecht)'
         ImportFile  = $testOutParams.FilePath
         ScriptPath  = @{
-            UploadScript   = (New-Item 'TestDrive:/u.ps1' -ItemType 'File').FullName
-            DownloadScript = (New-Item 'TestDrive:/d.ps1' -ItemType 'File').FullName
+            MoveFile = (New-Item 'TestDrive:/u.ps1' -ItemType 'File').FullName
         }
         LogFolder   = (New-Item 'TestDrive:/log' -ItemType Directory).FullName
         ScriptAdmin = 'admin@contoso.com'
@@ -139,14 +133,7 @@ BeforeAll {
         $String -eq 'bobPassword'
     }
     Mock Invoke-Command {
-        $testData[0]
-    } -ParameterFilter {
-        $FilePath -eq $testParams.ScriptPath.UploadScript
-    }
-    Mock Invoke-Command {
-        $testData[1]
-    } -ParameterFilter {
-        $FilePath -eq $testParams.ScriptPath.DownloadScript
+        $testData
     }
     Mock Send-MailHC
     Mock Write-EventLog
@@ -177,9 +164,9 @@ Describe 'send an e-mail to the admin when' {
         }
     }
     Context 'the file is not found' {
-        It 'ScriptPath.UploadScript' {
+        It 'ScriptPath.MoveFile' {
             $testNewParams = Copy-ObjectHC $testParams
-            $testNewParams.ScriptPath.UploadScript = 'c:\upDoesNotExist.ps1'
+            $testNewParams.ScriptPath.MoveFile = 'c:\upDoesNotExist.ps1'
 
             $testInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -187,23 +174,7 @@ Describe 'send an e-mail to the admin when' {
             .$testScript @testNewParams
 
             Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                    (&$MailAdminParams) -and ($Message -like "*ScriptPath.UploadScript 'c:\upDoesNotExist.ps1' not found*")
-            }
-            Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                $EntryType -eq 'Error'
-            }
-        }
-        It 'ScriptPath.DownloadScript' {
-            $testNewParams = Copy-ObjectHC $testParams
-            $testNewParams.ScriptPath.DownloadScript = 'c:\downDoesNotExist.ps1'
-
-            $testInputFile | ConvertTo-Json -Depth 7 |
-            Out-File @testOutParams
-
-            .$testScript @testNewParams
-
-            Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                    (&$MailAdminParams) -and ($Message -like "*ScriptPath.DownloadScript 'c:\downDoesNotExist.ps1' not found*")
+                    (&$MailAdminParams) -and ($Message -like "*ScriptPath.MoveFile 'c:\upDoesNotExist.ps1' not found*")
             }
             Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                 $EntryType -eq 'Error'
@@ -736,46 +707,31 @@ Describe 'correct the import file' {
             $Tasks[0].Actions[0].Paths[0].Destination | Should -Be 'sftp:/a/'
         }
     }
-} -Tag test
+}
 Describe 'execute the SFTP script' {
     BeforeAll {
         $testJobArguments = @(
             {
-                ($FilePath -eq $testParams.ScriptPath.UploadScript) -and
-                ($ArgumentList[0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path) -and
-                ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
-                ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
-                ($ArgumentList[3] -eq 'bobUserName') -and
-                ($ArgumentList[4] -eq '.UploadInProgress') -and
-                ($ArgumentList[5] -eq 'bobPasswordEncrypted') -and
-                (-not $ArgumentList[6]) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
-                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Option.OverwriteFile) -and
-                ($ArgumentList[9] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
-            }
-            {
-                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -and
-                ($ArgumentList[0] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Path) -and
-                ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
-                ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath) -and
-                ($ArgumentList[3] -eq 'bobUserName') -and
-                ($ArgumentList[4] -eq '.DownloadInProgress') -and
-                ($ArgumentList[5] -eq 'bobPasswordEncrypted') -and
-                (-not $ArgumentList[6]) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
-                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Option.OverwriteFile) -and
-                ($ArgumentList[9] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
+                ($FilePath -eq $testParams.ScriptPath.MoveFile) -and
+                ($ArgumentList[0] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
+                ($ArgumentList[1] -eq 'bobUserName') -and
+                ($ArgumentList[2].GetType().BaseType.Name -eq 'Array') -and
+                ($ArgumentList[3] -eq $testInputFile.MaxConcurrentJobs) -and
+                ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
+                (-not $ArgumentList[5]) -and
+                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.OverwriteFile) -and
+                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
             }
         )
+
+        $testNewInputFile = Copy-ObjectHC $testInputFile
+        $testNewInputFile.Tasks[0].Actions = @(
+            $testNewInputFile.Tasks[0].Actions[0]
+        )
     }
-    Context "for Tasks.Actions.Type 'Upload'" {
-        BeforeAll {
-            $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].Actions = @(
-                $testNewInputFile.Tasks[0].Actions[0]
-            )
-        }
-        It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
+    Context "call Invoke-Command when" {
+        It 'Tasks.Actions.ComputerName is not the localhost' {
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
 
@@ -786,7 +742,9 @@ Describe 'execute the SFTP script' {
                 ($ComputerName -eq $testNewInputFile.Tasks[0].Actions[0].ComputerName)
             }
         }
-        It 'with a scriptblock when Tasks.Actions.Parameter.ComputerName is the localhost' {
+    }
+    Context 'do not call Invoke-Command when' {
+        It 'Tasks.Actions.ComputerName is the localhost' {
             $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'localhost'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
@@ -797,63 +755,35 @@ Describe 'execute the SFTP script' {
             Should -Not -Invoke Invoke-Command
         }
     }
-    Context "for Tasks.Actions.Type 'Download'" {
-        BeforeAll {
+    Context 'when Tasks.Sftp.Credential.PasswordKeyFile is used' {
+        It 'send a blank secure string for Tasks.Sftp.Credential.Password' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].Actions = @(
-                $testNewInputFile.Tasks[0].Actions[1]
-            )
-        }
-        It 'with Invoke-Command when Tasks.Actions.Parameter.ComputerName is not the localhost' {
+            $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'PC1'
+            $testNewInputFile.Tasks[0].Sftp.Credential.Password = $null
+            $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile = (New-Item 'TestDrive:\key' -ItemType File).FullName
+
+            'passKeyContent' | Out-File -LiteralPath $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile
+
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
 
             .$testScript @testParams
 
             Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
-                (& $testJobArguments[1]) -and
-                ($ComputerName -eq $testNewInputFile.Tasks[0].Actions[0].ComputerName)
+                ($FilePath -eq $testParams.ScriptPath.MoveFile) -and
+                ($ArgumentList[0] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
+                ($ArgumentList[1] -eq 'bobUserName') -and
+                ($ArgumentList[2].GetType().BaseType.Name -eq 'Array') -and
+                ($ArgumentList[3] -eq $testInputFile.MaxConcurrentJobs) -and
+                ($ArgumentList[4] -is 'SecureString') -and
+                ($ArgumentList[5] -eq 'passKeyContent') -and
+                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.OverwriteFile) -and
+                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
             }
         }
-        It 'with a scriptblock when Tasks.Actions.Parameter.ComputerName is the localhost' {
-            $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'localhost'
-
-            $testNewInputFile | ConvertTo-Json -Depth 7 |
-            Out-File @testOutParams
-
-            .$testScript @testParams
-
-            Should -Not -Invoke Invoke-Command
-        }
     }
-    It 'with Tasks.Sftp.Credential.PasswordKeyFile and a blank secure string for Tasks.Sftp.Credential.Password' {
-        $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'PC1'
-        $testNewInputFile.Tasks[0].Sftp.Credential.Password = $null
-        $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile = (New-Item 'TestDrive:\key' -ItemType File).FullName
-
-        'passKeyContent' | Out-File -LiteralPath $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile
-
-        $testNewInputFile | ConvertTo-Json -Depth 7 |
-        Out-File @testOutParams
-
-        .$testScript @testParams
-
-        Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
-            ($FilePath -eq $testParams.ScriptPath.UploadScript) -and
-            ($ArgumentList[0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path) -and
-            ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
-            ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
-            ($ArgumentList[3] -eq 'bobUserName') -and
-            ($ArgumentList[4] -eq '.UploadInProgress') -and
-            ($ArgumentList[5] -is 'SecureString') -and
-            ($ArgumentList[6] -eq 'passKeyContent') -and
-            ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
-            ($ArgumentList[8] -eq $testInputFile.Tasks[0].Option.OverwriteFile) -and
-            ($ArgumentList[9] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
-        }
-    }
-}
+}  -Tag test
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 7 |
@@ -932,8 +862,7 @@ Describe 'ExportExcelFile.When' {
         It "'OnlyOnErrorOrAction' and there are no errors and no actions" {
             Mock Invoke-Command {
             } -ParameterFilter {
-                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
-                ($FilePath -eq $testParams.ScriptPath.UploadScript)
+                $FilePath -eq $testParams.ScriptPath.MoveFile
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -958,8 +887,7 @@ Describe 'ExportExcelFile.When' {
                     Error    = 'oops'
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
-                ($FilePath -eq $testParams.ScriptPath.UploadScript)
+                $FilePath -eq $testParams.ScriptPath.MoveFile
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -983,8 +911,7 @@ Describe 'ExportExcelFile.When' {
                     Error    = $null
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
-                ($FilePath -eq $testParams.ScriptPath.UploadScript)
+                $FilePath -eq $testParams.ScriptPath.MoveFile
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -1008,8 +935,7 @@ Describe 'ExportExcelFile.When' {
                     Error    = 'oops'
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
-                ($FilePath -eq $testParams.ScriptPath.UploadScript)
+                $FilePath -eq $testParams.ScriptPath.MoveFile
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -1057,8 +983,7 @@ Describe 'SendMail.When' {
         It "'OnlyOnErrorOrAction' and there are no errors and no actions" {
             Mock Invoke-Command {
             } -ParameterFilter {
-                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
-                ($FilePath -eq $testParams.ScriptPath.UploadScript)
+                $FilePath -eq $testParams.ScriptPath.MoveFile
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -1082,8 +1007,7 @@ Describe 'SendMail.When' {
                     Error    = 'oops'
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
-                ($FilePath -eq $testParams.ScriptPath.UploadScript)
+                $FilePath -eq $testParams.ScriptPath.MoveFile
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -1106,8 +1030,7 @@ Describe 'SendMail.When' {
                     Error    = $null
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
-                ($FilePath -eq $testParams.ScriptPath.UploadScript)
+                $FilePath -eq $testParams.ScriptPath.MoveFile
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -1129,8 +1052,7 @@ Describe 'SendMail.When' {
                     Error    = 'oops'
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
-                ($FilePath -eq $testParams.ScriptPath.UploadScript)
+                $FilePath -eq $testParams.ScriptPath.MoveFile
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
