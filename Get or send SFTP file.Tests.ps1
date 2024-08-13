@@ -23,21 +23,22 @@ BeforeAll {
                 }
                 Actions  = @(
                     @{
-                        Type      = 'Upload'
-                        Parameter = @{
-                            SftpPath     = '/SFTP/folder/'
-                            ComputerName = 'PC1'
-                            Path         = (New-Item 'TestDrive:\a' -ItemType Directory).FullName
-
-                        }
+                        ComputerName = 'PC1'
+                        Paths        = @(
+                            @{
+                                Source      = (New-Item 'TestDrive:\a' -ItemType Directory).FullName
+                                Destination = 'sftp:/folder/a/'
+                            }
+                        )
                     }
                     @{
-                        Type      = 'Download'
-                        Parameter = @{
-                            SftpPath     = '/SFTP/folder/'
-                            ComputerName = 'PC2'
-                            Path         = (New-Item 'TestDrive:\d' -ItemType Directory).FullName
-                        }
+                        ComputerName = 'PC2'
+                        Paths        = @(
+                            @{
+                                Source      = 'sftp:/folder/b/'
+                                Destination = (New-Item 'TestDrive:\b' -ItemType Directory).FullName
+                            }
+                        )
                     }
                 )
             }
@@ -53,50 +54,46 @@ BeforeAll {
 
     $testData = @(
         [PSCustomObject]@{
-            LocalPath  = $testInputFile.Tasks[0].Actions[0].Parameter.Path
-            SftpPath   = $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath
-            FileName   = $testInputFile.Tasks[0].Actions[0].Parameter.Path | Split-Path -Leaf
-            FileLength = 5KB
-            DateTime   = Get-Date
-            Uploaded   = $true
-            Action     = @('file uploaded', 'file removed')
-            Error      = $null
+            Source      = $testInputFile.Tasks[0].Actions[0].Paths[0].Source
+            Destination = $testInputFile.Tasks[0].Actions[0].Paths[0].Destination
+            FileName    = 'a.txt'
+            FileLength  = 5KB
+            DateTime    = Get-Date
+            Action      = @('file moved', 'file removed')
+            Error       = $null
         }
         [PSCustomObject]@{
-            LocalPath  = $testInputFile.Tasks[0].Actions[1].Parameter.Path
-            SftpPath   = $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath
-            FileName   = 'sftp file.txt'
-            FileLength = 3KB
-            DateTime   = Get-Date
-            Downloaded = $true
-            Action     = @('file downloaded', 'file removed')
-            Error      = $null
+            Source      = $testInputFile.Tasks[0].Actions[1].Paths[0].Source
+            Destination = $testInputFile.Tasks[0].Actions[1].Paths[0].Destination
+            FileName    = 'b.txt'
+            FileLength  = 3KB
+            DateTime    = Get-Date
+            Action      = @('file moved', 'file removed')
+            Error       = $null
         }
     )
 
     $testExportedExcelRows = @(
         [PSCustomObject]@{
-            SftpServer   = $testInputFile.Tasks[0].Sftp.ComputerName
-            ComputerName = $testInputFile.Tasks[0].Actions[0].Parameter.ComputerName
-            Source       = $testData[0].LocalPath
-            Destination  = $testData[0].SftpPath
+            SftServer    = $testInputFile.Tasks[0].Sftp.ComputerName
+            ComputerName = $testInputFile.Tasks[0].Actions[0].ComputerName
+            Source       = $testData[0].Source
+            Destination  = $testData[0].Destination
             FileName     = $testData[0].FileName
             FileSize     = $testData[0].FileLength / 1KB
             DateTime     = $testData[0].DateTime
-            Type         = 'Upload'
             Successful   = $true
             Action       = $testData[0].Action -join ', '
             Error        = $null
         }
         [PSCustomObject]@{
-            SftpServer   = $testInputFile.Tasks[0].Sftp.ComputerName
-            ComputerName = $testInputFile.Tasks[0].Actions[1].Parameter.ComputerName
-            Source       = $testData[1].SftpPath
-            Destination  = $testData[1].LocalPath
+            SftServer    = $testInputFile.Tasks[0].Sftp.ComputerName
+            ComputerName = $testInputFile.Tasks[0].Actions[1].ComputerName
+            Source       = $testData[1].Source
+            Destination  = $testData[1].Destination
             FileName     = $testData[1].FileName
             FileSize     = $testData[1].FileLength / 1KB
             DateTime     = $testData[1].DateTime
-            Type         = 'Download'
             Successful   = $true
             Action       = $testData[1].Action -join ', '
             Error        = $null
@@ -112,7 +109,7 @@ BeforeAll {
     $testParams = @{
         ScriptName  = 'Test (Brecht)'
         ImportFile  = $testOutParams.FilePath
-        Path        = @{
+        ScriptPath  = @{
             UploadScript   = (New-Item 'TestDrive:/u.ps1' -ItemType 'File').FullName
             DownloadScript = (New-Item 'TestDrive:/d.ps1' -ItemType 'File').FullName
         }
@@ -144,12 +141,12 @@ BeforeAll {
     Mock Invoke-Command {
         $testData[0]
     } -ParameterFilter {
-        $FilePath -eq $testParams.Path.UploadScript
+        $FilePath -eq $testParams.ScriptPath.UploadScript
     }
     Mock Invoke-Command {
         $testData[1]
     } -ParameterFilter {
-        $FilePath -eq $testParams.Path.DownloadScript
+        $FilePath -eq $testParams.ScriptPath.DownloadScript
     }
     Mock Send-MailHC
     Mock Write-EventLog
@@ -180,9 +177,9 @@ Describe 'send an e-mail to the admin when' {
         }
     }
     Context 'the file is not found' {
-        It 'Path.UploadScript' {
+        It 'ScriptPath.UploadScript' {
             $testNewParams = Copy-ObjectHC $testParams
-            $testNewParams.Path.UploadScript = 'c:\upDoesNotExist.ps1'
+            $testNewParams.ScriptPath.UploadScript = 'c:\upDoesNotExist.ps1'
 
             $testInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -190,15 +187,15 @@ Describe 'send an e-mail to the admin when' {
             .$testScript @testNewParams
 
             Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                    (&$MailAdminParams) -and ($Message -like "*Path.UploadScript 'c:\upDoesNotExist.ps1' not found*")
+                    (&$MailAdminParams) -and ($Message -like "*ScriptPath.UploadScript 'c:\upDoesNotExist.ps1' not found*")
             }
             Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                 $EntryType -eq 'Error'
             }
         }
-        It 'Path.DownloadScript' {
+        It 'ScriptPath.DownloadScript' {
             $testNewParams = Copy-ObjectHC $testParams
-            $testNewParams.Path.DownloadScript = 'c:\downDoesNotExist.ps1'
+            $testNewParams.ScriptPath.DownloadScript = 'c:\downDoesNotExist.ps1'
 
             $testInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -206,7 +203,7 @@ Describe 'send an e-mail to the admin when' {
             .$testScript @testNewParams
 
             Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                    (&$MailAdminParams) -and ($Message -like "*Path.DownloadScript 'c:\downDoesNotExist.ps1' not found*")
+                    (&$MailAdminParams) -and ($Message -like "*ScriptPath.DownloadScript 'c:\downDoesNotExist.ps1' not found*")
             }
             Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                 $EntryType -eq 'Error'
@@ -221,7 +218,7 @@ Describe 'send an e-mail to the admin when' {
             .$testScript @testNewParams
 
             Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                    (&$MailAdminParams) -and ($Message -like "Cannot find path*nonExisting.json*")
+                    (&$MailAdminParams) -and ($Message -like "Cannot find Path*nonExisting.json*")
             }
             Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                 $EntryType -eq 'Error'
@@ -410,7 +407,7 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
             It 'Tasks.Actions.<_> not found' -ForEach @(
-                'Type', 'Parameter'
+                'Paths'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].Actions[0].$_ = $null
@@ -428,12 +425,12 @@ Describe 'send an e-mail to the admin when' {
                     $EntryType -eq 'Error'
                 }
             }
-            Context "Tasks.Actions.Type is 'Download'" {
-                It 'Tasks.Actions.Parameter.<_> not found' -ForEach @(
-                    'SftpPath', 'Path'
+            Context "Tasks.Actions.Paths" {
+                It 'Tasks.Actions.Paths.<_> not found' -ForEach @(
+                    'Source', 'Destination'
                 ) {
                     $testNewInputFile = Copy-ObjectHC $testInputFile
-                    $testNewInputFile.Tasks[0].Actions[1].Parameter.$_ = $null
+                    $testNewInputFile.Tasks[0].Actions[0].Paths[0].$_ = $null
 
                     $testNewInputFile | ConvertTo-Json -Depth 7 |
                     Out-File @testOutParams
@@ -442,28 +439,7 @@ Describe 'send an e-mail to the admin when' {
 
                     Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                         (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.$_' not found*")
-                    }
-                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                        $EntryType -eq 'Error'
-                    }
-                }
-            }
-            Context "Tasks.Actions.Type is 'Upload'" {
-                It 'Tasks.Actions.Parameter.<_> not found' -ForEach @(
-                    'SftpPath', 'Path'
-                ) {
-                    $testNewInputFile = Copy-ObjectHC $testInputFile
-                    $testNewInputFile.Tasks[0].Actions[0].Parameter.$_ = $null
-
-                    $testNewInputFile | ConvertTo-Json -Depth 7 |
-                    Out-File @testOutParams
-
-                    .$testScript @testParams
-
-                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Parameter.$_' not found*")
+                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.Paths.$_' not found*")
                     }
                     Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                         $EntryType -eq 'Error'
@@ -638,7 +614,7 @@ Describe 'send an e-mail to the admin when' {
             }
         }
     }
-}
+} -Tag test
 Describe 'correct the import file' {
     It 'add trailing slashes to SFTP path when they are not there' {
         $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -658,7 +634,7 @@ Describe 'execute the SFTP script' {
     BeforeAll {
         $testJobArguments = @(
             {
-                ($FilePath -eq $testParams.Path.UploadScript) -and
+                ($FilePath -eq $testParams.ScriptPath.UploadScript) -and
                 ($ArgumentList[0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path) -and
                 ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
                 ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
@@ -671,7 +647,7 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[9] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
             }
             {
-                ($FilePath -eq $testParams.Path.DownloadScript) -and
+                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -and
                 ($ArgumentList[0] -eq $testInputFile.Tasks[0].Actions[1].Parameter.Path) -and
                 ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
                 ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[1].Parameter.SftpPath) -and
@@ -700,11 +676,11 @@ Describe 'execute the SFTP script' {
 
             Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
                 (& $testJobArguments[0]) -and
-                ($ComputerName -eq $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName)
+                ($ComputerName -eq $testNewInputFile.Tasks[0].Actions[0].ComputerName)
             }
         }
         It 'with a scriptblock when Tasks.Actions.Parameter.ComputerName is the localhost' {
-            $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
+            $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'localhost'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -729,11 +705,11 @@ Describe 'execute the SFTP script' {
 
             Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
                 (& $testJobArguments[1]) -and
-                ($ComputerName -eq $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName)
+                ($ComputerName -eq $testNewInputFile.Tasks[0].Actions[0].ComputerName)
             }
         }
         It 'with a scriptblock when Tasks.Actions.Parameter.ComputerName is the localhost' {
-            $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'localhost'
+            $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'localhost'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
@@ -745,7 +721,7 @@ Describe 'execute the SFTP script' {
     }
     It 'with Tasks.Sftp.Credential.PasswordKeyFile and a blank secure string for Tasks.Sftp.Credential.Password' {
         $testNewInputFile = Copy-ObjectHC $testInputFile
-        $testNewInputFile.Tasks[0].Actions[0].Parameter.ComputerName = 'PC1'
+        $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'PC1'
         $testNewInputFile.Tasks[0].Sftp.Credential.Password = $null
         $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile = (New-Item 'TestDrive:\key' -ItemType File).FullName
 
@@ -757,7 +733,7 @@ Describe 'execute the SFTP script' {
         .$testScript @testParams
 
         Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
-            ($FilePath -eq $testParams.Path.UploadScript) -and
+            ($FilePath -eq $testParams.ScriptPath.UploadScript) -and
             ($ArgumentList[0] -eq $testInputFile.Tasks[0].Actions[0].Parameter.Path) -and
             ($ArgumentList[1] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
             ($ArgumentList[2] -eq $testInputFile.Tasks[0].Actions[0].Parameter.SftpPath) -and
@@ -770,7 +746,7 @@ Describe 'execute the SFTP script' {
             ($ArgumentList[9] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
         }
     }
-} -Tag test
+}
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 7 |
@@ -795,14 +771,13 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow = $actual | Where-Object {
                     $_.Source -eq $testRow.Source
                 }
-                $actualRow.SftpServer | Should -Be $testRow.SftpServer
+                $actualRow.SftServer | Should -Be $testRow.SftServer
                 $actualRow.ComputerName | Should -Be $testRow.ComputerName
                 $actualRow.Destination | Should -Be $testRow.Destination
                 $actualRow.DateTime.ToString('yyyyMMdd') |
                 Should -Be $testRow.DateTime.ToString('yyyyMMdd')
                 $actualRow.Action | Should -Be $testRow.Action
                 $actualRow.Error | Should -Be $testRow.Error
-                $actualRow.Type | Should -Be $testRow.Type
                 $actualRow.Successful | Should -Be $testRow.Successful
                 $actualRow.FileName | Should -Be $testRow.FileName
                 $actualRow.FileSize | Should -Be $testRow.FileSize
@@ -850,8 +825,8 @@ Describe 'ExportExcelFile.When' {
         It "'OnlyOnErrorOrAction' and there are no errors and no actions" {
             Mock Invoke-Command {
             } -ParameterFilter {
-                ($FilePath -eq $testParams.Path.DownloadScript) -or
-                ($FilePath -eq $testParams.Path.UploadScript)
+                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
+                ($FilePath -eq $testParams.ScriptPath.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -876,8 +851,8 @@ Describe 'ExportExcelFile.When' {
                     Error    = 'oops'
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.Path.DownloadScript) -or
-                ($FilePath -eq $testParams.Path.UploadScript)
+                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
+                ($FilePath -eq $testParams.ScriptPath.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -901,8 +876,8 @@ Describe 'ExportExcelFile.When' {
                     Error    = $null
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.Path.DownloadScript) -or
-                ($FilePath -eq $testParams.Path.UploadScript)
+                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
+                ($FilePath -eq $testParams.ScriptPath.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -926,8 +901,8 @@ Describe 'ExportExcelFile.When' {
                     Error    = 'oops'
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.Path.DownloadScript) -or
-                ($FilePath -eq $testParams.Path.UploadScript)
+                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
+                ($FilePath -eq $testParams.ScriptPath.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -975,8 +950,8 @@ Describe 'SendMail.When' {
         It "'OnlyOnErrorOrAction' and there are no errors and no actions" {
             Mock Invoke-Command {
             } -ParameterFilter {
-                ($FilePath -eq $testParams.Path.DownloadScript) -or
-                ($FilePath -eq $testParams.Path.UploadScript)
+                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
+                ($FilePath -eq $testParams.ScriptPath.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -1000,8 +975,8 @@ Describe 'SendMail.When' {
                     Error    = 'oops'
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.Path.DownloadScript) -or
-                ($FilePath -eq $testParams.Path.UploadScript)
+                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
+                ($FilePath -eq $testParams.ScriptPath.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -1024,8 +999,8 @@ Describe 'SendMail.When' {
                     Error    = $null
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.Path.DownloadScript) -or
-                ($FilePath -eq $testParams.Path.UploadScript)
+                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
+                ($FilePath -eq $testParams.ScriptPath.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile
@@ -1047,8 +1022,8 @@ Describe 'SendMail.When' {
                     Error    = 'oops'
                 }
             } -ParameterFilter {
-                ($FilePath -eq $testParams.Path.DownloadScript) -or
-                ($FilePath -eq $testParams.Path.UploadScript)
+                ($FilePath -eq $testParams.ScriptPath.DownloadScript) -or
+                ($FilePath -eq $testParams.ScriptPath.UploadScript)
             }
 
             $testNewInputFile = Copy-ObjectHC $testInputFile

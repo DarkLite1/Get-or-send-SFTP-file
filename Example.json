@@ -18,20 +18,17 @@
       },
       "Actions": [
         {
-          "Type": "Upload",
-          "Parameter": {
-            "SftpPath": "/reports/",
-            "ComputerName": null,
-            "Path": "\\SERVER\\C$\\Folder"
-          }
-        },
-        {
-          "Type": "Download",
-          "Parameter": {
-            "SftpPath": "/data/",
-            "ComputerName": "PC1",
-            "Path": "C:\\Folder"
-          }
+          "ComputerName": "PC1",
+          "Paths": [
+            {
+              "Source": "sftp:/reports/",
+              "Destination": "\\SERVER\\C$\\Reports"
+            },
+            {
+              "Source": "\\SERVER\\C$\\Data",
+              "Destination": "sftp:/data/"
+            }
+          ]
         }
       ]
     }

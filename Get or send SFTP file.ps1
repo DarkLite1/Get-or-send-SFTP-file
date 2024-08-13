@@ -60,7 +60,7 @@
 .PARAMETER Tasks.Actions.Parameter
     Parameters specific to the upload or download action.
 
-.PARAMETER Tasks.Actions.Parameter.ComputerName
+.PARAMETER Tasks.Actions.ComputerName
     The client where the SFTP code will be executed. This machine needs to
     have the module 'Posh-SSH' installed.
 
@@ -70,7 +70,7 @@
       the files within that folder will be uploaded.
 
     Type 'Download':
-    - A single folder on the machine defined in Tasks.Actions.Parameter.ComputerName where the files will be downloaded to.
+    - A single folder on the machine defined in Tasks.Actions.ComputerName where the files will be downloaded to.
 
 .PARAMETER Tasks.Option.OverwriteFile
     Overwrite files on the SFTP server when they already exist.
@@ -120,7 +120,7 @@ Param (
     [String]$ScriptName,
     [Parameter(Mandatory)]
     [String]$ImportFile,
-    [HashTable]$Path = @{
+    [HashTable]$ScriptPath = @{
         UploadScript   = "$PSScriptRoot\Send to SFTP.ps1"
         DownloadScript = "$PSScriptRoot\Get SFTP file.ps1"
     },
@@ -148,9 +148,9 @@ Begin {
         $Error.Clear()
 
         #region Test path exists
-        $pathItem = @{}
+        $scriptPathItem = @{}
 
-        $Path.GetEnumerator().ForEach(
+        $ScriptPath.GetEnumerator().ForEach(
             {
                 try {
                     $key = $_.Key
@@ -160,10 +160,10 @@ Begin {
                         Path        = $value
                         ErrorAction = 'Stop'
                     }
-                    $PathItem[$key] = (Get-Item @params).FullName
+                    $scriptPathItem[$key] = (Get-Item @params).FullName
                 }
                 catch {
-                    throw "Path.$key '$value' not found"
+                    throw "ScriptPath.$key '$value' not found"
                 }
             }
         )
@@ -308,21 +308,25 @@ Begin {
                 }
 
                 foreach ($action in $task.Actions) {
-                    @('Type', 'Parameter').Where(
+                    @('Paths').Where(
                         { -not $action.$_ }
                     ).foreach(
                         { throw "Property 'Tasks.Actions.$_' not found" }
                     )
 
-                    @(
-                        'SftpPath', 'Path'
-                    ).Where(
-                        { -not $action.Parameter.$_ }
-                    ).foreach(
-                        {
-                            throw "Property 'Tasks.Actions.Parameter.$_' not found"
-                        }
-                    )
+                    foreach ($path in $action.Paths) {
+                        @(
+                            'Source', 'Destination'
+                        ).Where(
+                            { -not $path.$_ }
+                        ).foreach(
+                            {
+                                throw "Property 'Tasks.Actions.Paths.$_' not found"
+                            }
+                        )
+
+
+                    }
                 }
             }
 
@@ -347,11 +351,11 @@ Begin {
                 #region Set ComputerName if there is none
                 foreach ($action in $task.Actions) {
                     if (
-                        (-not $action.Parameter.ComputerName) -or
-                        ($action.Parameter.ComputerName -eq 'localhost') -or
-                        ($action.Parameter.ComputerName -eq "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
+                        (-not $action.ComputerName) -or
+                        ($action.ComputerName -eq 'localhost') -or
+                        ($action.ComputerName -eq "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
                     ) {
-                        $action.Parameter.ComputerName = $env:COMPUTERNAME
+                        $action.ComputerName = $env:COMPUTERNAME
                     }
                 }
                 #endregion
@@ -445,7 +449,7 @@ Process {
                 #region Declare variables for code running in parallel
                 if (-not $MaxConcurrentJobs) {
                     $task = $using:task
-                    $PathItem = $using:PathItem
+                    $scriptPathItem = $using:scriptPathItem
                     $PSSessionConfiguration = $using:PSSessionConfiguration
                     $EventVerboseParams = $using:EventVerboseParams
                 }
@@ -454,21 +458,21 @@ Process {
                 #region Create job parameters
                 $invokeParams = @{
                     FilePath     = if ($action.Type -eq 'Upload') {
-                        $PathItem.UploadScript
+                        $scriptPathItem.UploadScript
                     }
                     else {
-                        $PathItem.DownloadScript
+                        $scriptPathItem.DownloadScript
                     }
                     ArgumentList = $action.Parameter.Path,
                     $task.Sftp.ComputerName,
                     $action.Parameter.SftpPath,
                     $task.Sftp.Credential.UserName,
                     $(if ($action.Type -eq 'Upload') {
-                        '.UploadInProgress'
-                    }
-                    else {
-                        '.DownloadInProgress'
-                    }),
+                            '.UploadInProgress'
+                        }
+                        else {
+                            '.DownloadInProgress'
+                        }),
                     $task.Sftp.Credential.Password,
                     $task.Sftp.Credential.PasswordKeyFile,
                     $task.Option.FileExtensions,
@@ -478,7 +482,7 @@ Process {
 
                 $M = "Start SFTP '{11}' job '{0}' on '{1}' script '{2}' with arguments: Sftp.ComputerName '{3}' SftpPath '{4}' Sftp.UserName '{5}' PartialFileExtension '{6}' FileExtensions '{7}' OverwriteFile '{8}' RemoveFailedPartialFiles '{9}' Path '{10}'" -f
                 $task.TaskName,
-                $action.Parameter.ComputerName,
+                $action.ComputerName,
                 $invokeParams.FilePath,
                 $invokeParams.ArgumentList[1],
                 $invokeParams.ArgumentList[2],
@@ -495,7 +499,7 @@ Process {
                 #endregion
 
                 #region Start job
-                $computerName = $action.Parameter.ComputerName
+                $computerName = $action.ComputerName
 
                 $action.Job.Results += if (
                     $computerName -eq $ENV:COMPUTERNAME
@@ -517,7 +521,7 @@ Process {
                 if ($action.Job.Results.Count -ne 0) {
                     $M = "Task '{0}' Type '{1}' SftpPath '{2}' ComputerName '{3}' Path '{4}': {5} job result{6}" -f
                     $task.TaskName, $action.Type, $action.Parameter.SftpPath,
-                    $action.Parameter.ComputerName,
+                    $action.ComputerName,
                     $action.Parameter.Path,
                     $action.Job.Results.Count,
                     $(if ($action.Job.Results.Count -ne 1) { 's' })
@@ -650,7 +654,7 @@ End {
                         { $_.Error }
                     ).foreach(
                         {
-                            $M = "Error for TaskName '$($task.TaskName)' Type '$($action.Type)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.Parameter.ComputerName)' Source '{0}' Destination '{1}': $($_.Error)" -f
+                            $M = "Error for TaskName '$($task.TaskName)' Type '$($action.Type)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName)' Source '{0}' Destination '{1}': $($_.Error)" -f
                             $(
                                 if ($action.Type -eq 'Upload') {
                                     $action.Parameter.Path
@@ -685,7 +689,7 @@ End {
                             }
                         )
                         <td>
-                            $($action.Parameter.ComputerName)
+                            $($action.ComputerName)
                         </td>
                         <td>
                             $(
@@ -748,7 +752,7 @@ End {
                 },
                 @{
                     Name       = 'ComputerName'
-                    Expression = { $action.Parameter.ComputerName }
+                    Expression = { $action.ComputerName }
                 },
                 @{
                     Name       = 'Source'
