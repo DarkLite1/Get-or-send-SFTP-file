@@ -372,19 +372,17 @@ Begin {
 
         try {
             foreach ($task in $Tasks) {
-                #region Set ComputerName if there is none
-                foreach ($action in $task.Actions) {
-                    if (
-                        (-not $action.ComputerName) -or
-                        ($action.ComputerName -eq 'localhost') -or
-                        ($action.ComputerName -eq "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
-                    ) {
-                        $action.ComputerName = $env:COMPUTERNAME
-                    }
+                #region Set SFTP UserName
+                if (-not (
+                        $params.String = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.UserName)
+                ) {
+                    throw "Environment variable '`$ENV:$($task.Sftp.Credential.UserName)' in 'Sftp.Credential.UserName' not found on computer $ENV:COMPUTERNAME"
                 }
+
+                $task.Sftp.Credential.UserName = $params.String
                 #endregion
 
-                #region Set secure string as password
+                #region Set SFTP password
                 if ($task.Sftp.Credential.PasswordKeyFile) {
                     try {
                         $PasswordKeyFileStrings = Get-Content -LiteralPath $task.Sftp.Credential.PasswordKeyFile -ErrorAction Stop
@@ -422,18 +420,18 @@ Begin {
                 }
                 #endregion
 
-                #region Add environment variable SFTP UserName
-                if (-not (
-                        $params.String = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.UserName)
-                ) {
-                    throw "Environment variable '`$ENV:$($task.Sftp.Credential.UserName)' in 'Sftp.Credential.UserName' not found on computer $ENV:COMPUTERNAME"
-                }
-
-                $task.Sftp.Credential.UserName = $params.String
-                #endregion
-
-                #region Convert SFTP path to '/path/'
                 foreach ($action in $task.Actions) {
+                    #region Set ComputerName
+                    if (
+                        (-not $action.ComputerName) -or
+                        ($action.ComputerName -eq 'localhost') -or
+                        ($action.ComputerName -eq "$ENV:COMPUTERNAME.$env:USERDNSDOMAIN")
+                    ) {
+                        $action.ComputerName = $env:COMPUTERNAME
+                    }
+                    #endregion
+
+                    #region Convert Paths
                     foreach ($path in $action.Paths) {
                         if ($path.Source -like 'sftp*') {
                             $path.Source = $path.Source.TrimEnd('/') + '/'
@@ -442,18 +440,17 @@ Begin {
                             $path.Destination = $path.Destination.TrimEnd('/') + '/'
                         }
                     }
-                }
-                #endregion
+                    #endregion
 
-                #region Add properties
-                $task.Actions | ForEach-Object {
-                    $_ | Add-Member -NotePropertyMembers @{
+                    #region Add properties
+                    $action | Add-Member -NotePropertyMembers @{
                         Job = @{
                             Results = @()
+                            Error = $null
                         }
                     }
+                    #endregion
                 }
-                #endregion
             }
         }
         catch {
@@ -504,7 +501,7 @@ Process {
                 $invokeParams.ArgumentList[1],
                 $(
                     $invokeParams.ArgumentList[2].foreach(
-                        {"Source '$($_.Source)' Destination '$($_.Destination)'"}
+                        { "Source '$($_.Source)' Destination '$($_.Destination)'" }
                     ) -join ', '
                 ),
                 $invokeParams.ArgumentList[3],
@@ -544,7 +541,7 @@ Process {
                     $invokeParams.ArgumentList[1],
                     $(
                         $invokeParams.ArgumentList[2].foreach(
-                            {"Source '$($_.Source)' Destination '$($_.Destination)'"}
+                            { "Source '$($_.Source)' Destination '$($_.Destination)'" }
                         ) -join ', '
                     ),
                     $invokeParams.ArgumentList[3],
@@ -560,17 +557,7 @@ Process {
                 #endregion
             }
             catch {
-                $action.Job.Results += [PSCustomObject]@{
-                    DateTime   = Get-Date
-                    LocalPath  = $invokeParams.ArgumentList[0]
-                    SftpPath   = $invokeParams.ArgumentList[2]
-                    FileName   = $null
-                    FileLength = $null
-                    Downloaded = $false
-                    Uploaded   = $false
-                    Action     = $null
-                    Error      = "General error: $_"
-                }
+                $action.Job.Error = $_
                 $Error.RemoveAt(0)
             }
         }
@@ -610,10 +597,8 @@ End {
         #region Counter
         $counter = @{
             Total = @{
-                Errors          = $countSystemErrors
-                UploadedFiles   = 0
-                DownloadedFiles = 0
-                Actions         = 0
+                MovedFiles = 0
+                Errors     = $countSystemErrors
             }
         }
         #endregion
@@ -659,23 +644,17 @@ End {
             foreach ($action in $task.Actions) {
                 #region Counter
                 $counter.Action = @{
-                    Errors          = 0
-                    UploadedFiles   = 0
-                    DownloadedFiles = 0
+                    Errors     = 0
+                    MovedFiles = 0
                 }
 
-                $counter.Action.UploadedFiles = $action.Job.Results.Where(
-                    { $_.Uploaded }).Count
-                $counter.Action.DownloadedFiles = $action.Job.Results.Where(
-                    { $_.Downloaded }).Count
+                $counter.Action.MovedFiles = $action.Job.Results.Where(
+                    { -not $_.Error }).Count
                 $counter.Action.Errors = $action.Job.Results.Where(
                     { $_.Error }).Count
 
                 $counter.Total.Errors += $counter.Action.Errors
-                $counter.Total.UploadedFiles += $counter.Action.UploadedFiles
-                $counter.Total.DownloadedFiles += $counter.Action.DownloadedFiles
-                $counter.Total.Actions += $counter.Action.UploadedFiles
-                $counter.Total.Actions += $counter.Action.DownloadedFiles
+                $counter.Total.MovedFiles += $counter.Action.MovedFiles
                 #endregion
 
                 #region Log errors
@@ -684,22 +663,11 @@ End {
                         { $_.Error }
                     ).foreach(
                         {
-                            $M = "Error for TaskName '$($task.TaskName)' Type '$($action.Type)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName)' Source '{0}' Destination '{1}': $($_.Error)" -f
+                            $M = "Error for TaskName '$($task.TaskName)' Type '$($action.Type)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName) {0}: $($_.Error)" -f
                             $(
-                                if ($action.Type -eq 'Upload') {
-                                    $action.Parameter.Path
-                                }
-                                else {
-                                    $action.Parameter.SftpPath
-                                }
-                            ),
-                            $(
-                                if ($action.Type -eq 'Upload') {
-                                    $action.Parameter.SftpPath
-                                }
-                                else {
-                                    $action.Parameter.Path
-                                }
+                                $action.Paths.foreach(
+                                    { "Source '$($_.Source)' Destination '$($_.Destination)'" }
+                                ) -join ', '
                             )
                             Write-Warning $M
                             Write-EventLog @EventErrorParams -Message $M
@@ -747,7 +715,7 @@ End {
                                     "$($counter.Action.DownloadedFiles) downloaded"
                                 }
                                 else {
-                                    "$($counter.Action.UploadedFiles) uploaded"
+                                    "$($counter.Action.MovedFiles) uploaded"
                                 }
 
                                 if ($counter.Action.Errors) {
@@ -895,8 +863,8 @@ End {
         $mailParams.Priority = 'Normal'
         $mailParams.Subject = @()
 
-        if ($counter.Total.UploadedFiles) {
-            $mailParams.Subject += "$($counter.Total.UploadedFiles) uploaded"
+        if ($counter.Total.MovedFiles) {
+            $mailParams.Subject += "$($counter.Total.MovedFiles) uploaded"
         }
         if ($counter.Total.DownloadedFiles) {
             $mailParams.Subject += "$($counter.Total.DownloadedFiles) downloaded"

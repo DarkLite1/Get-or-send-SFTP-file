@@ -783,7 +783,7 @@ Describe 'execute the SFTP script' {
             }
         }
     }
-}  -Tag test
+}
 Describe 'when the SFTP script runs successfully' {
     BeforeAll {
         $testInputFile | ConvertTo-Json -Depth 7 |
@@ -799,7 +799,7 @@ Describe 'when the SFTP script runs successfully' {
         }
         It 'in the log folder' {
             $testExcelLogFile | Should -Not -BeNullOrEmpty
-        }
+        } -Tag test
         It 'with the correct total rows' {
             $actual | Should -HaveCount $testExportedExcelRows.Count
         }
