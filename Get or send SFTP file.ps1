@@ -643,7 +643,7 @@ End {
             $htmlTable += "
                 <tr style=`"background-color: lightgrey;`">
                     <th style=`"text-align: center;`" colspan=`"2`">$($task.TaskName)</th>
-                    <th style=`"text-align: left;`">sftp:/$($task.SFTP.ComputerName)</th>
+                    <th>sftp:/$($task.SFTP.ComputerName)</th>
                 </tr>
                 <tr>
                     <th>Source</th>
@@ -763,7 +763,7 @@ End {
                 $htmlTable += "
                 <tr>
                     <th colspan=`"2`"></th>
-                    <th style=`"text-align: left;`">$($counter.Action.MovedFiles) moved on $($action.ComputerName)</th>
+                    <th>$($counter.Action.MovedFiles) moved on $($action.ComputerName)</th>
                 </tr>"
                 #endregion
 
