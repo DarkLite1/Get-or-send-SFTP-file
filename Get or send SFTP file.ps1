@@ -759,11 +759,11 @@ End {
                     #endregion
                 }
 
-                #region Create HTML Action header row
+                #region Create HTML Action summary row
                 $htmlTable += "
                 <tr>
                     <th colspan=`"2`"></th>
-                    <th style=`"text-align: left;`">$($action.ComputerName): $($counter.Action.MovedFiles) moved</th>
+                    <th style=`"text-align: left;`">$($counter.Action.MovedFiles) moved on $($action.ComputerName)</th>
                 </tr>"
                 #endregion
 

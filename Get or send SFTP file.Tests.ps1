@@ -869,9 +869,9 @@ Describe 'when the SFTP script runs successfully' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
             ($To -eq $testInputFile.SendMail.To) -and
             ($Priority -eq 'Normal') -and
-            ($Subject -eq '1 uploaded, 1 downloaded') -and
+            ($Subject -eq '2 moved') -and
             ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*ComputerName*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].ComputerName)*$($testInputFile.Tasks[0].Actions[0].Parameter.Path)*$($testInputFile.Tasks[0].Actions[0].Parameter.SftpPath)*1 uploaded*$($testInputFile.Tasks[0].Actions[1].ComputerName)*$($testInputFile.Tasks[0].Actions[1].Parameter.SftpPath)*$($testInputFile.Tasks[0].Actions[1].Parameter.Path)*1 downloaded*")
+            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*1 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*1 moved*2 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
             }
         }
     } -Tag test
