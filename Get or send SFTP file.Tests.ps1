@@ -863,7 +863,7 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow.Error | Should -Be $testRow.Error
             }
         }
-    } -Tag test
+    }
     Context 'send an e-mail' {
         It 'with attachment to the user' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
@@ -874,7 +874,7 @@ Describe 'when the SFTP script runs successfully' {
             ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*SFTP Server*$($testInputFile.Tasks[0].Sftp.ComputerName)*ComputerName*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].ComputerName)*$($testInputFile.Tasks[0].Actions[0].Parameter.Path)*$($testInputFile.Tasks[0].Actions[0].Parameter.SftpPath)*1 uploaded*$($testInputFile.Tasks[0].Actions[1].ComputerName)*$($testInputFile.Tasks[0].Actions[1].Parameter.SftpPath)*$($testInputFile.Tasks[0].Actions[1].Parameter.Path)*1 downloaded*")
             }
         }
-    }
+    } -Tag test
 }
 Describe 'ExportExcelFile.When' {
     Context 'create no Excel file' {
