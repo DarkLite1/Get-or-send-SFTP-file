@@ -65,13 +65,6 @@
     have the module 'Posh-SSH' installed.
 
 .PARAMETER Tasks.Actions.Parameter.Path
-    Type 'Upload':
-    - One ore more full paths to a file or folder. When Path is a folder,
-      the files within that folder will be uploaded.
-
-    Type 'Download':
-    - A single folder on the machine defined in Tasks.Actions.ComputerName where the files will be downloaded to.
-
 .PARAMETER Tasks.Option.OverwriteFile
     Overwrite files on the SFTP server when they already exist.
 
@@ -306,6 +299,15 @@ Begin {
                     throw 'Tasks.Actions is missing'
                 }
 
+                #region Test unique ComputerName
+                $task.Actions | group-object -property {
+                    $_.ComputerName
+                } |
+                Where-Object {$_.Count -ge 2} | ForEach-Object {
+                    throw "Duplicate 'Tasks.Actions.ComputerName' found: $($_.Name)"
+                }
+                #endregion
+
                 foreach ($action in $task.Actions) {
                     if ($action.PSObject.Properties.Name -notContains 'ComputerName') {
                         throw "Property 'Tasks.Actions.ComputerName' not found"
@@ -351,6 +353,16 @@ Begin {
                             throw "Property 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' needs to have one SFTP path ('sftp:/....') and one folder path (c:\... or \\server$\...). Incorrect values: Source '$($path.Source)' Destination '$($path.Destination)'"
                         }
                     }
+
+                    #region Test unique Source Destination
+                    $action.Paths | group-object -property {
+                        "Source '{0}' Destination '{1}'" -f
+                        $_.Source, $_.Destination
+                    } |
+                    Where-Object {$_.Count -ge 2} | ForEach-Object {
+                        throw "Duplicate 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' found: $($_.Name)"
+                    }
+                    #endregion
                 }
             }
 
@@ -630,11 +642,10 @@ End {
             #region Create HTML table header
             $htmlTable += "
                 <tr style=`"background-color: lightgrey;`">
-                    <th style=`"text-align: center;`" colspan=`"3`">$($task.TaskName)</th>
-                    <th style=`"text-align: left;`">SFTP Server: $($task.SFTP.ComputerName)</th>
+                    <th style=`"text-align: center;`" colspan=`"2`">$($task.TaskName)</th>
+                    <th style=`"text-align: left;`">sftp:/$($task.SFTP.ComputerName)</th>
                 </tr>
                 <tr>
-                    <th>ComputerName</th>
                     <th>Source</th>
                     <th>Destination</th>
                     <th>Result</th>
@@ -644,14 +655,15 @@ End {
             foreach ($action in $task.Actions) {
                 #region Counter
                 $counter.Action = @{
-                    Errors     = 0
                     MovedFiles = 0
+                    Errors     = 0
                 }
 
                 $counter.Action.MovedFiles = $action.Job.Results.Where(
                     { -not $_.Error }).Count
                 $counter.Action.Errors = $action.Job.Results.Where(
                     { $_.Error }).Count
+                $counter.Action.Errors += $action.Job.Error.Count
 
                 $counter.Total.Errors += $counter.Action.Errors
                 $counter.Total.MovedFiles += $counter.Action.MovedFiles
@@ -663,7 +675,7 @@ End {
                         { $_.Error }
                     ).foreach(
                         {
-                            $M = "Error for TaskName '$($task.TaskName)' Type '$($action.Type)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName) {0}: $($_.Error)" -f
+                            $M = "Error for TaskName '$($task.TaskName)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName) {0}: $($_.Error)" -f
                             $(
                                 $action.Paths.foreach(
                                     { "Source '$($_.Source)' Destination '$($_.Destination)'" }
@@ -676,10 +688,52 @@ End {
                 }
                 #endregion
 
-                #region Create HTML table row
+                #region Create HTML Action header row
                 $htmlTable += "
+                <tr style=`"background-color: lightgrey;`">
+                    <th style=`"text-align: center;`" colspan=`"2`"></th>
+                    <th style=`"text-align: left;`">@ $($action.ComputerName)</th>
+                </tr>"
+                #endregion
+
+                #region Create HTML Error row
+                if ($action.Job.Error) {
+                    $htmlTable += "
+                    <tr style=`"background-color: red;`">
+                        <td colspan=`"3`">ERROR: $($action.Job.Error)</td>
+                    </tr>"
+                }
+                #endregion
+
+                foreach ($path in $action.Paths) {
+                    #region Counter
+                    $counter.Path = @{
+                        MovedFiles = 0
+                        Errors     = 0
+                    }
+
+                    $counter.Path.Errors += $action.Job.Results.Where(
+                    {
+                        ($_.Error) -and
+                        ($_.Source -eq $path.Source) -and
+                        ($_.Destination -eq $path.Destination)
+                    }).Count
+
+                    $counter.Path.MovedFiles += $action.Job.Results.Where(
+                    {
+                        (-not $_.Error) -and
+                        ($_.Source -eq $path.Source) -and
+                        ($_.Destination -eq $path.Destination)
+                    }).Count
+                    #endregion
+
+                    #region Create HTML table row
+                    $htmlTable += "
                         $(
-                            if ($counter.Action.Errors) {
+                            if (
+                                $counter.Action.Errors -or
+                                $counter.Path.Errors
+                            ) {
                                 '<tr style="background-color: red">'
                             }
                             else {
@@ -687,44 +741,22 @@ End {
                             }
                         )
                         <td>
-                            $($action.ComputerName)
+                            $($path.Source)
+                        </td>
+                        <td>
+                            $($path.Destination)
                         </td>
                         <td>
                             $(
-                                if ($action.Type -eq 'Upload') {
-                                    $action.Parameter.Path
-                                }
-                                else {
-                                    $action.Parameter.SftpPath
-                                }
-                            )
-                        </td>
-                        <td>
-                            $(
-                                if ($action.Type -eq 'Upload') {
-                                    $action.Parameter.SftpPath
-                                }
-                                else {
-                                    $action.Parameter.Path
-                                }
-                            )
-                        </td>
-                        <td>
-                            $(
-                                $result = if ($action.Type -eq 'Download') {
-                                    "$($counter.Action.DownloadedFiles) downloaded"
-                                }
-                                else {
-                                    "$($counter.Action.MovedFiles) uploaded"
-                                }
+                                $result = "$($counter.Path.MovedFiles) moved"
 
-                                if ($counter.Action.Errors) {
+                                if ($counter.Path.Errors) {
                                     $result += ", {0} error{1}" -f
                                     $(
-                                        $counter.Action.Errors
+                                        $counter.Path.Errors
                                     ),
                                     $(
-                                        if($counter.Action.Errors -ne 1) {'s'}
+                                        if($counter.Path.Errors -ne 1) {'s'}
                                     )
                                 }
 
@@ -732,7 +764,8 @@ End {
                             )
                         </td>
                     </tr>"
-                #endregion
+                    #endregion
+                }
 
                 #region Create Excel objects
                 $exportToExcel += $action.Job.Results | Select-Object DateTime,
@@ -864,12 +897,8 @@ End {
         $mailParams.Subject = @()
 
         if ($counter.Total.MovedFiles) {
-            $mailParams.Subject += "$($counter.Total.MovedFiles) uploaded"
+            $mailParams.Subject += "$($counter.Total.MovedFiles) moved"
         }
-        if ($counter.Total.DownloadedFiles) {
-            $mailParams.Subject += "$($counter.Total.DownloadedFiles) downloaded"
-        }
-
         if ($counter.Total.Errors) {
             $mailParams.Priority = 'High'
             $mailParams.Subject += "{0} error{1}" -f

@@ -398,22 +398,45 @@ Describe 'send an e-mail to the admin when' {
                         $EntryType -eq 'Error'
                     }
                 }
-                It 'Tasks.Actions.ComputerName not found' {
-                    $testNewInputFile = Copy-ObjectHC $testInputFile
-                    $testNewInputFile.Tasks[0].Actions[0].Remove('ComputerName')
+                Context 'Tasks.Actions.ComputerName' {
+                    It 'property ComputerName not found' {
+                        $testNewInputFile = Copy-ObjectHC $testInputFile
+                        $testNewInputFile.Tasks[0].Actions[0].Remove('ComputerName')
 
-                    $testNewInputFile | ConvertTo-Json -Depth 7 |
-                    Out-File @testOutParams
+                        $testNewInputFile | ConvertTo-Json -Depth 7 |
+                        Out-File @testOutParams
 
-                    .$testScript @testParams
+                        .$testScript @testParams
 
-                    Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'Tasks.Actions.ComputerName' not found*")
+                        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Property 'Tasks.Actions.ComputerName' not found*")
+                        }
+                        Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                            $EntryType -eq 'Error'
+                        }
                     }
-                    Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
-                        $EntryType -eq 'Error'
-                    }
+                    It "Duplicate ComputerName" {
+                        $testNewInputFile = Copy-ObjectHC $testInputFile
+
+                        $testNewInputFile.Tasks[0].Actions = @(
+                            $testNewInputFile.Tasks[0].Actions[0],
+                            $testNewInputFile.Tasks[0].Actions[0]
+                        )
+
+                        $testNewInputFile | ConvertTo-Json -Depth 7 |
+                        Out-File @testOutParams
+
+                        .$testScript @testParams
+
+                        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Duplicate 'Tasks.Actions.ComputerName' found: $($testNewInputFile.Tasks[0].Actions[0].ComputerName)*")
+                        }
+                        Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                            $EntryType -eq 'Error'
+                        }
+                    } -Tag test
                 }
                 It 'Tasks.Actions.Paths.<_> not found' -ForEach @(
                     'Source', 'Destination'
@@ -502,6 +525,26 @@ Describe 'send an e-mail to the admin when' {
                         Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                             (&$MailAdminParams) -and
                             ($Message -like "*$ImportFile*Property 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' needs to have one SFTP path ('sftp:/....') and one folder path (c:\... or \\server$\...)*")
+                        }
+                        Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                            $EntryType -eq 'Error'
+                        }
+                    }
+                    It "Duplicate Source Destination paths" {
+                        $testNewInputFile = Copy-ObjectHC $testInputFile
+
+                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Source = $testNewInputFile.Tasks[0].Actions[0].Paths[1].Source
+
+                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Destination = $testNewInputFile.Tasks[0].Actions[0].Paths[1].Destination
+
+                        $testNewInputFile | ConvertTo-Json -Depth 7 |
+                        Out-File @testOutParams
+
+                        .$testScript @testParams
+
+                        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Duplicate 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' found: Source '$($testNewInputFile.Tasks[0].Actions[0].Paths[0].Source)' Destination '$($testNewInputFile.Tasks[0].Actions[0].Paths[0].Destination)'*")
                         }
                         Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                             $EntryType -eq 'Error'
@@ -799,7 +842,7 @@ Describe 'when the SFTP script runs successfully' {
         }
         It 'in the log folder' {
             $testExcelLogFile | Should -Not -BeNullOrEmpty
-        } -Tag test
+        } #-Tag test
         It 'with the correct total rows' {
             $actual | Should -HaveCount $testExportedExcelRows.Count
         }
