@@ -300,10 +300,10 @@ Begin {
                 }
 
                 #region Test unique ComputerName
-                $task.Actions | group-object -property {
+                $task.Actions | Group-Object -Property {
                     $_.ComputerName
                 } |
-                Where-Object {$_.Count -ge 2} | ForEach-Object {
+                Where-Object { $_.Count -ge 2 } | ForEach-Object {
                     throw "Duplicate 'Tasks.Actions.ComputerName' found: $($_.Name)"
                 }
                 #endregion
@@ -355,11 +355,11 @@ Begin {
                     }
 
                     #region Test unique Source Destination
-                    $action.Paths | group-object -property {
+                    $action.Paths | Group-Object -Property {
                         "Source '{0}' Destination '{1}'" -f
                         $_.Source, $_.Destination
                     } |
-                    Where-Object {$_.Count -ge 2} | ForEach-Object {
+                    Where-Object { $_.Count -ge 2 } | ForEach-Object {
                         throw "Duplicate 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' found: $($_.Name)"
                     }
                     #endregion
@@ -458,7 +458,7 @@ Begin {
                     $action | Add-Member -NotePropertyMembers @{
                         Job = @{
                             Results = @()
-                            Error = $null
+                            Error   = $null
                         }
                     }
                     #endregion
@@ -688,14 +688,6 @@ End {
                 }
                 #endregion
 
-                #region Create HTML Action header row
-                $htmlTable += "
-                <tr style=`"background-color: lightgrey;`">
-                    <th style=`"text-align: center;`" colspan=`"2`"></th>
-                    <th style=`"text-align: left;`">@ $($action.ComputerName)</th>
-                </tr>"
-                #endregion
-
                 #region Create HTML Error row
                 if ($action.Job.Error) {
                     $htmlTable += "
@@ -713,18 +705,18 @@ End {
                     }
 
                     $counter.Path.Errors += $action.Job.Results.Where(
-                    {
+                        {
                         ($_.Error) -and
                         ($_.Source -eq $path.Source) -and
                         ($_.Destination -eq $path.Destination)
-                    }).Count
+                        }).Count
 
                     $counter.Path.MovedFiles += $action.Job.Results.Where(
-                    {
+                        {
                         (-not $_.Error) -and
                         ($_.Source -eq $path.Source) -and
                         ($_.Destination -eq $path.Destination)
-                    }).Count
+                        }).Count
                     #endregion
 
                     #region Create HTML table row
@@ -767,67 +759,41 @@ End {
                     #endregion
                 }
 
+                #region Create HTML Action header row
+                $htmlTable += "
+                <tr>
+                    <th colspan=`"2`"></th>
+                    <th style=`"text-align: left;`">$($action.ComputerName): $($counter.Action.MovedFiles) moved</th>
+                </tr>"
+                #endregion
+
                 #region Create Excel objects
-                $exportToExcel += $action.Job.Results | Select-Object DateTime,
+                $exportToExcel += $action.Job.Results |
+                Select-Object 'DateTime',
                 @{
                     Name       = 'TaskName'
                     Expression = { $task.TaskName }
                 },
                 @{
-                    Name       = 'Type'
-                    Expression = { $action.Type }
-                },
-                @{
                     Name       = 'SftpServer'
-                    Expression = { $task.SFTP.ComputerName }
+                    Expression = { $task.Sftp.ComputerName }
                 },
                 @{
                     Name       = 'ComputerName'
                     Expression = { $action.ComputerName }
                 },
-                @{
-                    Name       = 'Source'
-                    Expression = {
-                        if ($action.Type -eq 'Upload') {
-                            $_.LocalPath -join ', '
-                        }
-                        else {
-                            $_.SftpPath -join ', '
-                        }
-                    }
-                },
-                @{
-                    Name       = 'Destination'
-                    Expression = {
-                        if ($action.Type -eq 'Upload') {
-                            $_.SftpPath -join ', '
-                        }
-                        else {
-                            $_.LocalPath -join ', '
-                        }
-                    }
-                },
+                'Source',
+                'Destination',
                 'FileName',
                 @{
                     Name       = 'FileSize'
                     Expression = { $_.FileLength / 1KB }
                 },
                 @{
-                    Name       = 'Successful'
-                    Expression = {
-                        if ($action.Type -eq 'Upload') {
-                            $_.Uploaded
-                        }
-                        else {
-                            $_.Downloaded
-                        }
-                    }
-                },
-                @{
                     Name       = 'Action'
                     Expression = { $_.Action -join ', ' }
                 },
-                Error
+                'Error'
                 #endregion
             }
         }
@@ -845,7 +811,7 @@ End {
             (
                 ($file.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and
                 (
-                    ($counter.Total.Errors) -or ($counter.Total.Actions)
+                    ($counter.Total.Errors) -or ($counter.Total.MovedFiles)
                 )
             )
         ) {
@@ -927,7 +893,7 @@ End {
             (
                 ($file.SendMail.When -eq 'OnlyOnErrorOrAction') -and
                 (
-                ($counter.Total.Actions) -or ($counter.Total.Errors)
+                ($counter.Total.MovedFiles) -or ($counter.Total.Errors)
                 )
             )
         ) {

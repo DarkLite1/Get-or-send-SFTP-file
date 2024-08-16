@@ -70,26 +70,26 @@ BeforeAll {
 
     $testExportedExcelRows = @(
         [PSCustomObject]@{
-            SftServer    = $testInputFile.Tasks[0].Sftp.ComputerName
+            TaskName     = $testInputFile.Tasks[0].TaskName
+            SftpServer   = $testInputFile.Tasks[0].Sftp.ComputerName
             ComputerName = $testInputFile.Tasks[0].Actions[0].ComputerName
             Source       = $testData[0].Source
             Destination  = $testData[0].Destination
             FileName     = $testData[0].FileName
             FileSize     = $testData[0].FileLength / 1KB
             DateTime     = $testData[0].DateTime
-            Successful   = $true
             Action       = $testData[0].Action -join ', '
             Error        = $null
         }
         [PSCustomObject]@{
-            SftServer    = $testInputFile.Tasks[0].Sftp.ComputerName
-            ComputerName = $testInputFile.Tasks[0].Actions[1].ComputerName
+            TaskName     = $testInputFile.Tasks[0].TaskName
+            SftpServer   = $testInputFile.Tasks[0].Sftp.ComputerName
+            ComputerName = $testInputFile.Tasks[0].Actions[0].ComputerName
             Source       = $testData[1].Source
             Destination  = $testData[1].Destination
             FileName     = $testData[1].FileName
             FileSize     = $testData[1].FileLength / 1KB
             DateTime     = $testData[1].DateTime
-            Successful   = $true
             Action       = $testData[1].Action -join ', '
             Error        = $null
         }
@@ -436,7 +436,7 @@ Describe 'send an e-mail to the admin when' {
                         Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                             $EntryType -eq 'Error'
                         }
-                    } -Tag test
+                    }
                 }
                 It 'Tasks.Actions.Paths.<_> not found' -ForEach @(
                     'Source', 'Destination'
@@ -842,7 +842,7 @@ Describe 'when the SFTP script runs successfully' {
         }
         It 'in the log folder' {
             $testExcelLogFile | Should -Not -BeNullOrEmpty
-        } #-Tag test
+        }
         It 'with the correct total rows' {
             $actual | Should -HaveCount $testExportedExcelRows.Count
         }
@@ -851,19 +851,19 @@ Describe 'when the SFTP script runs successfully' {
                 $actualRow = $actual | Where-Object {
                     $_.Source -eq $testRow.Source
                 }
-                $actualRow.SftServer | Should -Be $testRow.SftServer
+                $actualRow.TaskName | Should -Be $testRow.TaskName
+                $actualRow.SftpServer | Should -Be $testRow.SftpServer
                 $actualRow.ComputerName | Should -Be $testRow.ComputerName
                 $actualRow.Destination | Should -Be $testRow.Destination
                 $actualRow.DateTime.ToString('yyyyMMdd') |
                 Should -Be $testRow.DateTime.ToString('yyyyMMdd')
                 $actualRow.Action | Should -Be $testRow.Action
-                $actualRow.Error | Should -Be $testRow.Error
-                $actualRow.Successful | Should -Be $testRow.Successful
                 $actualRow.FileName | Should -Be $testRow.FileName
                 $actualRow.FileSize | Should -Be $testRow.FileSize
+                $actualRow.Error | Should -Be $testRow.Error
             }
         }
-    }
+    } -Tag test
     Context 'send an e-mail' {
         It 'with attachment to the user' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Describe -ParameterFilter {
