@@ -73,7 +73,11 @@ Param (
     [Boolean]$OverwriteFile,
     [Boolean]$RemoveFailedPartialFiles,
     [Int]$RetryCountOnLockedFiles = 3,
-    [Int]$RetryWaitSeconds = 3
+    [Int]$RetryWaitSeconds = 3,
+    [hashtable]$PartialFileExtension = @{
+        Upload   = 'UploadInProgress'
+        Download = 'DownloadInProgress'
+    }
 )
 
 #region Set defaults
@@ -134,6 +138,7 @@ foreach (
     $path in
     $Paths.where({ $_.Destination -like 'sftp*' })
 ) {
+    #region Test source folder exists
     if (-not (Test-Path -LiteralPath $path.Source -PathType 'Container')) {
         [PSCustomObject]@{
             Source      = $path.Source
@@ -147,13 +152,26 @@ foreach (
 
         Continue
     }
+    #endregion
 
+    #region Get files to upload
     Write-Verbose "Get files in folder '$($path.Source)'"
 
-    if (-not ($allFiles = Get-ChildItem -LiteralPath $path.Source -File)) {
+    $filesToUpload = Get-ChildItem -LiteralPath $path.Source -File
+
+    if ($FileExtensions) {
+        Write-Verbose "Only include files with extension '$FileExtensions'"
+
+        $filesToUpload = $filesToUpload.where(
+            { $FileExtensions -contains $_.Extension }
+        )
+    }
+
+    if (-not $filesToUpload) {
         Write-Verbose 'No files to upload'
         Continue
     }
+    #endregion
 
     #region Remove partial files from the local folder
     if ($RemoveFailedPartialFiles) {
