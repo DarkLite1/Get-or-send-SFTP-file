@@ -80,246 +80,254 @@ Param (
     }
 )
 
-#region Set defaults
-$ErrorActionPreference = 'Stop'
-
-# workaround for https://github.com/PowerShell/PowerShell/issues/16894
-$ProgressPreference = 'SilentlyContinue'
-#endregion
-
-Function Open-SftpSessionHM {
-    <#
-        .SYNOPSIS
-        Open an SFTP session to the SFTP server
-    #>
-
-    try {
-        #region Create credential
-        Write-Verbose 'Create SFTP credential'
-
-        $params = @{
-            TypeName     = 'System.Management.Automation.PSCredential'
-            ArgumentList = $SftpUserName, $SftpPassword
-        }
-        $sftpCredential = New-Object @params
-        #endregion
-
-        #region Open SFTP session
-        Write-Verbose 'Open SFTP session'
-
-        $params = @{
-            ComputerName = $SftpComputerName
-            Credential   = $sftpCredential
-            AcceptKey    = $true
-            Force        = $true
-        }
-
-        if ($SftpOpenSshKeyFile) {
-            $params.KeyString = $SftpOpenSshKeyFile
-        }
-
-        New-SFTPSession @params
-        #endregion
-    }
-    catch {
-        $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
-        $Error.RemoveAt(0)
-        throw $M
-    }
-}
-
-$downloadPaths, $uploadPaths = $Paths.where(
-    { $_.Source -like 'sftp*' }, 'Split'
-)
-
-if ($downloadPaths) {
-    $sftpSession = Open-SftpSessionHM
-}
-
-if ($uploadPaths) {
-    #region Test if SFTP upload connection is required
-    $params = @{
-        LiteralPath = $uploadPaths.Source
-        File        = $true
-        ErrorAction = 'Ignore'
-    }
-    $uploadNeeded = Get-ChildItem @params | Where-Object {
-        $FileExtensions -contains $_.Extension
-    }
-
-    if (-not $uploadNeeded) {
-        exit
-    }
+try {
+    #region Set defaults
+    # workaround for https://github.com/PowerShell/PowerShell/issues/16894
+    $ProgressPreference = 'SilentlyContinue'
+    $ErrorActionPreference = 'Stop'
     #endregion
 
-    if (-not $sftpSession) {
+    Function Open-SftpSessionHM {
+        <#
+        .SYNOPSIS
+            Open an SFTP session to the SFTP server
+        #>
+
+        try {
+            #region Create credential
+            Write-Verbose 'Create SFTP credential'
+
+            $params = @{
+                TypeName     = 'System.Management.Automation.PSCredential'
+                ArgumentList = $SftpUserName, $SftpPassword
+            }
+            $sftpCredential = New-Object @params
+            #endregion
+
+            #region Open SFTP session
+            Write-Verbose 'Open SFTP session'
+
+            $params = @{
+                ComputerName = $SftpComputerName
+                Credential   = $sftpCredential
+                AcceptKey    = $true
+                Force        = $true
+            }
+
+            if ($SftpOpenSshKeyFile) {
+                $params.KeyString = $SftpOpenSshKeyFile
+            }
+
+            New-SFTPSession @params
+            #endregion
+        }
+        catch {
+            $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
+            $Error.RemoveAt(0)
+            throw $M
+        }
+    }
+
+    $downloadPaths, $uploadPaths = $Paths.where(
+        { $_.Source -like 'sftp*' }, 'Split'
+    )
+
+    if ($downloadPaths) {
         $sftpSession = Open-SftpSessionHM
     }
 
-    #region Get files to upload
-    foreach (
-        $path in $uploadPaths
-    ) {
-        #region Test source folder exists
-        if (-not (Test-Path -LiteralPath $path.Source -PathType 'Container')) {
-            [PSCustomObject]@{
-                Source      = $path.Source
-                Destination = $path.Destination
-                FileName    = $null
-                FileLength  = $null
-                DateTime    = Get-Date
-                Action      = @()
-                Error       = "Source folder '$($path.Source)' not found"
-            }
+    if ($uploadPaths) {
+        #region Test if SFTP upload connection is required
+        $params = @{
+            LiteralPath = $uploadPaths.Source
+            File        = $true
+            ErrorAction = 'Ignore'
+        }
+        $uploadNeeded = Get-ChildItem @params | Where-Object {
+            $FileExtensions -contains $_.Extension
+        }
 
-            Continue
+        if (-not $uploadNeeded) {
+            exit
         }
         #endregion
 
-        #region Get files to upload
-        Write-Verbose "Get files in folder '$($path.Source)'"
-
-        $allFiles = Get-ChildItem -LiteralPath $path.Source -File
-
-        $filesToUpload = if ($FileExtensions) {
-            Write-Verbose "Only include files with extension '$FileExtensions'"
-
-            $allFiles.where({ $FileExtensions -contains $_.Extension })
-        }
-        else {
-            $allFiles
+        if (-not $sftpSession) {
+            $sftpSession = Open-SftpSessionHM
         }
 
-        if (-not $filesToUpload) {
-            Write-Verbose 'No files to upload'
-            Continue
-        }
-        #endregion
+        $scriptBlock = {
+            try {
+                $path = $_
 
-
-
-        $sessionParams = @{
-            SessionId = $sftpSession.SessionID
-        }
-
-        #region Test SFTP path exists
-        Write-Verbose "Test SFTP path '$SftpPath' exists"
-
-        if (-not (Test-SFTPPath @sessionParams -Path $SftpPath)) {
-            throw "Path '$SftpPath' not found on SFTP server"
-        }
-        #endregion
-
-
-
-        #region Remove partial files from the local folder
-        if ($RemoveFailedPartialFiles) {
-            foreach (
-                $partialFile in
-                $allFiles | Where-Object {
-                    $_.Name -like "*$PartialFileExtension"
+                #region Declare variables for code running in parallel
+                if (-not $MaxConcurrentJobs) {
+                    $ErrorActionPreference = $using:ErrorActionPreference
+                    $ProgressPreference = $using:ProgressPreference
+                    $sftpSession = $using:sftpSession
+                    $FileExtensions = $using:FileExtensions
                 }
-            ) {
-                try {
-                    $result = [PSCustomObject]@{
-                        DateTime   = Get-Date
-                        LocalPath  = $null
-                        SftpPath   = $SftpPath
-                        FileName   = $partialFile.Name
-                        FileLength = $partialFile.Length
-                        Uploaded   = $false
-                        Action     = @()
-                        Error      = $null
+                #endregion
+
+                #region Test source folder exists
+                if (-not (Test-Path -LiteralPath $path.Source -PathType 'Container')) {
+                    [PSCustomObject]@{
+                        Source      = $path.Source
+                        Destination = $path.Destination
+                        FileName    = $null
+                        FileLength  = $null
+                        DateTime    = Get-Date
+                        Action      = @()
+                        Error       = "Source folder '$($path.Source)' not found"
                     }
 
-                    Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
+                    Continue
+                }
+                #endregion
 
-                    Remove-Item -LiteralPath $partialFile.FullName
+                #region Get files to upload
+                Write-Verbose "Get files in folder '$($path.Source)'"
 
-                    $result.Action = "removed failed uploaded partial file '$($partialFile.FullName)'"
+                $allFiles = Get-ChildItem -LiteralPath $path.Source -File
+
+                $filesToUpload = if ($FileExtensions) {
+                    Write-Verbose "Only include files with extension '$FileExtensions'"
+
+                    $allFiles.where({ $FileExtensions -contains $_.Extension })
+                }
+                else {
+                    $allFiles
+                }
+
+                if (-not $filesToUpload) {
+                    Write-Verbose 'No files to upload'
+                    Continue
+                }
+                #endregion
+
+                $sessionParams = @{
+                    SessionId = $sftpSession.SessionID
+                }
+
+                $sftpPath = $path.Destination.TrimStart('sftp:')
+
+                #region Test SFTP path exists
+                Write-Verbose "Test SFTP path '$sftpPath' exists"
+
+                if (-not (Test-SFTPPath @sessionParams -Path $sftpPath)) {
+                    throw "Path '$sftpPath' not found on SFTP server"
+                }
+                #endregion
+
+
+
+
+                #region Remove partial files from the local folder
+                if ($RemoveFailedPartialFiles) {
+                    foreach (
+                        $partialFile in
+                        $allFiles | Where-Object {
+                            $_.Name -like "*$PartialFileExtension"
+                        }
+                    ) {
+                        try {
+                            $result = [PSCustomObject]@{
+                                DateTime   = Get-Date
+                                LocalPath  = $null
+                                SftpPath   = $SftpPath
+                                FileName   = $partialFile.Name
+                                FileLength = $partialFile.Length
+                                Uploaded   = $false
+                                Action     = @()
+                                Error      = $null
+                            }
+
+                            Write-Verbose "Remove failed uploaded partial file '$($partialFile.FullName)'"
+
+                            Remove-Item -LiteralPath $partialFile.FullName
+
+                            $result.Action = "removed failed uploaded partial file '$($partialFile.FullName)'"
+                        }
+                        catch {
+                            $result.Error = "Failed removing uploaded partial file: $_"
+                            Write-Warning $result.Error
+                            $Error.RemoveAt(0)
+                        }
+                        finally {
+                            $result
+                        }
+                    }
+                }
+                #endregion
+
+                #region Only select the required files for upload
+                try {
+                    $filesToUpload = $allFiles | Where-Object {
+                        $_.Name -notLike "*$PartialFileExtension"
+                    }
+
+                    if ($FileExtensions) {
+                        Write-Verbose "Only include files with extension '$FileExtensions'"
+                        $filesToUpload = $filesToUpload | Where-Object {
+                            $FileExtensions -contains $_.Extension
+                        }
+                    }
                 }
                 catch {
-                    $result.Error = "Failed removing uploaded partial file: $_"
-                    Write-Warning $result.Error
+                    $errorMessage = "Failed selecting the required files for upload: $_"
                     $Error.RemoveAt(0)
+                    throw $errorMessage
                 }
-                finally {
-                    $result
+                #endregion
+            }
+            catch {
+                [PSCustomObject]@{
+                    DateTime    = Get-Date
+                    Source      = $path.Source
+                    Destination = $path.Destination
+                    FileName    = $null
+                    FileLength  = $null
+                    Action      = $null
+                    Error       = $_
                 }
+                $Error.RemoveAt(0)
             }
         }
-        #endregion
 
-        #region Only select the required files for upload
-        try {
-            $filesToUpload = $allFiles | Where-Object {
-                $_.Name -notLike "*$PartialFileExtension"
+        #region Run code serial or parallel
+        $foreachParams = if ($MaxConcurrentJobs -eq 1) {
+            @{
+                Process = $scriptBlock
             }
+        }
+        else {
+            @{
+                Parallel      = $scriptBlock
+                ThrottleLimit = $MaxConcurrentJobs
+            }
+        }
 
-            if ($FileExtensions) {
-                Write-Verbose "Only include files with extension '$FileExtensions'"
-                $filesToUpload = $filesToUpload | Where-Object {
-                    $FileExtensions -contains $_.Extension
-                }
-            }
-        }
-        catch {
-            $errorMessage = "Failed selecting the required files for upload: $_"
-            $Error.RemoveAt(0)
-            throw $errorMessage
-        }
+        Write-Verbose "Execute $($uploadPaths.Count) SFTP upload jobs"
+
+        $uploadPaths | ForEach-Object @foreachParams
+
+        Write-Verbose 'All upload jobs finished'
         #endregion
+    }
+}
+catch {
+    throw "SFTP script 'Move file.ps1' failed on '$env:COMPUTERNAME': $_"
+}
+finally {
+    #region Close SFTP session
+    if ($sessionParams.SessionID) {
+        Write-Verbose 'Close SFTP session'
+
+        $params = @{
+            SessionId   = $sessionParams.SessionID
+            ErrorAction = 'Ignore'
+        }
+        $null = Remove-SFTPSession @params
     }
     #endregion
 }
-
-$scriptBlock = {
-    $ErrorActionPreference = 'Stop'
-
-    $path = $_
-
-    #region Declare variables for code running in parallel
-    if (-not $MaxConcurrentJobs) {
-        $ErrorActionPreference = $using:ErrorActionPreference
-    }
-    #endregion
-
-
-    try {
-
-    }
-    catch {
-        $action.Job.Results += [PSCustomObject]@{
-            DateTime    = Get-Date
-            Source      = $path.Source
-            Destination = $path.Destination
-            FileName    = $null
-            FileLength  = $null
-            Downloaded  = $false
-            Uploaded    = $false
-            Action      = $null
-            Error       = "General error: $_"
-        }
-        $Error.RemoveAt(0)
-    }
-}
-
-#region Run code serial or parallel
-$foreachParams = if ($MaxConcurrentJobs -eq 1) {
-    @{
-        Process = $scriptBlock
-    }
-}
-else {
-    @{
-        Parallel      = $scriptBlock
-        ThrottleLimit = $MaxConcurrentJobs
-    }
-}
-
-Write-Verbose "Execute $($Paths.Count) SFTP jobs"
-
-$Paths | ForEach-Object @foreachParams
-
-Write-Verbose 'All tasks finished'
-#endregion

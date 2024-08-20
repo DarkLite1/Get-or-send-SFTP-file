@@ -355,12 +355,16 @@ Begin {
                     }
 
                     #region Test unique Source Destination
-                    $action.Paths | Group-Object -Property {
-                        "Source '{0}' Destination '{1}'" -f
-                        $_.Source, $_.Destination
-                    } |
+                    $action.Paths | Group-Object -Property 'Source' |
                     Where-Object { $_.Count -ge 2 } | ForEach-Object {
-                        throw "Duplicate 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' found: $($_.Name)"
+                        throw "Duplicate 'Tasks.Actions.Paths.Source' found: '$($_.Name)'. Use separate Tasks to run them sequentially instead of in Actions, which is ran in parallel"
+                    }
+                    #endregion
+
+                    #region Test unique Source Destination
+                    $action.Paths | Group-Object -Property 'Destination' |
+                    Where-Object { $_.Count -ge 2 } | ForEach-Object {
+                        throw "Duplicate 'Tasks.Actions.Paths.Destination' found: '$($_.Name)'. Use separate Tasks to run them sequentially instead of in Actions, which is ran in parallel"
                     }
                     #endregion
                 }

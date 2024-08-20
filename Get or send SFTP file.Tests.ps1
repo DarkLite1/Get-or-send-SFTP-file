@@ -530,12 +530,21 @@ Describe 'send an e-mail to the admin when' {
                             $EntryType -eq 'Error'
                         }
                     }
-                    It "Duplicate Source Destination paths" {
+                    It "Duplicate Source paths" {
                         $testNewInputFile = Copy-ObjectHC $testInputFile
 
-                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Source = $testNewInputFile.Tasks[0].Actions[0].Paths[1].Source
+                        $testSourceFolder = (New-Item 'TestDrive:\i' -ItemType Directory).FullName
 
-                        $testNewInputFile.Tasks[0].Actions[0].Paths[0].Destination = $testNewInputFile.Tasks[0].Actions[0].Paths[1].Destination
+                        $testNewInputFile.Tasks[0].Actions[0].Paths = @(
+                            @{
+                                Source      = $testSourceFolder
+                                Destination = 'sftp:/folder/a/'
+                            }
+                            @{
+                                Source      = $testSourceFolder
+                                Destination = 'sftp:/folder/b/'
+                            }
+                        )
 
                         $testNewInputFile | ConvertTo-Json -Depth 7 |
                         Out-File @testOutParams
@@ -544,7 +553,34 @@ Describe 'send an e-mail to the admin when' {
 
                         Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
                             (&$MailAdminParams) -and
-                            ($Message -like "*$ImportFile*Duplicate 'Tasks.Actions.Paths.Source' and 'Tasks.Actions.Paths.Destination' found: Source '$($testNewInputFile.Tasks[0].Actions[0].Paths[0].Source)' Destination '$($testNewInputFile.Tasks[0].Actions[0].Paths[0].Destination)'*")
+                            ($Message -like "*$ImportFile*Duplicate 'Tasks.Actions.Paths.Source' found: '$testSourceFolder'*")
+                        }
+                        Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
+                            $EntryType -eq 'Error'
+                        }
+                    }
+                    It "Duplicate Destination paths" {
+                        $testNewInputFile = Copy-ObjectHC $testInputFile
+
+                        $testNewInputFile.Tasks[0].Actions[0].Paths = @(
+                            @{
+                                Source      = (New-Item 'TestDrive:\e' -ItemType Directory).FullName
+                                Destination = 'sftp:/folder/a/'
+                            }
+                            @{
+                                Source      = (New-Item 'TestDrive:\g' -ItemType Directory).FullName
+                                Destination = 'sftp:/folder/a/'
+                            }
+                        )
+
+                        $testNewInputFile | ConvertTo-Json -Depth 7 |
+                        Out-File @testOutParams
+
+                        .$testScript @testParams
+
+                        Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+                            (&$MailAdminParams) -and
+                            ($Message -like "*$ImportFile*Duplicate 'Tasks.Actions.Paths.Destination' found: '$($testNewInputFile.Tasks[0].Actions[0].Paths[0].Destination)'*")
                         }
                         Should -Invoke Write-EventLog -Exactly 1 -ParameterFilter {
                             $EntryType -eq 'Error'
@@ -644,8 +680,8 @@ Describe 'send an e-mail to the admin when' {
             It 'Tasks.Name is not unique' {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks = @(
-                    $testInputFile.Tasks[0]
-                    $testInputFile.Tasks[0]
+                    Copy-ObjectHC $testInputFile.Tasks[0]
+                    Copy-ObjectHC $testInputFile.Tasks[0]
                 )
                 $testNewInputFile.Tasks[0].TaskName = 'Name1'
                 $testNewInputFile.Tasks[1].TaskName = 'Name1'
