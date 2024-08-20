@@ -874,7 +874,7 @@ Describe 'when the SFTP script runs successfully' {
             ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*1 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*1 moved*2 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
             }
         }
-    } -Tag test
+    }
 }
 Describe 'ExportExcelFile.When' {
     Context 'create no Excel file' {
