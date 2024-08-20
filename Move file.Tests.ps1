@@ -49,8 +49,8 @@ Describe 'the mandatory parameters are' {
         Should -BeTrue
     }
 }
-Describe 'generate an error when' {
-    Context 'upload to SFTP server' {
+Describe 'Upload to SFTP server' {
+    Context 'create an object with Error property when' {
         It 'Paths.Source does not exist' {
             $testNewParams = $testParams.Clone()
             $testNewParams.Paths[0].Source = 'c:\doesNotExist'
@@ -60,39 +60,53 @@ Describe 'generate an error when' {
             $testResult.Error |
             Should -Be "Source folder '$($testNewParams.Paths[0].Source)' not found"
         }
-    } -Tag test
-    It 'authentication to the SFTP server fails' {
-        Mock New-SFTPSession {
-            throw 'Failed authenticating'
-        }
-
-        $testResult = .$testScript @testParams
-
-        $testResult.Error | Should -Be "Failed creating an SFTP session to '$($testParams.SftpComputerName)': Failed authenticating"
     }
-    It 'the upload path on the SFTP server does not exist' {
-        Mock Test-SFTPPath {
-            $false
-        }
+    Context 'throw a terminating error when' {
+        It 'authentication to the SFTP server fails' {
+            $testNewParams = $testParams.Clone()
+            $testNewParams.Paths = @(
+                @{
+                    Source      = (New-Item 'TestDrive:/f3' -ItemType 'Directory').FullName
+                    Destination = 'sftp:/data/'
+                }
+            )
 
-        $testResult = .$testScript @testParams
+            $null = New-Item -Path $testNewParams.Paths[0].Source -Name 'a.txt' -ItemType File
 
-        $testResult.Error | Should -Be "Path '$($testParams.SftpPath)' not found on SFTP server"
+            Mock New-SFTPSession {
+                throw 'Failed authenticating'
+            }
+
+            { .$testScript @testNewParams } | Should -Throw "Failed creating an SFTP session to '$($testNewParams.SftpComputerName)': Failed authenticating"
+        }  -Tag test
     }
+}
+Describe 'generate an error when' {
+    Context 'upload to SFTP server' {
+        It 'the upload path on the SFTP server does not exist' {
+            Mock Test-SFTPPath {
+                $false
+            }
 
-    It 'the upload fails' {
-        Mock Set-SFTPItem {
-            throw 'Oops'
+            $testResult = .$testScript @testParams
+
+            $testResult.Error | Should -Be "Path '$($testParams.SftpPath)' not found on SFTP server"
         }
 
-        $Error.Clear()
+        It 'the upload fails' {
+            Mock Set-SFTPItem {
+                throw 'Oops'
+            }
 
-        $testResult = .$testScript @testParams
+            $Error.Clear()
 
-        $testResult[0].Error | Should -BeLike "*$($testData.File[0])*Oops"
-        $testResult[1].Error | Should -BeLike "*$($testData.File[1])*Oops"
+            $testResult = .$testScript @testParams
 
-        $error | Should -HaveCount 0
+            $testResult[0].Error | Should -BeLike "*$($testData.File[0])*Oops"
+            $testResult[1].Error | Should -BeLike "*$($testData.File[1])*Oops"
+
+            $error | Should -HaveCount 0
+        }
     }
 }
 Describe 'do not start an SFTP sessions when' {
