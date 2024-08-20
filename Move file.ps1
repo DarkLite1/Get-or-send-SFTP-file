@@ -133,7 +133,7 @@ try {
     )
 
     if ($downloadPaths) {
-        Write-Verbose "Paths.Source contains $($downloadPaths.Count) SFTP folders to download files"
+        Write-Verbose "Paths.Source contains $($downloadPaths.Count) SFTP folder(s) to download files"
 
         $sftpSession = Open-SftpSessionHM
     }
@@ -178,7 +178,7 @@ try {
             }
 
             if ($filesToUpload) {
-                Write-Verbose "Found $($filesToUpload.Count) files to upload"
+                Write-Verbose "Found $($filesToUpload.Count) file(s) to upload"
                 $pathsWithFilesToUpload += $path
             }
             #endregion
