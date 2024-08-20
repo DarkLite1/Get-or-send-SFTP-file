@@ -169,17 +169,15 @@ try {
             #region Test if there are files to upload
             Write-Verbose 'Test if there are files in the source folder'
 
-            if (
-                ($FileExtensions) -and
-                (Get-ChildItem -LiteralPath $path.Source -File | Where-Object {
+            $filesToUpload = Get-ChildItem -LiteralPath $path.Source -File
+
+            if ($FileExtensions) {
+                $filesToUpload = $filesToUpload | Where-Object {
                     $FileExtensions -contains $_.Extension
-                })
-            ) {
-                $pathsWithFilesToUpload += $path
+                }
             }
-            elseif (
-                Get-ChildItem -LiteralPath $path.Source -File
-            ) {
+
+            if ($filesToUpload) {
                 $pathsWithFilesToUpload += $path
             }
             #endregion
