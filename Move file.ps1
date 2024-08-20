@@ -139,7 +139,7 @@ try {
     }
 
     if ($uploadPaths) {
-        Write-Verbose "Paths.Source contains $($uploadPaths.Count) folders to upload files"
+        Write-Verbose "Paths.Source contains $($uploadPaths.Count) folder(s) to upload files"
 
         $pathsWithFilesToUpload = @()
 
@@ -208,17 +208,16 @@ try {
                 #endregion
 
                 #region Get files to upload
-                Write-Verbose "Get files in folder '$($path.Source)'"
+                Write-Verbose "Get files in source folder '$($path.Source)'"
 
-                $allFiles = Get-ChildItem -LiteralPath $path.Source -File
+                $filesToUpload = Get-ChildItem -LiteralPath $path.Source -File
 
-                $filesToUpload = if ($FileExtensions) {
-                    Write-Verbose "Only include files with extension '$FileExtensions'"
+                if ($FileExtensions) {
+                    Write-Verbose "Select files with extension '$FileExtensions'"
 
-                    $allFiles.where({ $FileExtensions -contains $_.Extension })
-                }
-                else {
-                    $allFiles
+                    $filesToUpload = $filesToUpload | Where-Object {
+                        $FileExtensions -contains $_.Extension
+                    }
                 }
 
                 if (-not $filesToUpload) {
@@ -234,14 +233,174 @@ try {
                 $sftpPath = $path.Destination.TrimStart('sftp:')
 
                 #region Test SFTP path exists
-                Write-Verbose "Test SFTP path '$sftpPath' exists"
+                Write-Verbose "Test if SFTP path '$sftpPath' exists"
 
                 if (-not (Test-SFTPPath @sessionParams -Path $sftpPath)) {
-                    throw "Path '$sftpPath' not found on SFTP server"
+                    throw "Path '$sftpPath' not found on the SFTP server"
                 }
                 #endregion
+
+                foreach ($file in $filesToUpload) {
+                    try {
+                        Write-Verbose "File '$($file.FullName)'"
+
+                        $result = [PSCustomObject]@{
+                            DateTime   = Get-Date
+                            LocalPath  = $file.FullName | Split-Path -Parent
+                            SftpPath   = $SftpPath
+                            FileName   = $file.Name
+                            FileLength = $file.Length
+                            Uploaded   = $false
+                            Action     = @()
+                            Error      = $null
+                        }
+
+                        $tempFile = @{
+                            UploadFileName = $file.Name + $PartialFileExtension
+                        }
+                        $tempFile.UploadFilePath = Join-Path $result.LocalPath $tempFile.UploadFileName
+
+                        #region Overwrite file on SFTP server
+                        if (
+                            $sftpFile = $sftpFiles | Where-Object {
+                                $_.Name -eq $file.Name
+                            }
+                        ) {
+                            Write-Verbose 'Duplicate file on SFTP server'
+
+                            if ($OverwriteFile) {
+                                $retryCount = 0
+                                $fileLocked = $true
+
+                                while (
+                                    ($fileLocked) -and
+                                    ($retryCount -lt $RetryCountOnLockedFiles)
+                                ) {
+                                    try {
+                                        $removeParams = @{
+                                            Path        = $sftpFile.FullName
+                                            ErrorAction = 'Stop'
+                                        }
+                                        Remove-SFTPItem @sessionParams @removeParams
+
+                                        $fileLocked = $false
+                                        $result.Action += 'removed duplicate file from SFTP server'
+                                    }
+                                    catch {
+                                        $errorMessage = $_
+                                        $Error.RemoveAt(0)
+                                        $retryCount++
+                                        Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
+                                        Start-Sleep -Seconds $RetryWaitSeconds
+                                    }
+                                }
+
+                                if ($fileLocked) {
+                                    throw "Failed removing duplicate file from the SFTP server after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds (file in use): $errorMessage"
+                                }
+                            }
+                            else {
+                                throw 'Duplicate file on SFTP server, use Option.OverwriteFile if desired'
+                            }
+                        }
+                        #endregion
+
+                        #region Rename source file to temp file
+                        $retryCount = 0
+                        $fileLocked = $true
+
+                        while (
+                            ($fileLocked) -and
+                            ($retryCount -lt $RetryCountOnLockedFiles)
+                        ) {
+                            try {
+                                Write-Verbose 'Rename source file'
+                                $file | Rename-Item -NewName $tempFile.UploadFileName
+                                $fileLocked = $false
+                                $result.Action += 'temp file created'
+                            }
+                            catch {
+                                $errorMessage = $_
+                                $Error.RemoveAt(0)
+                                $retryCount++
+                                Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
+                                Start-Sleep -Seconds $RetryWaitSeconds
+                            }
+                        }
+
+                        if ($fileLocked) {
+                            throw "Failed renaming the source file after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds (file in use): $errorMessage"
+                        }
+                        #endregion
+
+                        #region Upload temp file to SFTP server
+                        try {
+                            $params = @{
+                                Path        = $tempFile.UploadFilePath
+                                Destination = $SftpPath
+                            }
+
+                            Write-Verbose "Upload file '$($params.Path)'"
+                            Set-SFTPItem @sessionParams @params
+
+                            Write-Verbose 'File uploaded'
+                            $result.Action += 'temp file uploaded'
+                        }
+                        catch {
+                            $errorMessage = "Failed to upload file '$($tempFile.UploadFilePath)': $_"
+                            $Error.RemoveAt(0)
+                            throw $errorMessage
+                        }
+                        #endregion
+
+                        #region Remove local file
+                        try {
+                            Write-Verbose 'Remove file'
+
+                            $tempFile.UploadFilePath | Remove-Item -Force
+                            $result.Action += 'temp file removed'
+                        }
+                        catch {
+                            $errorMessage = "Failed to remove file '$($tempFile.UploadFilePath)': $_"
+                            $Error.RemoveAt(0)
+                            throw $errorMessage
+                        }
+                        #endregion
+
+                        #region Rename file on SFTP server
+                        try {
+                            $params = @{
+                                Path    = $SftpPath + $tempFile.UploadFileName
+                                NewName = $result.FileName
+                            }
+                            Rename-SFTPFile @sessionParams @params
+
+                            $result.Action += 'temp file renamed on SFTP server'
+                        }
+                        catch {
+                            $errorMessage = "Failed to rename the file '$($tempFile.UploadFileName)' to '$($result.FileName)' on the SFTP server: $_"
+                            $Error.RemoveAt(0)
+                            throw $errorMessage
+                        }
+                        #endregion
+
+                        $result.Action += 'file successfully uploaded'
+                        $result.Uploaded = $true
+                    }
+                    catch {
+                        $result.Error = $_
+                        Write-Warning $_
+                        $Error.RemoveAt(0)
+                    }
+                    finally {
+                        $result
+                    }
+                }
             }
             catch {
+                $M = "Failed upload: $_"
+                Write-Warning $M
+
                 [PSCustomObject]@{
                     DateTime    = Get-Date
                     Source      = $path.Source
@@ -249,7 +408,7 @@ try {
                     FileName    = $null
                     FileLength  = $null
                     Action      = $null
-                    Error       = $_
+                    Error       = $M
                 }
                 $Error.RemoveAt(0)
             }
@@ -268,7 +427,7 @@ try {
             }
         }
 
-        Write-Verbose "Execute $($uploadPaths.Count) SFTP upload jobs"
+        Write-Verbose "Found $($uploadPaths.Count) source path(s) with files for SFTP upload"
 
         $pathsWithFilesToUpload | ForEach-Object @foreachParams
 

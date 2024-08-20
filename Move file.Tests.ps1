@@ -50,6 +50,11 @@ Describe 'the mandatory parameters are' {
     }
 }
 Describe 'Upload to SFTP server' {
+    BeforeAll {
+        $testSourceFolder = (New-Item 'TestDrive:/f3' -ItemType 'Directory').FullName
+
+        $null = New-Item -Path $testSourceFolder -Name 'a.txt' -ItemType File
+    }
     Context 'create an object with Error property when' {
         It 'Paths.Source does not exist' {
             $testNewParams = $testParams.Clone()
@@ -60,25 +65,41 @@ Describe 'Upload to SFTP server' {
             $testResult.Error |
             Should -Be "Source folder '$($testNewParams.Paths[0].Source)' not found"
         }
+        It 'Paths.Destination or the SFTP path does not exist' {
+            $testNewParams = $testParams.Clone()
+            $testNewParams.Paths = @(
+                @{
+                    Source      = $testSourceFolder
+                    Destination = 'sftp:/notExisting/'
+                }
+            )
+
+            Mock Test-SFTPPath {
+                $false
+            }
+
+            $testResult = .$testScript @testNewParams
+
+            $testResult.Error |
+            Should -Be "Failed upload: Path '/notExisting/' not found on the SFTP server"
+        } -Tag test
     }
     Context 'throw a terminating error when' {
         It 'authentication to the SFTP server fails' {
             $testNewParams = $testParams.Clone()
             $testNewParams.Paths = @(
                 @{
-                    Source      = (New-Item 'TestDrive:/f3' -ItemType 'Directory').FullName
+                    Source      = $testSourceFolder
                     Destination = 'sftp:/data/'
                 }
             )
-
-            $null = New-Item -Path $testNewParams.Paths[0].Source -Name 'a.txt' -ItemType File
 
             Mock New-SFTPSession {
                 throw 'Failed authenticating'
             }
 
             { .$testScript @testNewParams } | Should -Throw "Failed creating an SFTP session to '$($testNewParams.SftpComputerName)': Failed authenticating"
-        }  -Tag test
+        }
     }
 }
 Describe 'generate an error when' {
