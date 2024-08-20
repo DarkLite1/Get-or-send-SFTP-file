@@ -132,12 +132,10 @@ Function Open-SftpSessionHM {
 #region Get files to upload
 foreach (
     $path in
-    $Paths.where(
-        { $_.Source -notLike 'sftp*' }
-    )
+    $Paths.where({ $_.Destination -like 'sftp*' })
 ) {
     if (-not (Test-Path -LiteralPath $path.Source -PathType 'Container')) {
-        return [PSCustomObject]@{
+        [PSCustomObject]@{
             Source      = $path.Source
             Destination = $path.Destination
             FileName    = $null
@@ -146,6 +144,8 @@ foreach (
             Action      = @()
             Error       = "Source folder '$($path.Source)' not found"
         }
+
+        Continue
     }
 
     Write-Verbose "Get files in folder '$($path.Source)'"
@@ -154,7 +154,6 @@ foreach (
         Write-Verbose 'No files to upload'
         Continue
     }
-
 
     #region Remove partial files from the local folder
     if ($RemoveFailedPartialFiles) {

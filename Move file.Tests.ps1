@@ -51,7 +51,7 @@ Describe 'the mandatory parameters are' {
 }
 Describe 'generate an error when' {
     Context 'upload to SFTP server' {
-        It 'Path does not exist' {
+        It 'Paths.Source does not exist' {
             $testNewParams = $testParams.Clone()
             $testNewParams.Paths[0].Source = 'c:\doesNotExist'
 
