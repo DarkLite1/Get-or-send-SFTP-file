@@ -178,6 +178,7 @@ try {
             }
 
             if ($filesToUpload) {
+                Write-Verbose "Found $($filesToUpload.Count) files to upload"
                 $pathsWithFilesToUpload += $path
             }
             #endregion
