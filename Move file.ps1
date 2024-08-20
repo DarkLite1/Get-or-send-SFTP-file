@@ -204,6 +204,7 @@ try {
                     $ProgressPreference = $using:ProgressPreference
                     $sftpSession = $using:sftpSession
                     $FileExtensions = $using:FileExtensions
+                    $PartialFileExtension = $using:PartialFileExtension
                 }
                 #endregion
 
@@ -245,20 +246,20 @@ try {
                         Write-Verbose "File '$($file.FullName)'"
 
                         $result = [PSCustomObject]@{
-                            DateTime   = Get-Date
-                            LocalPath  = $file.FullName | Split-Path -Parent
-                            SftpPath   = $SftpPath
-                            FileName   = $file.Name
-                            FileLength = $file.Length
-                            Uploaded   = $false
-                            Action     = @()
-                            Error      = $null
+                            DateTime    = Get-Date
+                            Source      = $path.Source
+                            Destination = $path.Destination
+                            FileName    = $file.Name
+                            FileLength  = $file.Length
+                            Uploaded    = $false
+                            Action      = @()
+                            Error       = $null
                         }
 
                         $tempFile = @{
-                            UploadFileName = $file.Name + $PartialFileExtension
+                            UploadFileName = $file.Name + $PartialFileExtension.Upload
                         }
-                        $tempFile.UploadFilePath = Join-Path $result.LocalPath $tempFile.UploadFileName
+                        $tempFile.UploadFilePath = Join-Path $result.Source $tempFile.UploadFileName
 
                         #region Overwrite file on SFTP server
                         if (
@@ -384,7 +385,7 @@ try {
                         }
                         #endregion
 
-                        $result.Action += 'file successfully uploaded'
+                        $result.Action += 'File uploaded'
                         $result.Uploaded = $true
                     }
                     catch {
@@ -407,7 +408,7 @@ try {
                     Destination = $path.Destination
                     FileName    = $null
                     FileLength  = $null
-                    Action      = $null
+                    Action      = @()
                     Error       = $M
                 }
                 $Error.RemoveAt(0)
