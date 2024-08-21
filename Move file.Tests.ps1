@@ -5,9 +5,9 @@
 BeforeAll {
     $testScript = $PSCommandPath.Replace('.Tests.ps1', '.ps1')
     $testParams = @{
-        SftpComputerName         = 'PC1'
-        SftpUserName             = 'bob'
-        Paths                    = @(
+        SftpComputerName  = 'PC1'
+        SftpUserName      = 'bob'
+        Paths             = @(
             @{
                 Source      = (New-Item 'TestDrive:/f1' -ItemType 'Directory').FullName
                 Destination = 'sftp:/data/'
@@ -17,11 +17,10 @@ BeforeAll {
                 Destination = (New-Item 'TestDrive:/f2' -ItemType 'Directory').FullName
             }
         )
-        MaxConcurrentJobs        = 1
-        SftpPassword             = 'pass' | ConvertTo-SecureString -AsPlainText -Force
-        FileExtensions           = @()
-        OverwriteFile            = $false
-        RemoveFailedPartialFiles = $false
+        MaxConcurrentJobs = 1
+        SftpPassword      = 'pass' | ConvertTo-SecureString -AsPlainText -Force
+        FileExtensions    = @()
+        OverwriteFile     = $false
     }
 
     Mock Get-SFTPChildItem
@@ -273,58 +272,6 @@ Describe 'OverwriteFile' {
         .$testScript @testNewParams
 
         Should -Not -Invoke Remove-SFTPItem
-    }
-}
-Describe 'when RemoveFailedPartialFiles is true' {
-    Context 'remove partial files that are not completely uploaded' {
-        It 'from the folder in Path' {
-            $testNewParams = $testParams.Clone()
-            $testNewParams.RemoveFailedPartialFiles = $true
-            $testNewParams.Path = (New-Item 'TestDrive:\k' -ItemType 'Directory').FullName
-
-            $testFiles = @(
-                Join-Path $testNewParams.Path "file.txt"
-                Join-Path $testNewParams.Path "file.txt$($testParams.PartialFileExtension)"
-            ) | ForEach-Object {
-                New-Item -Path $_ -ItemType 'File'
-            }
-
-            $testResults = .$testScript @testNewParams
-
-            $testFiles[1].FullName | Should -Not -Exist
-
-            $testResult = $testResults | Where-Object {
-                $_.FileName -eq $testFiles[1].Name
-            }
-
-            $testResult.Action | Should -Be "removed failed uploaded partial file '$($testFiles[1].FullName)'"
-        }
-        It 'from the SFTP server' {
-            $testSFtpFile = @{
-                Name     = "c.txt$($testParams.PartialFileExtension)"
-                FullName = "sftpPath\c.txt$($testParams.PartialFileExtension)"
-            }
-
-            Mock Get-SFTPChildItem {
-                $testSFtpFile
-            }
-
-            $testNewParams = $testParams.Clone()
-            $testNewParams.RemoveFailedPartialFiles = $true
-
-            $testNewParams.Path = (New-Item 'TestDrive:/p' -ItemType 'Directory').FullName
-
-            $testFile = New-Item "$($testNewParams.Path)\b.txt" -ItemType 'File'
-
-            $testResults = .$testScript @testNewParams
-
-            $testResult = $testResults | Where-Object {
-                $_.FileName -eq $testSFtpFile.Name
-            }
-
-            $testResult.Action |
-            Should -Be "removed partial file '$($testSFtpFile.FullName)'"
-        }
     }
 }
 Describe 'when FileExtensions is' {

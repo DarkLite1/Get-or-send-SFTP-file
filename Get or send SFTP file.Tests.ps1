@@ -18,7 +18,6 @@ BeforeAll {
                 }
                 Option   = @{
                     OverwriteFile            = $false
-                    RemoveFailedPartialFiles = $false
                     FileExtensions           = @('.txt')
                 }
                 Actions  = @(
@@ -589,8 +588,7 @@ Describe 'send an e-mail to the admin when' {
                 }
             }
             It 'Tasks.Option.<_> not a boolean' -ForEach @(
-                'OverwriteFile',
-                'RemoveFailedPartialFiles'
+                'OverwriteFile'
             ) {
                 $testNewInputFile = Copy-ObjectHC $testInputFile
                 $testNewInputFile.Tasks[0].Option.$_ = $null
@@ -799,8 +797,7 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
                 (-not $ArgumentList[5]) -and
                 ($ArgumentList[6] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.OverwriteFile) -and
-                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.OverwriteFile)
             }
         )
 
@@ -857,8 +854,7 @@ Describe 'execute the SFTP script' {
                 ($ArgumentList[4] -is 'SecureString') -and
                 ($ArgumentList[5] -eq 'passKeyContent') -and
                 ($ArgumentList[6] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.OverwriteFile) -and
-                ($ArgumentList[8] -eq $testInputFile.Tasks[0].Option.RemoveFailedPartialFiles)
+                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.OverwriteFile)
             }
         }
     }

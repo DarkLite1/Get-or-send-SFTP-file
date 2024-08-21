@@ -44,17 +44,6 @@
 .PARAMETER OverwriteFile
     When a file that is being downloaded is already present with the same name
     it will be overwritten when OverwriteFile is TRUE.
-
-.PARAMETER RemoveFailedPartialFiles
-    When the download process is interrupted, it is possible that files are not
-    completely downloaded and that there are sill partial files present on the
-    SFTP server or in the local folder.
-
-    When RemoveFailedPartialFiles is TRUE these partial files will be removed
-    before the script starts. When RemoveFailedPartialFiles is FALSE, manual
-    intervention will be required to decide to still download the partial file
-    found on the SFTP server, to rename the partial file on the local system,
-    or to simply remove the partial file(s).
 #>
 
 [CmdLetBinding()]
@@ -71,7 +60,6 @@ Param (
     [String[]]$SftpOpenSshKeyFile,
     [String[]]$FileExtensions,
     [Boolean]$OverwriteFile,
-    [Boolean]$RemoveFailedPartialFiles,
     [Int]$RetryCountOnLockedFiles = 3,
     [Int]$RetryWaitSeconds = 3,
     [hashtable]$PartialFileExtension = @{
@@ -208,7 +196,6 @@ try {
                     $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
                     $RetryWaitSeconds = $using:RetryWaitSeconds
                     $OverwriteFile = $using:OverwriteFile
-                    $RemoveFailedPartialFiles = $using:RemoveFailedPartialFiles
                 }
                 #endregion
 

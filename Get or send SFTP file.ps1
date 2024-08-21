@@ -7,9 +7,7 @@
     Download files from an SFTP server or upload files to an SFTP server.
 
 .DESCRIPTION
-    Read an input file that contains all the parameters for this script. The
-    Action.Type defines if it's an upload or a download. When SendMail.When is
-    used, a summary e-mail is sent.
+    Read an input file that contains all the parameters for this script.
 
     The computer that is running the SFTP code should have the module 'Posh-SSH'
     installed.
@@ -21,11 +19,10 @@
     A .JSON file that contains all the parameters used by the script.
 
 .PARAMETER Tasks
-    Each task is a collection of upload or download actions. The exported Excel
-    file is created based on the TaskName and is unique to a single task.
+    Each task is a collection of upload or download actions. Tasks run one after
+    the other, meaning they run sequentially.
 
-    If different Excel log files or e-mails are required, use separate tasks
-    with a unique TaskName.
+    Actions run in parallel based on the "MaxConcurrentJobs" argument.
 
 .PARAMETER Tasks.TaskName
     Name of the task. This name is used for naming the Excel log file and to
@@ -48,41 +45,28 @@
 
 .PARAMETER Tasks.Actions
     Each action represents a job that will either upload of download files
-    to or from an SFTP server.
-
-.PARAMETER Tasks.Actions.Type
-    Indicate wether to upload or download files.
-
-    Valid values:
-    - Upload   : Upload files to the SFTP server
-    - Download : Download files from the SFTP server
-
-.PARAMETER Tasks.Actions.Parameter
-    Parameters specific to the upload or download action.
+    to or from an SFTP server. The action in a task are run in parallel when
+    "MaxConcurrentJobs" is more than 1.
 
 .PARAMETER Tasks.Actions.ComputerName
     The client where the SFTP code will be executed. This machine needs to
     have the module 'Posh-SSH' installed.
 
-.PARAMETER Tasks.Actions.Parameter.Path
+.PARAMETER Tasks.Actions.Paths
+    Combination of Source and Destination where either can be an SFTP path,
+    indicated with "sftp:\the path" and a local or SMB path.
+
 .PARAMETER Tasks.Option.OverwriteFile
     Overwrite files on the SFTP server when they already exist.
 
-.PARAMETER Tasks.Option.RemoveFailedPartialFiles
-    When the upload process is interrupted, it is possible that files are not
-    completely uploaded and that there are sill partial files present on the
-    SFTP server or in the local folder.
+.PARAMETER Tasks.Option.FileExtensions
+    If blank, all files are treated. If used, only those files meeting the
+    extension filter will be moved.
 
-    When RemoveFailedPartialFiles is TRUE these partial files will be removed
-    before the script starts. When RemoveFailedPartialFiles is FALSE, manual
-    intervention will be required to decide to still upload the partial file
-    found in the local folder, to rename the partial file on the SFTP server,
-    or to simply remove the partial file(s).
-
-.PARAMETER Tasks.SendMail.To
+.PARAMETER SendMail.To
     E-mail addresses of users where to send the summary e-mail.
 
-.PARAMETER Tasks.SendMail.When
+.PARAMETER SendMail.When
     Indicate when an e-mail will be sent to the user.
 
     Valid values:
@@ -92,7 +76,7 @@
     - OnlyOnErrorOrAction : Only sent an e-mail when errors where detected or
                             when items were uploaded
 
-.PARAMETER Tasks.ExportExcelFile.When
+.PARAMETER ExportExcelFile.When
     Indicate when an Excel file will be created containing the log data.
 
     Valid values:
@@ -274,8 +258,7 @@ Begin {
                 foreach (
                     $boolean in
                     @(
-                        'OverwriteFile',
-                        'RemoveFailedPartialFiles'
+                        'OverwriteFile'
                     )
                 ) {
                     try {
@@ -508,11 +491,10 @@ Process {
                     $task.Sftp.Credential.Password,
                     $task.Sftp.Credential.PasswordKeyFile,
                     $task.Option.FileExtensions,
-                    $task.Option.OverwriteFile,
-                    $task.Option.RemoveFailedPartialFiles
+                    $task.Option.OverwriteFile
                 }
 
-                $M = "Start SFTP job '{7}' on '{8}' with: Sftp.ComputerName '{0}' Sftp.UserName '{1}' Paths {2} MaxConcurrentJobs '{3}' FileExtensions '{4}' OverwriteFile '{5}' RemoveFailedPartialFiles '{6}'" -f
+                $M = "Start SFTP job '{6}' on '{7}' with: Sftp.ComputerName '{0}' Sftp.UserName '{1}' Paths {2} MaxConcurrentJobs '{3}' FileExtensions '{4}' OverwriteFile '{5}'" -f
                 $invokeParams.ArgumentList[0],
                 $invokeParams.ArgumentList[1],
                 $(
@@ -523,7 +505,6 @@ Process {
                 $invokeParams.ArgumentList[3],
                 $($invokeParams.ArgumentList[6] -join ', '),
                 $invokeParams.ArgumentList[7],
-                $invokeParams.ArgumentList[8],
                 $task.TaskName,
                 $action.ComputerName
 
@@ -552,7 +533,7 @@ Process {
 
                 #region Get job results
                 if ($action.Job.Results.Count -ne 0) {
-                    $M = "Job result '{7}' on '{8}' with: Sftp.ComputerName '{0}' Sftp.UserName '{1}' Paths {2} MaxConcurrentJobs '{3}' FileExtensions '{4}' OverwriteFile '{5}' RemoveFailedPartialFiles '{6}': {9} result{10}" -f
+                    $M = "Job result '{6}' on '{7}' with: Sftp.ComputerName '{0}' Sftp.UserName '{1}' Paths {2} MaxConcurrentJobs '{3}' FileExtensions '{4}' OverwriteFile '{5}': {8} result{9}" -f
                     $invokeParams.ArgumentList[0],
                     $invokeParams.ArgumentList[1],
                     $(
@@ -563,7 +544,6 @@ Process {
                     $invokeParams.ArgumentList[3],
                     $($invokeParams.ArgumentList[6] -join ', '),
                     $invokeParams.ArgumentList[7],
-                    $invokeParams.ArgumentList[8],
                     $task.TaskName,
                     $action.ComputerName,
                     $action.Job.Results.Count,

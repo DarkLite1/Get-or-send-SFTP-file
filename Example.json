@@ -13,7 +13,6 @@
       },
       "Option": {
         "OverwriteFile": false,
-        "RemoveFailedPartialFiles": false,
         "FileExtensions": []
       },
       "Actions": [
