@@ -186,6 +186,8 @@ try {
             try {
                 $path = $_
 
+                Write-Verbose "Source '$($path.Source)' Destination '$($path.Destination)'"
+
                 #region Declare variables for code running in parallel
                 if (-not $MaxConcurrentJobs) {
                     $ErrorActionPreference = $using:ErrorActionPreference
@@ -200,7 +202,7 @@ try {
                 #endregion
 
                 #region Get files to upload
-                Write-Verbose "Get files in source folder '$($path.Source)'"
+                Write-Verbose 'Get files in source folder'
 
                 $filesToUpload = Get-ChildItem -LiteralPath $path.Source -File
 
@@ -216,6 +218,8 @@ try {
                     Write-Verbose 'No files to upload'
                     Continue
                 }
+
+                Write-Verbose "Found $($filesToUpload.Count) file(s) to upload"
                 #endregion
 
                 $sessionParams = @{
@@ -427,7 +431,6 @@ try {
                         #endregion
 
                         $result.Action += 'File moved'
-                        $result.Uploaded = $true
                     }
                     catch {
                         #region Rename temp file back to original file name

@@ -125,20 +125,80 @@ Describe 'Upload to SFTP server' {
             { .$testScript @testNewParams } | Should -Throw "Failed creating an SFTP session to '$($testNewParams.SftpComputerName)': Failed authenticating"
         }
     }
-}
-Describe 'do not start an SFTP sessions when' {
-    It 'there is nothing to upload' {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = (New-Item 'TestDrive:/emptyFolder' -ItemType 'Directory').FullName
+    Context 'do not start an SFTP sessions when' {
+        It 'there is nothing to upload' {
+            $testNewParams = $testParams.Clone()
+            $testNewParams.Paths = @{
+                Source      = (New-Item 'TestDrive:/emptyFolder' -ItemType 'Directory').FullName
+                Destination = 'sftp:/data/'
+            }
 
-        .$testScript @testNewParams
+            .$testScript @testNewParams
 
-        Should -Not -Invoke Set-SFTPItem
-        Should -Not -Invoke New-SFTPSession
-        Should -Not -Invoke Test-SFTPPath
-        Should -Not -Invoke Remove-SFTPSession
+            Should -Not -Invoke Set-SFTPItem
+            Should -Not -Invoke New-SFTPSession
+            Should -Not -Invoke Test-SFTPPath
+            Should -Not -Invoke Remove-SFTPSession
+        }
     }
-} -Tag test
+    Context 'when files are found in the source folder' {
+        BeforeAll {
+            $testNewParams = $testParams.Clone()
+            $testNewParams.Paths = @(
+                @{
+                    Source      = (New-Item 'TestDrive:/z' -ItemType 'Directory').FullName
+                    Destination = 'sftp:/data/'
+                }
+            )
+
+            $testFiles = @('file1.txt', 'file2.txt', 'file3.txt') | ForEach-Object {
+                New-Item "$($testNewParams.Paths[0].Source)\$_" -ItemType 'File'
+            }
+
+            $testResults = .$testScript @testNewParams
+        }
+        It 'call Set-SFTPItem to upload a temp file' {
+            $testFiles | ForEach-Object {
+                Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope Context -ParameterFilter {
+                    ($Path -eq "$($_.FullName).UploadInProgress") -and
+                    ($Destination -eq $testNewParams.Paths[0].Destination.TrimStart('sftp:')) -and
+                    ($SessionId -eq 1)
+                }
+            }
+        }
+        It 'call Rename-SFTPFile to rename the temp file' {
+            $testFiles | ForEach-Object {
+                Should -Invoke Rename-SFTPFile -Times 1 -Exactly -Scope Context -ParameterFilter {
+                    ($Path -eq ($testNewParams.Paths[0].Destination.TrimStart('sftp:') + $_.Name + ".UploadInProgress")) -and
+                    ($NewName -eq $_.Name) -and
+                    ($SessionId -eq 1)
+                }
+            }
+        }
+        It 'remove the local temp file' {
+            $testFiles | ForEach-Object {
+                $_.FullName | Should -Not -Exist
+            }
+        }
+        It 'Return an object with results' {
+            $testResults | Should -HaveCount $testFiles.Count
+
+            foreach ($testFile in $testFiles) {
+                $actual = $testResults.where(
+                    { $_.FileName -eq $testFile.Name }
+                )
+
+                $actual.DateTime | Should -Not -BeNullOrEmpty
+                $actual.Source | Should -Be $testNewParams.Paths[0].Source
+                $actual.Destination | Should -Be $testNewParams.Paths[0].Destination
+                $actual.FileLength | Should -Not -BeNullOrEmpty
+                $actual.Action | Should -Be 'File moved'
+                $actual.Error | Should -BeNullOrEmpty
+            }
+        }
+    }
+}
+
 Describe 'when a file is uploaded' {
     BeforeAll {
         $testNewParams = $testParams.Clone()
@@ -206,40 +266,7 @@ Describe 'when a file is uploaded' {
         }
     }
 }
-Describe 'upload to the SFTP server' {
-    BeforeAll {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = (New-Item 'TestDrive:/z' -ItemType 'Directory').FullName
 
-        $testFiles = @('file1.txt', 'file2.txt', 'file3.txt') | ForEach-Object {
-            New-Item "$($testNewParams.Path)\$_" -ItemType 'File'
-        }
-
-        $testResults = .$testScript @testNewParams
-    }
-    It 'all files in the Path folder' {
-        $testFiles | ForEach-Object {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope Describe -ParameterFilter {
-                ($Path -eq "$($_.FullName).UploadInProgress") -and
-                ($Destination -eq $testNewParams.SftpPath) -and
-                ($SessionId -eq 1)
-            }
-        }
-    }
-    It 'Return an object with results' {
-        $testResults | Should -HaveCount $testFiles.Count
-
-        $testResults | ForEach-Object {
-            $_.LocalPath | Should -Not -BeNullOrEmpty
-            $_.SftpPath | Should -Be $testNewParams.SftpPath
-            $_.FileName | Should -Not -BeNullOrEmpty
-            $_.Uploaded | Should -BeTrue
-            $_.DateTime | Should -Not -BeNullOrEmpty
-            $_.Action | Should -Not -BeNullOrEmpty
-            $_.Error | Should -BeNullOrEmpty
-        }
-    }
-}
 Describe 'OverwriteFile' {
     BeforeAll {
         $testSFtpFile = @{
