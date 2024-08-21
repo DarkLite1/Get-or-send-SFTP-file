@@ -100,9 +100,10 @@ Describe 'Upload to SFTP server' {
 
             $error.Clear()
 
-            $testResult = .$testScript @testParams
+            $testResult = .$testScript @testNewParams
 
             $testResult.Error | Should -BeLike "*$($testSource.FileName)*Oops"
+            $testSource.FileFullName | Should -Exist
 
             $error | Should -HaveCount 0
         }
@@ -124,8 +125,7 @@ Describe 'Upload to SFTP server' {
             { .$testScript @testNewParams } | Should -Throw "Failed creating an SFTP session to '$($testNewParams.SftpComputerName)': Failed authenticating"
         }
     }
-} -Tag test
-
+}
 Describe 'do not start an SFTP sessions when' {
     It 'there is nothing to upload' {
         $testNewParams = $testParams.Clone()
@@ -138,7 +138,7 @@ Describe 'do not start an SFTP sessions when' {
         Should -Not -Invoke Test-SFTPPath
         Should -Not -Invoke Remove-SFTPSession
     }
-}
+} -Tag test
 Describe 'when a file is uploaded' {
     BeforeAll {
         $testNewParams = $testParams.Clone()
