@@ -48,6 +48,52 @@ Describe 'the mandatory parameters are' {
         Should -BeTrue
     }
 }
+Describe 'create an SFTP session with' {
+    It 'UserName and Password' {
+        $testNewParams = $testParams.Clone()
+        $testNewParams.Paths = @(
+            @{
+                Source      = (New-Item 'TestDrive:\po' -ItemType 'Directory').FullName
+                Destination = 'sftp:/data/'
+            }
+        )
+
+        $null = New-Item -Path (Join-Path $testNewParams.Paths[0].Source 'k.txt') -ItemType 'File'
+
+        .$testScript @testNewParams
+
+        Should -Invoke New-SFTPSession -Times 1 -Exactly -ParameterFilter {
+            ($ComputerName -eq $testNewParams.SftpComputerName) -and
+            ($Credential -is 'System.Management.Automation.PSCredential') -and
+            ($AcceptKey) -and
+            ($Force) -and
+            (-not $KeyString)
+        }
+    }
+    It 'SftpOpenSshKeyFile' {
+        $testNewParams = $testParams.Clone()
+        $testNewParams.Paths = @(
+            @{
+                Source      = (New-Item 'TestDrive:\p' -ItemType 'Directory').FullName
+                Destination = 'sftp:/data/'
+            }
+        )
+
+        $null = New-Item -Path (Join-Path $testNewParams.Paths[0].Source 'k.txt') -ItemType 'File'
+
+        $testNewParams.SftpOpenSshKeyFile = @('a')
+
+        .$testScript @testNewParams
+
+        Should -Invoke New-SFTPSession -Times 1 -Exactly -ParameterFilter {
+            ($ComputerName -eq $testNewParams.SftpComputerName) -and
+            ($Credential -is 'System.Management.Automation.PSCredential') -and
+            ($AcceptKey) -and
+            ($Force) -and
+            ($KeyString -eq 'a')
+        }
+    }
+}
 Describe 'Upload to SFTP server' {
     BeforeAll {
         $testSource = @{
@@ -321,27 +367,6 @@ Describe 'Upload to SFTP server' {
                     ($SessionId -eq 1)
                 }
             }
-        }
-    }
-} -Tag test
-
-
-
-Describe 'when SftpOpenSshKeyFile is used' {
-    It 'New-SFTPSession is called with the correct arguments' {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = (New-Item 'TestDrive:\Upload' -ItemType 'Directory').FullName
-        New-Item -Path (Join-Path $testNewParams.Path 'k.txt') -ItemType 'File'
-
-        $testNewParams.SftpOpenSshKeyFile = @('a')
-
-        .$testScript @testNewParams
-
-        Should -Invoke New-SFTPSession -Times 1 -Exactly -ParameterFilter {
-            ($ComputerName -eq $testNewParams.SftpComputerName) -and
-            ($Credential -is 'System.Management.Automation.PSCredential') -and
-            ($AcceptKey) -and
-            ($KeyString -eq 'a')
         }
     }
 }
