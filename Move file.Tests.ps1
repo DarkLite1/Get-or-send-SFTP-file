@@ -67,7 +67,7 @@ Describe 'Upload to SFTP server' {
             $testResult.Error |
             Should -Be "Source folder '$($testNewParams.Paths[0].Source)' not found"
         }
-        It 'Paths.Destination or the SFTP path does not exist' {
+        It 'the SFTP path does not exist' {
             $testNewParams = $testParams.Clone()
             $testNewParams.Paths = @(
                 @{
