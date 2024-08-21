@@ -457,13 +457,15 @@ try {
                             catch {
                                 [PSCustomObject]@{
                                     DateTime    = Get-Date
-                                    Source      = $path.Source
-                                    Destination = $path.Destination
+                                    Source      = $result.Source
+                                    Destination = $result.Destination
                                     FileName    = $tempFile.Name
-                                    FileLength  = $file.Length
+                                    FileLength  = $result.Length
                                     Action      = @()
-                                    Error       = "Failed to rename temp file '$($tempFile.UploadFilePath)' back to its original name '$($file.Name)'"
+                                    Error       = "Failed to rename temp file '$($tempFile.UploadFilePath)' back to its original name '$($file.Name)': $_"
                                 }
+
+                                $Error.RemoveAt(0)
                             }
                         }
                         #endregion
