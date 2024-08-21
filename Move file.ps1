@@ -443,6 +443,7 @@ try {
                         $result.Uploaded = $true
                     }
                     catch {
+                        #region Rename temp file back to original file name
                         if (
                             Test-Path -LiteralPath $tempFile.UploadFilePath -PathType 'Leaf'
                         ) {
@@ -465,6 +466,7 @@ try {
                                 }
                             }
                         }
+                        #endregion
 
                         $result.Error = $_
                         Write-Warning $_
