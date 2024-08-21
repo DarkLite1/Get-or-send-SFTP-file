@@ -259,63 +259,74 @@ Describe 'Upload to SFTP server' {
             }
         }
     }
+    Context 'when FileExtensions is' {
+        BeforeAll {
+            $testNewParams = $testParams.Clone()
+            $testNewParams.Paths = @(
+                @{
+                    Source      = (New-Item 'TestDrive:\Upload' -ItemType 'Directory').FullName
+                    Destination = 'sftp:/data/'
+                }
+            )
+        }
+        It 'empty, all files are uploaded' {
+            $testNewParams.FileExtensions = @()
+
+            $testFiles = @(
+                'file.txt'
+                'file.xml'
+                'file.jpg'
+            ) | ForEach-Object {
+                New-Item -Path (Join-Path $testNewParams.Paths[0].Source $_) -ItemType 'File'
+            }
+
+            .$testScript @testNewParams
+
+            $testFiles | ForEach-Object {
+                Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope Context -ParameterFilter {
+                    ($Path -eq "$($_.FullName).UploadInProgress") -and
+                    ($Destination -eq $testNewParams.Paths[0].Destination.TrimStart('sftp:')) -and
+                    ($SessionId -eq 1)
+                }
+            }
+        }
+        It 'not empty, only specific files are uploaded' {
+            $testNewParams.FileExtensions = @('.txt', '.xml')
+
+            $testFiles = @(
+                'file.txt'
+                'file.xml'
+                'file.jpg'
+            ) | ForEach-Object {
+                New-Item -Path (Join-Path $testNewParams.Paths[0].Source $_) -ItemType 'File'
+            }
+
+            .$testScript @testNewParams
+
+            Should -Invoke Set-SFTPItem -Times 2 -Exactly
+
+            foreach ($testFile in $testFiles) {
+                if ($testFile.Extension -eq '.jpg') {
+                    Should -Not -Invoke Set-SFTPItem -ParameterFilter {
+                        ($Path -eq "$($testFile.FullName).UploadInProgress") -and
+                        ($Destination -eq $testNewParams.Paths[0].Destination.TrimStart('sftp:')) -and
+                        ($SessionId -eq 1)
+                    }
+                    Continue
+                }
+
+                Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
+                    ($Path -eq "$($testFile.FullName).UploadInProgress") -and
+                    ($Destination -eq $testNewParams.Paths[0].Destination.TrimStart('sftp:')) -and
+                    ($SessionId -eq 1)
+                }
+            }
+        }
+    }
 } -Tag test
 
 
-Describe 'when FileExtensions is' {
-    BeforeAll {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = (New-Item 'TestDrive:\Upload' -ItemType 'Directory').FullName
-    }
-    It 'empty, all files are uploaded' {
-        $testNewParams.FileExtensions = @()
 
-        $testFiles = @(
-            'file.txt'
-            'file.xml'
-            'file.jpg'
-        ) | ForEach-Object {
-            New-Item -Path (Join-Path $testNewParams.Path $_) -ItemType 'File'
-        }
-
-        .$testScript @testNewParams
-
-        foreach ($testFile in $testFiles) {
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Destination -eq $testNewParams.SftpPath) -and
-                ($Path -eq ($testFile.FullName + $testNewParams.PartialFileExtension))
-            }
-        }
-    }
-    It 'not empty, only specific files are uploaded' {
-        $testNewParams.FileExtensions = @('.txt', '.xml')
-
-        $testFiles = @(
-            'file.txt'
-            'file.xml'
-            'file.jpg'
-        ) | ForEach-Object {
-            New-Item -Path (Join-Path $testNewParams.Path $_) -ItemType 'File'
-        }
-
-        .$testScript @testNewParams
-
-        foreach ($testFile in $testFiles) {
-            if ($testFile.Extension -eq '.jpg') {
-                Should -Not -Invoke Set-SFTPItem -ParameterFilter {
-                    ($Destination -eq $testNewParams.SftpPath) -and
-                    ($Path -eq ($testFile.FullName + $testNewParams.PartialFileExtension))
-                }
-                Continue
-            }
-
-            Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                ($Destination -eq $testNewParams.SftpPath) -and
-                ($Path -eq ($testFile.FullName + $testNewParams.PartialFileExtension))
-            }
-        }
-    }
-}
 Describe 'when SftpOpenSshKeyFile is used' {
     It 'New-SFTPSession is called with the correct arguments' {
         $testNewParams = $testParams.Clone()
