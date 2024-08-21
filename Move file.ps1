@@ -501,7 +501,7 @@ try {
             }
         }
 
-        Write-Verbose "Found $($uploadPaths.Count) source path(s) with files for SFTP upload"
+        Write-Verbose "Found $($uploadPaths.Count) source path(s) with files to upload"
 
         $pathsWithFilesToUpload | ForEach-Object @foreachParams
 
