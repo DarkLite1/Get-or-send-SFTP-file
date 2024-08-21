@@ -318,6 +318,8 @@ try {
                                     ($retryCount -lt $RetryCountOnLockedFiles)
                                 ) {
                                     try {
+                                        Write-Verbose 'Remove duplicate file on SFTP server'
+
                                         $removeParams = @{
                                             Path        = $sftpFile.FullName
                                             ErrorAction = 'Stop'
@@ -364,7 +366,7 @@ try {
                             ($retryCount -lt $RetryCountOnLockedFiles)
                         ) {
                             try {
-                                Write-Verbose 'Rename source file'
+                                Write-Verbose "Rename source file to temp file '$($tempFile.UploadFileName)'"
                                 $file |
                                 Rename-Item -NewName $tempFile.UploadFileName
                                 $fileLocked = $false
@@ -390,7 +392,7 @@ try {
                                 Destination = $SftpPath
                             }
 
-                            Write-Verbose "Upload temp file '$($params.Path)'"
+                            Write-Verbose 'Upload temp file'
                             Set-SFTPItem @sessionParams @params
                         }
                         catch {
@@ -402,7 +404,7 @@ try {
 
                         #region Rename file on SFTP server
                         try {
-                            Write-Verbose 'Rename temp file on SFTP server'
+                            Write-Verbose "Rename temp file on SFTP server to '$($result.FileName)'"
 
                             $params = @{
                                 Path    = $SftpPath + $tempFile.UploadFileName

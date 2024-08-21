@@ -180,7 +180,7 @@ Describe 'Upload to SFTP server' {
                 $_.FullName | Should -Not -Exist
             }
         }
-        It 'Return an object with results' {
+        It 'return an object with results' {
             $testResults | Should -HaveCount $testFiles.Count
 
             foreach ($testFile in $testFiles) {
@@ -197,110 +197,71 @@ Describe 'Upload to SFTP server' {
             }
         }
     }
-}
+    Context 'OverwriteFile' {
+        BeforeAll {
+            $testSFtpFile = @{
+                Name     = 'a.txt'
+                FullName = 'sftpPath\a.txt'
+            }
 
-Describe 'when a file is uploaded' {
-    BeforeAll {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.Path = (New-Item 'TestDrive:/c' -ItemType 'Directory').FullName
+            $testNewParams = $testParams.Clone()
+            $testNewParams.Paths = @(
+                @{
+                    Source      = (New-Item 'TestDrive:/y' -ItemType 'Directory').FullName
+                    Destination = 'sftp:/data/'
+                }
+            )
 
-        $testFile = (New-Item "$($testNewParams.Path)\a.txt" -ItemType 'File')
+            $testFile = New-Item "$($testNewParams.Paths[0].Source)\$($testSFtpFile.Name)" -ItemType 'File'
 
-        $testResults = .$testScript @testNewParams
-    }
-    It 'it is renamed to extension .UploadInProgress' {
-        $testFile.FullName | Should -Not -Exist
-    }
-    It 'it is uploaded to the SFTP server with extension .UploadInProgress' {
-        Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
-            ($Path -eq "$($testFile.FullName).UploadInProgress") -and
-            ($Destination -eq $testNewParams.SftpPath) -and
-            ($SessionId -eq 1)
-        }
-    }
-    It 'it is renamed on the SFTP server to its original name' {
-        Should -Invoke Rename-SFTPFile -Times 1 -Exactly -Scope 'Describe' -ParameterFilter {
-            ($NewName -eq $testFile.Name) -and
-            ($Path -eq ($testNewParams.SftpPath + $testFile.Name + '.UploadInProgress')) -and
-            ($SessionId -eq 1)
-        }
-    }
-    It 'it is removed after a successful upload' {
-        "$($testFile.FullName).UploadInProgress" | Should -Not -Exist
-        $testFile.FullName | Should -Not -Exist
-    }
-    Context 'an object is returned with property' {
-        It 'DateTime' {
-            $testResults.DateTime.ToString('yyyyMMdd') |
-            Should -Be (Get-Date).ToString('yyyyMMdd')
-        }
-        Context 'Action' {
-            It "<_>" -ForEach @(
-                'temp file created',
-                'temp file uploaded',
-                'temp file removed',
-                'temp file renamed on SFTP server',
-                'file successfully uploaded'
-            ) {
-                $testResults.Action | Should -Contain $_
+            Mock Get-SFTPChildItem {
+                $testSFtpFile
             }
         }
-        It 'Uploaded' {
-            $testResults.Uploaded | Should -BeTrue
+        Context 'true' {
+            BeforeAll {
+                $testNewParams.OverwriteFile = $true
+
+                $testResults = .$testScript @testNewParams
+            }
+            It 'the duplicate file on the SFTP server is removed' {
+                Should -Invoke Remove-SFTPItem -Times 1 -Exactly -Scope Context -ParameterFilter {
+                    ($Path -eq $testSFtpFile.FullName) -and
+                    ($SessionId -eq 1)
+                }
+            }
+            It 'the file is uploaded' {
+                Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope Context
+            }
+            It 'return an object with results' {
+                $testResults | Should -HaveCount 2
+
+                $testResults[0].Action | Should -Be 'Removed duplicate file from SFTP server'
+            }
         }
-        It 'LocalPath' {
-            $testResults.LocalPath | Should -Be $testNewParams.Path
-        }
-        It 'FileName' {
-            $testResults.FileName | Should -Be $testFile.Name
-        }
-        It 'SftpPath' {
-            $testResults.SftpPath | Should -Be $testNewParams.SftpPath
-        }
-        It 'Error' {
-            $testResults.Error | Should -BeNullOrEmpty
-        }
-        It 'FileLength' {
-            $testResults.FileLength | Should -Not -BeNullOrEmpty
-            $testResults.FileLength | Should -BeOfType [long]
+        Context 'false' {
+            BeforeAll {
+                if (-not (Test-Path $testFile)) {
+                    $null = New-Item $testFile -ItemType File
+                }
+
+                $testNewParams.OverwriteFile = $false
+
+                $testResults = .$testScript @testNewParams
+            }
+            It 'the duplicate file on the SFTP server is not overwritten' {
+                Should -Not -Invoke Remove-SFTPItem -Scope Context
+            }
+            It 'return an object with results' {
+                $testResults | Should -HaveCount 1
+
+                $testResults.Error | Should -Be 'Duplicate file on SFTP server, use Option.OverwriteFile if desired'
+            }
         }
     }
-}
+} -Tag test
 
-Describe 'OverwriteFile' {
-    BeforeAll {
-        $testSFtpFile = @{
-            Name     = 'a.txt'
-            FullName = 'sftpPath\a.txt'
-        }
 
-        Mock Get-SFTPChildItem {
-            $testSFtpFile
-        }
-    }
-    It 'when true the file on the SFTP server is overwritten' {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.OverwriteFile = $true
-        $testNewParams.Path = (New-Item 'TestDrive:/y' -ItemType 'Directory').FullName
-
-        $testFile = New-Item "$($testNewParams.Path)\$($testSFtpFile.Name)" -ItemType 'File'
-
-        .$testScript @testNewParams
-
-        Should -Invoke Remove-SFTPItem -Times 1 -Exactly -ParameterFilter {
-            ($Path -eq $testSFtpFile.FullName) -and
-            ($SessionId -eq 1)
-        }
-    }
-    It 'when false the file on the SFTP server is not overwritten' {
-        $testNewParams = $testParams.Clone()
-        $testNewParams.OverwriteFile = $false
-
-        .$testScript @testNewParams
-
-        Should -Not -Invoke Remove-SFTPItem
-    }
-}
 Describe 'when FileExtensions is' {
     BeforeAll {
         $testNewParams = $testParams.Clone()
