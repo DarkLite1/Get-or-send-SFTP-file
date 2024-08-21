@@ -75,8 +75,8 @@ Param (
     [Int]$RetryCountOnLockedFiles = 3,
     [Int]$RetryWaitSeconds = 3,
     [hashtable]$PartialFileExtension = @{
-        Upload   = 'UploadInProgress'
-        Download = 'DownloadInProgress'
+        Upload   = '.UploadInProgress'
+        Download = '.DownloadInProgress'
     }
 )
 
@@ -205,6 +205,10 @@ try {
                     $sftpSession = $using:sftpSession
                     $FileExtensions = $using:FileExtensions
                     $PartialFileExtension = $using:PartialFileExtension
+                    $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
+                    $RetryWaitSeconds = $using:RetryWaitSeconds
+                    $OverwriteFile = $using:OverwriteFile
+                    $RemoveFailedPartialFiles = $using:RemoveFailedPartialFiles
                 }
                 #endregion
 
@@ -241,6 +245,52 @@ try {
                 }
                 #endregion
 
+                #region Get all SFTP files
+                try {
+                    $sftpFiles = Get-SFTPChildItem @sessionParams -Path $SftpPath -File
+                }
+                catch {
+                    $errorMessage = "Failed retrieving SFTP files: $_"
+                    $Error.RemoveAt(0)
+                    throw $errorMessage
+                }
+                #endregion
+
+                #region Remove incomplete uploaded files from the SFTP server
+                foreach (
+                    $partialFile in
+                    $sftpFiles.where(
+                        { $_.Name -like "*$($PartialFileExtension.Upload)" }
+                    )
+                ) {
+                    try {
+                        $result = [PSCustomObject]@{
+                            DateTime    = Get-Date
+                            Source      = $path.Source
+                            Destination = $path.Destination
+                            FileName    = $partialFile.Name
+                            FileLength  = $partialFile.Length
+                            Action      = @()
+                            Error       = $null
+                        }
+
+                        Write-Verbose "Remove incompletely uploaded file '$($partialFile.FullName)'"
+
+                        Remove-SFTPItem @sessionParams -Path $partialFile.FullName
+
+                        $result.Action = 'Removed incompletely uploaded file'
+                    }
+                    catch {
+                        $result.Error = "Failed removing incomplete uploaded file: $_"
+                        Write-Warning $result.Error
+                        $Error.RemoveAt(0)
+                    }
+                    finally {
+                        $result
+                    }
+                }
+                #endregion
+
                 foreach ($file in $filesToUpload) {
                     try {
                         Write-Verbose "File '$($file.FullName)'"
@@ -251,7 +301,6 @@ try {
                             Destination = $path.Destination
                             FileName    = $file.Name
                             FileLength  = $file.Length
-                            Uploaded    = $false
                             Action      = @()
                             Error       = $null
                         }
@@ -261,11 +310,11 @@ try {
                         }
                         $tempFile.UploadFilePath = Join-Path $result.Source $tempFile.UploadFileName
 
-                        #region Overwrite file on SFTP server
+                        #region Duplicate file on SFTP server
                         if (
-                            $sftpFile = $sftpFiles | Where-Object {
-                                $_.Name -eq $file.Name
-                            }
+                            $sftpFile = $sftpFiles.where(
+                                { $_.Name -eq $file.Name }, 'First'
+                            )
                         ) {
                             Write-Verbose 'Duplicate file on SFTP server'
 
@@ -285,7 +334,16 @@ try {
                                         Remove-SFTPItem @sessionParams @removeParams
 
                                         $fileLocked = $false
-                                        $result.Action += 'removed duplicate file from SFTP server'
+
+                                        [PSCustomObject]@{
+                                            DateTime    = $result.DateTime.AddSeconds(-1)
+                                            Source      = $result.Source
+                                            Destination = $result.Destination
+                                            FileName    = $result.Name
+                                            FileLength  = $result.Length
+                                            Action      = @('Removed duplicate file from SFTP server')
+                                            Error       = $null
+                                        }
                                     }
                                     catch {
                                         $errorMessage = $_
@@ -316,9 +374,9 @@ try {
                         ) {
                             try {
                                 Write-Verbose 'Rename source file'
-                                $file | Rename-Item -NewName $tempFile.UploadFileName
+                                $file |
+                                Rename-Item -NewName $tempFile.UploadFileName
                                 $fileLocked = $false
-                                $result.Action += 'temp file created'
                             }
                             catch {
                                 $errorMessage = $_
@@ -341,11 +399,8 @@ try {
                                 Destination = $SftpPath
                             }
 
-                            Write-Verbose "Upload file '$($params.Path)'"
+                            Write-Verbose "Upload temp file '$($params.Path)'"
                             Set-SFTPItem @sessionParams @params
-
-                            Write-Verbose 'File uploaded'
-                            $result.Action += 'temp file uploaded'
                         }
                         catch {
                             $errorMessage = "Failed to upload file '$($tempFile.UploadFilePath)': $_"
@@ -354,41 +409,63 @@ try {
                         }
                         #endregion
 
-                        #region Remove local file
-                        try {
-                            Write-Verbose 'Remove file'
-
-                            $tempFile.UploadFilePath | Remove-Item -Force
-                            $result.Action += 'temp file removed'
-                        }
-                        catch {
-                            $errorMessage = "Failed to remove file '$($tempFile.UploadFilePath)': $_"
-                            $Error.RemoveAt(0)
-                            throw $errorMessage
-                        }
-                        #endregion
-
                         #region Rename file on SFTP server
                         try {
+                            Write-Verbose 'Rename temp file on SFTP server'
+
                             $params = @{
                                 Path    = $SftpPath + $tempFile.UploadFileName
                                 NewName = $result.FileName
                             }
                             Rename-SFTPFile @sessionParams @params
-
-                            $result.Action += 'temp file renamed on SFTP server'
                         }
                         catch {
-                            $errorMessage = "Failed to rename the file '$($tempFile.UploadFileName)' to '$($result.FileName)' on the SFTP server: $_"
+                            $errorMessage = "Failed to rename the file on the SFTP server from '$($tempFile.UploadFileName)' to '$($result.FileName)': $_"
                             $Error.RemoveAt(0)
                             throw $errorMessage
                         }
                         #endregion
 
-                        $result.Action += 'File uploaded'
+                        #region Remove local temp file
+                        try {
+                            Write-Verbose 'Remove local temp file'
+
+                            $tempFile.UploadFilePath | Remove-Item -Force
+                        }
+                        catch {
+                            $errorMessage = "Failed to remove the local temp file '$($tempFile.UploadFilePath)': $_"
+                            $Error.RemoveAt(0)
+                            throw $errorMessage
+                        }
+                        #endregion
+
+                        $result.Action += 'File moved'
                         $result.Uploaded = $true
                     }
                     catch {
+                        if (
+                            Test-Path -LiteralPath $tempFile.UploadFilePath -PathType 'Leaf'
+                        ) {
+                            try {
+                                Write-Warning 'Upload failed'
+                                Write-Verbose "Rename temp file '$($tempFile.UploadFilePath)' back to its original name '$($file.Name)'"
+
+                                $tempFile.UploadFilePath |
+                                Rename-Item -NewName $file.Name
+                            }
+                            catch {
+                                [PSCustomObject]@{
+                                    DateTime    = Get-Date
+                                    Source      = $path.Source
+                                    Destination = $path.Destination
+                                    FileName    = $tempFile.Name
+                                    FileLength  = $file.Length
+                                    Action      = @()
+                                    Error       = "Failed to rename temp file '$($tempFile.UploadFilePath)' back to its original name '$($file.Name)'"
+                                }
+                            }
+                        }
+
                         $result.Error = $_
                         Write-Warning $_
                         $Error.RemoveAt(0)
