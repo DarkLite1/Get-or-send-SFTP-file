@@ -170,16 +170,20 @@ try {
                 try {
                     $allSftpFiles = Get-SFTPChildItem @sessionParams -Path $sftpPath -File
 
-                    $filesToDownload = if ($FileExtensions) {
+                    $interruptedDownloadedFiles, $filesToDownload = $allSftpFiles.where(
+                        { $_.Name -like "*$($PartialFileExtension.Download)" },
+                        'Split'
+                    )
+
+                    if ($FileExtensions) {
                         Write-Verbose "Select files with extension '$FileExtensions'"
 
-                        $allSftpFiles | Where-Object {
+                        $filesToDownload = $filesToDownload | Where-Object {
                             $FileExtensions -contains $_.Extension
                         }
                     }
-                    else {
-                        $allSftpFiles
-                    }
+
+                    $filesToDownload = $filesToDownload + $interruptedDownloadedFiles
 
                     if (-not $filesToDownload) {
                         Write-Verbose 'No files to download'
@@ -195,28 +199,38 @@ try {
                 }
                 #endregion
 
+                #region Get all local files
+                try {
+                    $localFiles = Get-ChildItem -LiteralPath $path.Destination -File
+                }
+                catch {
+                    $errorMessage = "Failed retrieving all local files: $_"
+                    $Error.RemoveAt(0)
+                    throw $errorMessage
+                }
+                #endregion
+
                 #region Remove incomplete downloaded files
                 foreach (
-                    $partialFile in
-                    Get-ChildItem -LiteralPath $path.Destination |
-                    Where-Object {
-                        $_.Name -like "*$($PartialFileExtension.Download)"
-                    }
+                    $incompleteFile in
+                    $localFiles.where(
+                        { $_.Name -like "*$($PartialFileExtension.Download)" }
+                    )
                 ) {
                     try {
                         $result = [PSCustomObject]@{
                             DateTime    = Get-Date
                             Source      = $path.Source
                             Destination = $path.Destination
-                            FileName    = $partialFile.Name
-                            FileLength  = $partialFile.Length
+                            FileName    = $incompleteFile.Name
+                            FileLength  = $incompleteFile.Length
                             Action      = @()
                             Error       = $null
                         }
 
-                        Write-Verbose "Remove incompletely downloaded file '$($partialFile.Name)'"
+                        Write-Verbose "Remove incomplete downloaded file '$($incompleteFile.Name)'"
 
-                        $partialFile | Remove-Item
+                        $incompleteFile | Remove-Item
 
                         $result.Action += 'Removed incomplete downloaded file'
                     }
@@ -245,18 +259,42 @@ try {
                             Error       = $null
                         }
 
-                        $tempFile = @{
-                            UploadFileName = $file.Name + $PartialFileExtension.Upload
-                        }
-                        $tempFile.UploadFilePath = Join-Path $result.Source $tempFile.UploadFileName
+                        #region Test if the file was completely downloaded
+                        $failedFile = $false
 
-                        #region Duplicate file on SFTP server
                         if (
-                            $sftpFile = $sftpFiles.where(
-                                { $_.Name -eq $file.Name }, 'First'
+                            $file.Name -like "*$($PartialFileExtension.Download)"
+                        ) {
+                            Write-Verbose 'Files was not completely downloaded'
+
+                            $failedFile = $true
+                        }
+                        #endregion
+
+                        #region Create temp name
+                        $tempFile = @{
+                            DownloadFileName = $file.Name + $PartialFileExtension.Download
+                            DownloadFilePath = $file.FullName +
+                            $PartialFileExtension.Download
+                        }
+
+                        if ($failedFile) {
+                            $tempFile.DownloadFileName = $file.Name
+                            $tempFile.DownloadFilePath = $file.FullName
+
+                            $result.FileName = $file.Name.TrimEnd(
+                                $PartialFileExtension.Download
+                            )
+                        }
+                        #endregion
+
+                        #region Test file already present
+                        if (
+                            $localFile = $localFiles.where(
+                                { $_.Name -eq $result.FileName }
                             )
                         ) {
-                            Write-Verbose 'Duplicate file on SFTP server'
+                            Write-Verbose 'Duplicate file on local file system'
 
                             if ($OverwriteFile) {
                                 $retryCount = 0
@@ -267,25 +305,14 @@ try {
                                     ($retryCount -lt $RetryCountOnLockedFiles)
                                 ) {
                                     try {
-                                        Write-Verbose 'Remove duplicate file on SFTP server'
-
                                         $removeParams = @{
-                                            Path        = $sftpFile.FullName
+                                            LiteralPath = $localFile.FullName
                                             ErrorAction = 'Stop'
                                         }
-                                        Remove-SFTPItem @sessionParams @removeParams
+                                        Remove-Item @removeParams
 
                                         $fileLocked = $false
-
-                                        [PSCustomObject]@{
-                                            DateTime    = $result.DateTime.AddSeconds(-1)
-                                            Source      = $result.Source
-                                            Destination = $result.Destination
-                                            FileName    = $result.Name
-                                            FileLength  = $result.Length
-                                            Action      = @('Removed duplicate file from SFTP server')
-                                            Error       = $null
-                                        }
+                                        $result.Action += 'removed duplicate file from local file system'
                                     }
                                     catch {
                                         $errorMessage = $_
@@ -297,87 +324,95 @@ try {
                                 }
 
                                 if ($fileLocked) {
-                                    throw "Failed removing duplicate file from the SFTP server after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds (file in use): $errorMessage"
+                                    throw "Failed removing duplicate file from the local file system after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds (file in use): $errorMessage"
                                 }
                             }
                             else {
-                                throw 'Duplicate file on SFTP server, use Option.OverwriteFile if desired'
+                                throw 'Duplicate file on local file system, use Option.OverwriteFile if desired'
                             }
                         }
                         #endregion
 
-                        #region Rename source file to temp file
-                        $retryCount = 0
-                        $fileLocked = $true
+                        #region Rename source file to temp file on SFTP server
+                        if (-not $failedFile) {
+                            $retryCount = 0
+                            $fileLocked = $true
 
-                        while (
-                            ($fileLocked) -and
-                            ($retryCount -lt $RetryCountOnLockedFiles)
-                        ) {
-                            try {
-                                Write-Verbose "Rename source file to temp file '$($tempFile.UploadFileName)'"
-                                $file |
-                                Rename-Item -NewName $tempFile.UploadFileName
-                                $fileLocked = $false
-                            }
-                            catch {
-                                $errorMessage = $_
-                                $Error.RemoveAt(0)
-                                $retryCount++
-                                Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
-                                Start-Sleep -Seconds $RetryWaitSeconds
-                            }
-                        }
+                            while (
+                                ($fileLocked) -and
+                                ($retryCount -lt $RetryCountOnLockedFiles)
+                            ) {
+                                try {
+                                    $params = @{
+                                        Path    = $file.FullName
+                                        NewName = $tempFile.DownloadFileName
+                                    }
 
-                        if ($fileLocked) {
-                            throw "Failed renaming the source file after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds (file in use): $errorMessage"
+                                    Write-Verbose "rename source file to temp file '$($params.NewName)'"
+
+                                    Rename-SFTPFile @sessionParams @params
+
+                                    $fileLocked = $false
+                                }
+                                catch {
+                                    $errorMessage = $_
+                                    $Error.RemoveAt(0)
+                                    $retryCount++
+                                    Write-Warning "File locked, wait $RetryWaitSeconds seconds, attempt $retryCount/$RetryCountOnLockedFiles"
+                                    Start-Sleep -Seconds $RetryWaitSeconds
+                                }
+                            }
+
+                            if ($fileLocked) {
+                                throw "Failed renaming file on the SFTP server after multiple attempts within $($RetryCountOnLockedFiles * $RetryWaitSeconds) seconds (file in use): $errorMessage"
+                            }
                         }
                         #endregion
 
-                        #region Upload temp file to SFTP server
+                        #region download temp file from the SFTP server
                         try {
                             $params = @{
-                                Path        = $tempFile.UploadFilePath
-                                Destination = $SftpPath
+                                Path        = $tempFile.DownloadFilePath
+                                Destination = $path.Destination
                             }
 
-                            Write-Verbose 'Upload temp file'
-                            Set-SFTPItem @sessionParams @params
+                            Write-Verbose 'Download temp file'
+                            Get-SFTPItem @sessionParams @params
                         }
                         catch {
-                            $errorMessage = "Failed to upload file '$($tempFile.UploadFilePath)': $_"
+                            $M = "Failed to download file '$($tempFile.DownloadFilePath)': $_"
                             $Error.RemoveAt(0)
-                            throw $errorMessage
+                            throw $M
                         }
                         #endregion
 
-                        #region Rename file on SFTP server
+                        #region Rename temp file
                         try {
-                            Write-Verbose "Rename temp file on SFTP server to '$($result.FileName)'"
+                            Write-Verbose 'Rename temp file'
 
                             $params = @{
-                                Path    = $SftpPath + $tempFile.UploadFileName
-                                NewName = $result.FileName
+                                LiteralPath = Join-Path $path.Destination $tempFile.DownloadFileName
+                                NewName     = $result.FileName
                             }
-                            Rename-SFTPFile @sessionParams @params
+                            Rename-Item @params
                         }
                         catch {
-                            $errorMessage = "Failed to rename the file on the SFTP server from '$($tempFile.UploadFileName)' to '$($result.FileName)': $_"
+                            $M = "Failed to rename the file '$($params.LiteralPath)' to '$($result.FileName)': $_"
                             $Error.RemoveAt(0)
-                            throw $errorMessage
+                            throw $M
                         }
                         #endregion
 
-                        #region Remove local temp file
+                        #region Remove file from the SFTP server
                         try {
-                            Write-Verbose 'Remove local temp file'
+                            Write-Verbose 'Remove temp file'
 
-                            $tempFile.UploadFilePath | Remove-Item -Force
+                            Remove-SFTPItem @sessionParams -Path $tempFile.DownloadFilePath
                         }
                         catch {
-                            $errorMessage = "Failed to remove the local temp file '$($tempFile.UploadFilePath)': $_"
+                            $M = "Failed to remove file '$($tempFile.DownloadFilePath)': $_"
                             $Error.RemoveAt(0)
-                            throw $errorMessage
+                            throw $M
                         }
                         #endregion
 
@@ -385,15 +420,17 @@ try {
                     }
                     catch {
                         #region Rename temp file back to original file name
-                        if (
-                            Test-Path -LiteralPath $tempFile.UploadFilePath -PathType 'Leaf'
-                        ) {
-                            try {
-                                Write-Warning 'Upload failed'
-                                Write-Verbose "Rename temp file '$($tempFile.UploadFilePath)' back to its original name '$($file.Name)'"
+                        $testPathParams = @{
+                            LiteralPath = Join-Path $path.Destination ($result.FileName + $PartialFileExtension.Download)
+                            PathType    = 'Leaf'
+                        }
 
-                                $tempFile.UploadFilePath |
-                                Rename-Item -NewName $file.Name
+                        if (Test-Path @testPathParams) {
+                            try {
+                                Write-Warning 'Download failed'
+                                Write-Verbose "Remove incomplete downloaded file '$($testPathParams.LiteralPath)'"
+
+                                $testPathParams.LiteralPath | Remove-Item
                             }
                             catch {
                                 [PSCustomObject]@{
@@ -403,7 +440,7 @@ try {
                                     FileName    = $tempFile.Name
                                     FileLength  = $result.Length
                                     Action      = @()
-                                    Error       = "Failed to rename temp file '$($tempFile.UploadFilePath)' back to its original name '$($file.Name)': $_"
+                                    Error       = "Failed to remove incomplete downloaded file '$($testPathParams.LiteralPath)': $_"
                                 }
 
                                 $Error.RemoveAt(0)
