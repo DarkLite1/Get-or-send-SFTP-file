@@ -672,7 +672,7 @@ Describe 'Download from the SFTP server' {
             It 'call Get-SFTPItem to download the file' {
                 Should -Invoke Get-SFTPItem -Times 1 -Exactly -Scope Context
             }
-        }  -Tag test
+        }
         Context 'false' {
             BeforeAll {
                 if (-not (Test-Path $testFile)) {
@@ -681,17 +681,22 @@ Describe 'Download from the SFTP server' {
 
                 $testNewParams.OverwriteFile = $false
 
+                $Error.Clear()
+
                 $testResults = .$testScript @testNewParams
             }
-            It 'the duplicate file on the SFTP server is not overwritten' {
-                Should -Not -Invoke Remove-SFTPItem -Scope Context
+            It 'do not call Get-SFTPItem to download the file' {
+                Should -Not -Invoke Get-SFTPItem -Times 1 -Exactly -Scope Context
             }
-            It 'return an object with results' {
+            It '1 object is returned' {
                 $testResults | Should -HaveCount 1
 
                 $testResults.Error | Should -Be 'Duplicate file on SFTP server, use Option.OverwriteFile if desired'
             }
-        }
+            It 'errors in the script scope are clean' {
+                $error | Should -HaveCount 0
+            }
+        } -Tag test
     }
     Context 'when FileExtensions is' {
         BeforeAll {
