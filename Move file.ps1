@@ -178,8 +178,12 @@ try {
                     if ($FileExtensions) {
                         Write-Verbose "Select files with extension '$FileExtensions'"
 
+                        $fileExtensionFilter = (
+                            $FileExtensions | ForEach-Object { "$_$" }
+                        ) -join '|'
+
                         $filesToDownload = $filesToDownload | Where-Object {
-                            $FileExtensions -contains $_.Extension
+                            $_.Name -match $fileExtensionFilter
                         }
                     }
 

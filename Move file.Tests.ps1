@@ -697,70 +697,69 @@ Describe 'Download from the SFTP server' {
             It 'errors are handled within the script' {
                 $error | Should -HaveCount 0
             }
-        } -Tag test
+        }
     }
     Context 'when FileExtensions is' {
         BeforeAll {
             $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
                 @{
-                    Source      = (New-Item 'TestDrive:\Upload' -ItemType 'Directory').FullName
-                    Destination = 'sftp:/data/'
+                    Source      = 'sftp:/data/'
+                    Destination = (New-Item 'TestDrive:\pl' -ItemType 'Directory').FullName
                 }
             )
-        }
-        It 'empty, all files are uploaded' {
-            $testNewParams.FileExtensions = @()
 
             $testFiles = @(
-                'file.txt'
-                'file.xml'
-                'file.jpg'
-            ) | ForEach-Object {
-                New-Item -Path (Join-Path $testNewParams.Paths[1].Source $_) -ItemType 'File'
+                @{
+                    Name     = 'b.txt'
+                    FullName = '/data/b.txt'
+                }
+                @{
+                    Name     = 'c.jpg'
+                    FullName = '/data/c.jpg'
+                }
+                @{
+                    Name     = 'd.txt.docx'
+                    FullName = '/data/d.docx'
+                }
+            )
+
+            Mock Get-SFTPChildItem {
+                $testFiles
             }
+        }
+        It 'empty, all files are downloaded' {
+            $testNewParams.FileExtensions = @()
 
             .$testScript @testNewParams
 
             $testFiles | ForEach-Object {
-                Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope Context -ParameterFilter {
-                    ($Path -eq "$($_.FullName).UploadInProgress") -and
-                    ($Destination -eq $testNewParams.Paths[1].Destination.TrimStart('sftp:')) -and
+                Should -Invoke Get-SFTPItem -Times 1 -Exactly -Scope Context -ParameterFilter {
+                    ($Path -eq "$($_.FullName).DownloadInProgress") -and
+                    ($Destination -eq $testNewParams.Paths[0].Destination.TrimStart('sftp:')) -and
                     ($SessionId -eq 1)
                 }
             }
         }
-        It 'not empty, only specific files are uploaded' {
-            $testNewParams.FileExtensions = @('.txt', '.xml')
-
-            $testFiles = @(
-                'file.txt'
-                'file.xml'
-                'file.jpg'
-            ) | ForEach-Object {
-                New-Item -Path (Join-Path $testNewParams.Paths[1].Source $_) -ItemType 'File'
-            }
+        It 'not empty, only specific files are downloaded' {
+            $testNewParams.FileExtensions = @('.txt', '.jpg')
 
             .$testScript @testNewParams
 
-            Should -Invoke Set-SFTPItem -Times 2 -Exactly
+            Should -Invoke Get-SFTPItem -Times 2 -Exactly -Scope Context
 
-            foreach ($testFile in $testFiles) {
-                if ($testFile.Extension -eq '.jpg') {
-                    Should -Not -Invoke Set-SFTPItem -ParameterFilter {
-                        ($Path -eq "$($testFile.FullName).UploadInProgress") -and
-                        ($Destination -eq $testNewParams.Paths[1].Destination.TrimStart('sftp:')) -and
-                        ($SessionId -eq 1)
-                    }
-                    Continue
+            $testFiles.Where(
+                {
+                    ($_.Name -like '*.txt') -or
+                    ($_.Name -like '*.jpg')
                 }
-
-                Should -Invoke Set-SFTPItem -Times 1 -Exactly -ParameterFilter {
-                    ($Path -eq "$($testFile.FullName).UploadInProgress") -and
-                    ($Destination -eq $testNewParams.Paths[1].Destination.TrimStart('sftp:')) -and
+            ) | ForEach-Object {
+                Should -Invoke Get-SFTPItem -Times 1 -Exactly -Scope Context -ParameterFilter {
+                    ($Path -eq "$($_.FullName).DownloadInProgress") -and
+                    ($Destination -eq $testNewParams.Paths[0].Destination.TrimStart('sftp:')) -and
                     ($SessionId -eq 1)
                 }
             }
-        }
-    } -Skip
+        }  -Tag test
+    }
 }
