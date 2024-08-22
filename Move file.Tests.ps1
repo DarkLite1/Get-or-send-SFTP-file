@@ -55,7 +55,7 @@ Describe 'the mandatory parameters are' {
 }
 Describe 'create an SFTP session with' {
     It 'UserName and Password' {
-        $testNewParams = $testParams.Clone()
+        $testNewParams = Copy-ObjectHC $testParams
         $testNewParams.Paths = @(
             @{
                 Source      = (New-Item 'TestDrive:\po' -ItemType 'Directory').FullName
@@ -76,7 +76,7 @@ Describe 'create an SFTP session with' {
         }
     }
     It 'SftpOpenSshKeyFile' {
-        $testNewParams = $testParams.Clone()
+        $testNewParams = Copy-ObjectHC $testParams
         $testNewParams.Paths = @(
             @{
                 Source      = (New-Item 'TestDrive:\p' -ItemType 'Directory').FullName
@@ -110,7 +110,7 @@ Describe 'Upload to SFTP server' {
     }
     Context 'create an object with Error property when' {
         It 'Paths.Source does not exist' {
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths[0].Source = 'c:\doesNotExist'
 
             $testResult = .$testScript @testNewParams
@@ -119,7 +119,7 @@ Describe 'Upload to SFTP server' {
             Should -Be "Source folder '$($testNewParams.Paths[0].Source)' not found"
         }
         It 'the SFTP path does not exist' {
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
                 @{
                     Source      = $testSource.Folder
@@ -137,7 +137,7 @@ Describe 'Upload to SFTP server' {
             Should -Be "Failed upload: Path '/notExisting/' not found on the SFTP server"
         }
         It 'the upload fails' {
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
                 @{
                     Source      = $testSource.Folder
@@ -161,7 +161,7 @@ Describe 'Upload to SFTP server' {
     }
     Context 'throw a terminating error when' {
         It 'authentication to the SFTP server fails' {
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
                 @{
                     Source      = $testSource.Folder
@@ -178,7 +178,7 @@ Describe 'Upload to SFTP server' {
     }
     Context 'do not start an SFTP sessions when' {
         It 'there is nothing to upload' {
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @{
                 Source      = (New-Item 'TestDrive:/emptyFolder' -ItemType 'Directory').FullName
                 Destination = 'sftp:/data/'
@@ -194,7 +194,7 @@ Describe 'Upload to SFTP server' {
     }
     Context 'when files are found in the source folder' {
         BeforeAll {
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
                 @{
                     Source      = (New-Item 'TestDrive:/z' -ItemType 'Directory').FullName
@@ -255,7 +255,7 @@ Describe 'Upload to SFTP server' {
                 FullName = 'sftpPath\a.txt'
             }
 
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
                 @{
                     Source      = (New-Item 'TestDrive:/y' -ItemType 'Directory').FullName
@@ -312,7 +312,7 @@ Describe 'Upload to SFTP server' {
     }
     Context 'when FileExtensions is' {
         BeforeAll {
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
                 @{
                     Source      = (New-Item 'TestDrive:\Upload' -ItemType 'Directory').FullName
@@ -411,7 +411,7 @@ Describe 'Download from the SFTP server' {
 
             Should -Not -Invoke Get-SFTPItem
             Should -Not -Invoke Rename-SFTPFile
-        } -Tag test
+        }
         It 'the SFTP file list cannot be retrieved' {
             Mock Get-SFTPChildItem {
                 throw 'Nope'
@@ -453,7 +453,7 @@ Describe 'Download from the SFTP server' {
     }
     Context 'throw a terminating error when' {
         It 'authentication to the SFTP server fails' {
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
                 @{
                     Source      = 'sftp:/data/'
@@ -627,26 +627,29 @@ Describe 'Download from the SFTP server' {
                 }
             }
         }
-    } #-Tag test
+    }
     Context 'OverwriteFile' {
         BeforeAll {
             $testSFtpFile = @{
                 Name     = 'a.txt'
-                FullName = 'sftpPath\a.txt'
+                FullName = '\data\a.txt'
             }
 
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
                 @{
-                    Source      = (New-Item 'TestDrive:/y' -ItemType 'Directory').FullName
-                    Destination = 'sftp:/data/'
+                    Source      = 'sftp:/data/'
+                    Destination = (New-Item 'TestDrive:/y' -ItemType 'Directory').FullName
                 }
             )
 
-            $testFile = New-Item "$($testNewParams.Paths[1].Source)\$($testSFtpFile.Name)" -ItemType 'File'
+            $testFile = New-Item "$($testNewParams.Paths[0].Destination)\$($testSFtpFile.Name)" -ItemType 'File'
 
             Mock Get-SFTPChildItem {
                 $testSFtpFile
+            }
+            Mock Get-SFTPItem {
+                $null = New-Item -Path "$($testFile.FullName).DownloadInProgress" -ItemType 'File'
             }
         }
         Context 'true' {
@@ -655,21 +658,21 @@ Describe 'Download from the SFTP server' {
 
                 $testResults = .$testScript @testNewParams
             }
-            It 'the duplicate file on the SFTP server is removed' {
-                Should -Invoke Remove-SFTPItem -Times 1 -Exactly -Scope Context -ParameterFilter {
-                    ($Path -eq $testSFtpFile.FullName) -and
-                    ($SessionId -eq 1)
-                }
-            }
-            It 'the file is uploaded' {
-                Should -Invoke Set-SFTPItem -Times 1 -Exactly -Scope Context
-            }
-            It 'return an object with results' {
+            It '2 objects are returned' {
                 $testResults | Should -HaveCount 2
-
-                $testResults[0].Action | Should -Be 'Removed duplicate file from SFTP server'
             }
-        }
+            It 'one object for the removed duplicate file' {
+                $testResults[0].FileName | Should -Be $testFile.Name
+                $testResults[0].Action | Should -Be 'Removed duplicate file from the file system'
+            }
+            It 'one object for the downloaded file' {
+                $testResults[1].FileName | Should -Be $testFile.Name
+                $testResults[1].Action | Should -Be 'File moved'
+            }
+            It 'call Get-SFTPItem to download the file' {
+                Should -Invoke Get-SFTPItem -Times 1 -Exactly -Scope Context
+            }
+        }  -Tag test
         Context 'false' {
             BeforeAll {
                 if (-not (Test-Path $testFile)) {
@@ -689,10 +692,10 @@ Describe 'Download from the SFTP server' {
                 $testResults.Error | Should -Be 'Duplicate file on SFTP server, use Option.OverwriteFile if desired'
             }
         }
-    } -Skip
+    }
     Context 'when FileExtensions is' {
         BeforeAll {
-            $testNewParams = $testParams.Clone()
+            $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
                 @{
                     Source      = (New-Item 'TestDrive:\Upload' -ItemType 'Directory').FullName

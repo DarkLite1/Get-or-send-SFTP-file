@@ -305,14 +305,25 @@ try {
                                     ($retryCount -lt $RetryCountOnLockedFiles)
                                 ) {
                                     try {
+                                        Write-Verbose 'Remove duplicate file'
+
                                         $removeParams = @{
                                             LiteralPath = $localFile.FullName
                                             ErrorAction = 'Stop'
                                         }
                                         Remove-Item @removeParams
 
+                                        [PSCustomObject]@{
+                                            DateTime    = $result.DateTime.AddSeconds(-1)
+                                            Source      = $result.Source
+                                            Destination = $result.Destination
+                                            FileName    = $result.FileName
+                                            FileLength  = $result.FileLength
+                                            Action      = @('Removed duplicate file from the file system')
+                                            Error       = $null
+                                        }
+
                                         $fileLocked = $false
-                                        $result.Action += 'removed duplicate file from local file system'
                                     }
                                     catch {
                                         $errorMessage = $_
@@ -348,7 +359,7 @@ try {
                                         NewName = $tempFile.DownloadFileName
                                     }
 
-                                    Write-Verbose "rename source file on SFTP server to temp file '$($params.NewName)'"
+                                    Write-Verbose "Rename source file on SFTP server to temp file '$($params.NewName)'"
 
                                     Rename-SFTPFile @sessionParams @params
 
@@ -442,8 +453,8 @@ try {
                                     DateTime    = Get-Date
                                     Source      = $result.Source
                                     Destination = $result.Destination
-                                    FileName    = $tempFile.Name
-                                    FileLength  = $result.Length
+                                    FileName    = ($result.FileName + $PartialFileExtension.Download)
+                                    FileLength  = $result.FileLength
                                     Action      = @()
                                     Error       = "Failed to remove incomplete downloaded file '$($testPathParams.LiteralPath)': $_"
                                 }
