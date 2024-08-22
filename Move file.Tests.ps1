@@ -734,7 +734,7 @@ Describe 'Download from the SFTP server' {
             .$testScript @testNewParams
 
             $testFiles | ForEach-Object {
-                Should -Invoke Get-SFTPItem -Times 1 -Exactly -Scope Context -ParameterFilter {
+                Should -Invoke Get-SFTPItem -Times 1 -Exactly -ParameterFilter {
                     ($Path -eq "$($_.FullName).DownloadInProgress") -and
                     ($Destination -eq $testNewParams.Paths[0].Destination.TrimStart('sftp:')) -and
                     ($SessionId -eq 1)
@@ -746,7 +746,7 @@ Describe 'Download from the SFTP server' {
 
             .$testScript @testNewParams
 
-            Should -Invoke Get-SFTPItem -Times 2 -Exactly -Scope Context
+            Should -Invoke Get-SFTPItem -Times 2 -Exactly
 
             $testFiles.Where(
                 {
@@ -754,12 +754,12 @@ Describe 'Download from the SFTP server' {
                     ($_.Name -like '*.jpg')
                 }
             ) | ForEach-Object {
-                Should -Invoke Get-SFTPItem -Times 1 -Exactly -Scope Context -ParameterFilter {
+                Should -Invoke Get-SFTPItem -Times 1 -Exactly -ParameterFilter {
                     ($Path -eq "$($_.FullName).DownloadInProgress") -and
                     ($Destination -eq $testNewParams.Paths[0].Destination.TrimStart('sftp:')) -and
                     ($SessionId -eq 1)
                 }
             }
-        }  -Tag test
+        }
     }
 }
