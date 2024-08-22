@@ -162,7 +162,7 @@ try {
                 Write-Verbose 'Test download folder exists'
 
                 if (-not (Test-Path -LiteralPath $path.Destination -PathType 'Container')) {
-                    throw "Path '$($path.Destination)' not found"
+                    throw "Download folder '$($path.Destination)' not found"
                 }
                 #endregion
 
@@ -193,9 +193,9 @@ try {
                     Write-Verbose "Found $($filesToDownload.Count) file(s) to download"
                 }
                 catch {
-                    $errorMessage = "Failed retrieving SFTP files: $_"
+                    $M = "Failed retrieving the list of SFTP files: $_"
                     $Error.RemoveAt(0)
-                    throw $errorMessage
+                    throw $M
                 }
                 #endregion
 
@@ -232,7 +232,7 @@ try {
 
                         $incompleteFile | Remove-Item
 
-                        $result.Action += 'Removed incomplete downloaded file'
+                        $result.Action += 'Removed incomplete downloaded file from the destination folder'
                     }
                     catch {
                         $result.Error = "Failed removing incomplete downloaded file: $_"
@@ -348,7 +348,7 @@ try {
                                         NewName = $tempFile.DownloadFileName
                                     }
 
-                                    Write-Verbose "rename source file to temp file '$($params.NewName)'"
+                                    Write-Verbose "rename source file on SFTP server to temp file '$($params.NewName)'"
 
                                     Rename-SFTPFile @sessionParams @params
 
@@ -369,14 +369,14 @@ try {
                         }
                         #endregion
 
-                        #region download temp file from the SFTP server
+                        #region Download temp file from the SFTP server
                         try {
+                            Write-Verbose 'Download temp file'
+
                             $params = @{
                                 Path        = $tempFile.DownloadFilePath
                                 Destination = $path.Destination
                             }
-
-                            Write-Verbose 'Download temp file'
                             Get-SFTPItem @sessionParams @params
                         }
                         catch {
@@ -416,7 +416,12 @@ try {
                         }
                         #endregion
 
-                        $result.Action += 'File moved'
+                        if ($failedFile) {
+                            $result.Action += 'File moved after previous unsuccessful move'
+                        }
+                        else {
+                            $result.Action += 'File moved'
+                        }
                     }
                     catch {
                         #region Rename temp file back to original file name
@@ -458,7 +463,7 @@ try {
                 }
             }
             catch {
-                $M = "Failed upload: $_"
+                $M = "Failed download: $_"
                 Write-Warning $M
 
                 [PSCustomObject]@{
