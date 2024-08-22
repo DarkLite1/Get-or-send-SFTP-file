@@ -691,9 +691,10 @@ Describe 'Download from the SFTP server' {
             It '1 object is returned' {
                 $testResults | Should -HaveCount 1
 
-                $testResults.Error | Should -Be 'Duplicate file on SFTP server, use Option.OverwriteFile if desired'
+                $testResults.FileName | Should -Be $testFile.Name
+                $testResults.Error | Should -Be 'Duplicate file on local file system, use Option.OverwriteFile if desired'
             }
-            It 'errors in the script scope are clean' {
+            It 'errors are handled within the script' {
                 $error | Should -HaveCount 0
             }
         } -Tag test
