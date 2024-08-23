@@ -916,8 +916,6 @@ try {
             }
         }
 
-        Write-Verbose "Found $($uploadPaths.Count) source path(s) with files to upload"
-
         $uploadPaths | ForEach-Object @foreachParams
 
         Write-Verbose 'All upload jobs finished'
