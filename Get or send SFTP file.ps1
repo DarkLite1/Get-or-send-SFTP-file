@@ -675,7 +675,7 @@ End {
                 #region Create HTML Error row
                 if ($action.Job.Error) {
                     $htmlTable += "
-                    <tr style=`"background-color: red;`">
+                    <tr style=`"background-color: #f78474;`">
                         <td colspan=`"3`">ERROR: $($action.Job.Error)</td>
                     </tr>"
                 }
@@ -710,7 +710,7 @@ End {
                                 $counter.Action.Errors -or
                                 $counter.Path.Errors
                             ) {
-                                '<tr style="background-color: red">'
+                                '<tr style="background-color: #f78474">'
                             }
                             else {
                                 '<tr>'
