@@ -77,79 +77,76 @@ try {
 
     $VerbosePreference = 'Continue'
 
-    $downloadPaths, $uploadPaths = $Paths.where(
-        { $_.Source -like 'sftp*' }, 'Split'
-    )
+    $scriptBlock = {
+        $path = $_
 
-    if ($downloadPaths) {
-        Write-Verbose "Found $($downloadPaths.Count) download folder(s)"
+        Write-Verbose "Source '$($path.Source)' Destination '$($path.Destination)'"
 
-        $scriptBlock = {
+        #region Declare variables for code running in parallel
+        if (-not $MaxConcurrentJobs) {
+            $ErrorActionPreference = $using:ErrorActionPreference
+            $ProgressPreference = $using:ProgressPreference
+            $VerbosePreference = $using:VerbosePreference
+            $FileExtensions = $using:FileExtensions
+            $PartialFileExtension = $using:PartialFileExtension
+            $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
+            $RetryWaitSeconds = $using:RetryWaitSeconds
+            $OverwriteFile = $using:OverwriteFile
+
+            # $sftpSession = $using:sftpSession
+            $SftpComputerName = $using:SftpComputerName
+            $SftpUserName = $using:SftpUserName
+            $SftpPassword = $using:SftpPassword
+            $SftpOpenSshKeyFile = $using:SftpOpenSshKeyFile
+        }
+        #endregion
+
+        Function Open-SftpSessionHM {
+            <#
+            .SYNOPSIS
+                Open an SFTP session to the SFTP server
+                #>
+
             try {
-                $path = $_
+                #region Create credential
+                Write-Verbose 'Create SFTP credential'
 
-                Write-Verbose "Source '$($path.Source)' Destination '$($path.Destination)'"
-
-                #region Declare variables for code running in parallel
-                if (-not $MaxConcurrentJobs) {
-                    $ErrorActionPreference = $using:ErrorActionPreference
-                    $ProgressPreference = $using:ProgressPreference
-                    $VerbosePreference = $using:VerbosePreference
-                    $FileExtensions = $using:FileExtensions
-                    $PartialFileExtension = $using:PartialFileExtension
-                    $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
-                    $RetryWaitSeconds = $using:RetryWaitSeconds
-                    $OverwriteFile = $using:OverwriteFile
-
-                    # $sftpSession = $using:sftpSession
-                    $SftpComputerName = $using:SftpComputerName
-                    $SftpUserName = $using:SftpUserName
-                    $SftpPassword = $using:SftpPassword
-                    $SftpOpenSshKeyFile = $using:SftpOpenSshKeyFile
+                $params = @{
+                    TypeName     = 'System.Management.Automation.PSCredential'
+                    ArgumentList = $SftpUserName, $SftpPassword
                 }
+                $sftpCredential = New-Object @params
                 #endregion
 
                 #region Open SFTP session
-                Function Open-SftpSessionHM {
-                    <#
-                    .SYNOPSIS
-                        Open an SFTP session to the SFTP server
-                    #>
+                Write-Verbose 'Open SFTP session'
 
-                    try {
-                        #region Create credential
-                        Write-Verbose 'Create SFTP credential'
-
-                        $params = @{
-                            TypeName     = 'System.Management.Automation.PSCredential'
-                            ArgumentList = $SftpUserName, $SftpPassword
-                        }
-                        $sftpCredential = New-Object @params
-                        #endregion
-
-                        #region Open SFTP session
-                        Write-Verbose 'Open SFTP session'
-
-                        $params = @{
-                            ComputerName = $SftpComputerName
-                            Credential   = $sftpCredential
-                            AcceptKey    = $true
-                            Force        = $true
-                        }
-
-                        if ($SftpOpenSshKeyFile) {
-                            $params.KeyString = $SftpOpenSshKeyFile
-                        }
-
-                        New-SFTPSession @params
-                        #endregion
-                    }
-                    catch {
-                        $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
-                        $Error.RemoveAt(0)
-                        throw $M
-                    }
+                $params = @{
+                    ComputerName = $SftpComputerName
+                    Credential   = $sftpCredential
+                    AcceptKey    = $true
+                    Force        = $true
                 }
+
+                if ($SftpOpenSshKeyFile) {
+                    $params.KeyString = $SftpOpenSshKeyFile
+                }
+
+                New-SFTPSession @params
+                #endregion
+            }
+            catch {
+                $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
+                $Error.RemoveAt(0)
+                throw $M
+            }
+        }
+
+        if ($path.Source -like 'sftp*' ) {
+            try {
+                Write-Verbose 'Download from SFTP server'
+
+                #region Open SFTP session
 
                 $sftpSession = Open-SftpSessionHM
 
@@ -504,53 +501,9 @@ try {
                 $Error.RemoveAt(0)
             }
         }
-
-        #region Run code serial or parallel
-        $foreachParams = if ($MaxConcurrentJobs -eq 1) {
-            @{
-                Process = $scriptBlock
-            }
-        }
         else {
-            @{
-                Parallel      = $scriptBlock
-                ThrottleLimit = $MaxConcurrentJobs
-            }
-        }
-
-        $downloadPaths | ForEach-Object @foreachParams
-
-        Write-Verbose 'All download jobs finished'
-        #endregion
-    }
-
-    if ($uploadPaths) {
-        Write-Verbose "Found $($uploadPaths.Count) upload folder(s)"
-
-        $scriptBlock = {
             try {
-                $path = $_
-
-                Write-Verbose "Source '$($path.Source)' Destination '$($path.Destination)'"
-
-                #region Declare variables for code running in parallel
-                if (-not $MaxConcurrentJobs) {
-                    $ErrorActionPreference = $using:ErrorActionPreference
-                    $ProgressPreference = $using:ProgressPreference
-                    $VerbosePreference = $using:VerbosePreference
-                    $FileExtensions = $using:FileExtensions
-                    $PartialFileExtension = $using:PartialFileExtension
-                    $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
-                    $RetryWaitSeconds = $using:RetryWaitSeconds
-                    $OverwriteFile = $using:OverwriteFile
-
-                    # $sftpSession = $using:sftpSession
-                    $SftpComputerName = $using:SftpComputerName
-                    $SftpUserName = $using:SftpUserName
-                    $SftpPassword = $using:SftpPassword
-                    $SftpOpenSshKeyFile = $using:SftpOpenSshKeyFile
-                }
-                #endregion
+                Write-Verbose 'Upload to SFTP server'
 
                 #region Test source folder exists
                 Write-Verbose 'Test if source folder exists'
@@ -591,47 +544,6 @@ try {
                 #endregion
 
                 #region Open SFTP session
-                Function Open-SftpSessionHM {
-                    <#
-                    .SYNOPSIS
-                        Open an SFTP session to the SFTP server
-                    #>
-
-                    try {
-                        #region Create credential
-                        Write-Verbose 'Create SFTP credential'
-
-                        $params = @{
-                            TypeName     = 'System.Management.Automation.PSCredential'
-                            ArgumentList = $SftpUserName, $SftpPassword
-                        }
-                        $sftpCredential = New-Object @params
-                        #endregion
-
-                        #region Open SFTP session
-                        Write-Verbose 'Open SFTP session'
-
-                        $params = @{
-                            ComputerName = $SftpComputerName
-                            Credential   = $sftpCredential
-                            AcceptKey    = $true
-                            Force        = $true
-                        }
-
-                        if ($SftpOpenSshKeyFile) {
-                            $params.KeyString = $SftpOpenSshKeyFile
-                        }
-
-                        New-SFTPSession @params
-                        #endregion
-                    }
-                    catch {
-                        $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
-                        $Error.RemoveAt(0)
-                        throw $M
-                    }
-                }
-
                 $sftpSession = Open-SftpSessionHM
 
                 $sessionParams = @{
@@ -729,8 +641,8 @@ try {
                                 $fileLocked = $true
 
                                 while (
-                                    ($fileLocked) -and
-                                    ($retryCount -lt $RetryCountOnLockedFiles)
+                                        ($fileLocked) -and
+                                        ($retryCount -lt $RetryCountOnLockedFiles)
                                 ) {
                                     try {
                                         Write-Verbose 'Remove duplicate file on SFTP server'
@@ -777,8 +689,8 @@ try {
                         $fileLocked = $true
 
                         while (
-                            ($fileLocked) -and
-                            ($retryCount -lt $RetryCountOnLockedFiles)
+                                ($fileLocked) -and
+                                ($retryCount -lt $RetryCountOnLockedFiles)
                         ) {
                             try {
                                 Write-Verbose "Rename source file to temp file '$($tempFile.UploadFileName)'"
@@ -901,25 +813,25 @@ try {
                 $Error.RemoveAt(0)
             }
         }
-
-        #region Run code serial or parallel
-        $foreachParams = if ($MaxConcurrentJobs -eq 1) {
-            @{
-                Process = $scriptBlock
-            }
-        }
-        else {
-            @{
-                Parallel      = $scriptBlock
-                ThrottleLimit = $MaxConcurrentJobs
-            }
-        }
-
-        $uploadPaths | ForEach-Object @foreachParams
-
-        Write-Verbose 'All upload jobs finished'
-        #endregion
     }
+
+    #region Run code serial or parallel
+    $foreachParams = if ($MaxConcurrentJobs -eq 1) {
+        @{
+            Process = $scriptBlock
+        }
+    }
+    else {
+        @{
+            Parallel      = $scriptBlock
+            ThrottleLimit = $MaxConcurrentJobs
+        }
+    }
+
+    $Paths | ForEach-Object @foreachParams
+
+    Write-Verbose 'All download jobs finished'
+    #endregion
 }
 catch {
     $M = $_
