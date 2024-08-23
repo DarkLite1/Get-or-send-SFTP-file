@@ -53,7 +53,7 @@ Param (
     [Parameter(Mandatory)]
     [String]$SftpUserName,
     [Parameter(Mandatory)]
-    [HashTable[]]$Paths,
+    [PSCustomObject[]]$Paths,
     [Parameter(Mandatory)]
     [Int]$MaxConcurrentJobs,
     [SecureString]$SftpPassword,
