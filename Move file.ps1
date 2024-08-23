@@ -528,55 +528,6 @@ try {
     if ($uploadPaths) {
         Write-Verbose "Found $($uploadPaths.Count) upload folder(s)"
 
-        $pathsWithFilesToUpload = @()
-
-        foreach ($path in $uploadPaths) {
-            Write-Verbose "Source folder '$($path.Source)'"
-
-            #region Test source folder exists
-            Write-Verbose 'Test if source folder exists'
-
-            if (-not (
-                    Test-Path -LiteralPath $path.Source -PathType 'Container')
-            ) {
-                [PSCustomObject]@{
-                    Source      = $path.Source
-                    Destination = $path.Destination
-                    FileName    = $null
-                    FileLength  = $null
-                    DateTime    = Get-Date
-                    Action      = @()
-                    Error       = "Path '$($path.Source)' not found on the file system"
-                }
-
-                Continue
-            }
-            #endregion
-
-            #region Test if there are files to upload
-            Write-Verbose 'Test if there are files in the source folder'
-
-            $filesToUpload = Get-ChildItem -LiteralPath $path.Source -File
-
-            if ($FileExtensions) {
-                $filesToUpload = $filesToUpload | Where-Object {
-                    $FileExtensions -contains $_.Extension
-                }
-            }
-
-            if ($filesToUpload) {
-                Write-Verbose "Found $($filesToUpload.Count) file(s) to upload"
-                $pathsWithFilesToUpload += $path
-            }
-            #endregion
-        }
-
-        if (-not $pathsWithFilesToUpload) {
-            Write-Verbose 'No files in source folder'
-            Write-Verbose 'Exit script'
-            exit
-        }
-
         $scriptBlock = {
             try {
                 $path = $_
@@ -602,14 +553,30 @@ try {
                 }
                 #endregion
 
+                #region Test source folder exists
+                Write-Verbose 'Test if source folder exists'
+
+                if (-not (
+                        Test-Path -LiteralPath $path.Source -PathType 'Container')
+                ) {
+                    return [PSCustomObject]@{
+                        Source      = $path.Source
+                        Destination = $path.Destination
+                        FileName    = $null
+                        FileLength  = $null
+                        DateTime    = Get-Date
+                        Action      = @()
+                        Error       = "Path '$($path.Source)' not found on the file system"
+                    }
+                }
+                #endregion
+
                 #region Get files to upload
                 Write-Verbose 'Get files in source folder'
 
                 $filesToUpload = Get-ChildItem -LiteralPath $path.Source -File
 
                 if ($FileExtensions) {
-                    Write-Verbose "Select files with extension '$FileExtensions'"
-
                     $filesToUpload = $filesToUpload | Where-Object {
                         $FileExtensions -contains $_.Extension
                     }
@@ -617,7 +584,8 @@ try {
 
                 if (-not $filesToUpload) {
                     Write-Verbose 'No files to upload'
-                    Continue
+                    Write-Verbose 'Exit script'
+                    return
                 }
 
                 Write-Verbose "Found $($filesToUpload.Count) file(s) to upload"
@@ -920,8 +888,7 @@ try {
                 }
             }
             catch {
-                $M = "Failed upload: $_"
-                Write-Warning $M
+                Write-Warning $_
 
                 [PSCustomObject]@{
                     DateTime    = Get-Date
@@ -930,7 +897,7 @@ try {
                     FileName    = $null
                     FileLength  = $null
                     Action      = @()
-                    Error       = $M
+                    Error       = $_
                 }
                 $Error.RemoveAt(0)
             }
@@ -951,7 +918,7 @@ try {
 
         Write-Verbose "Found $($uploadPaths.Count) source path(s) with files to upload"
 
-        $pathsWithFilesToUpload | ForEach-Object @foreachParams
+        $uploadPaths | ForEach-Object @foreachParams
 
         Write-Verbose 'All upload jobs finished'
         #endregion

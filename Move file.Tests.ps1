@@ -158,8 +158,6 @@ Describe 'Upload to SFTP server' {
 
             $error | Should -HaveCount 0
         }
-    }
-    Context 'throw a terminating error when' {
         It 'authentication to the SFTP server fails' {
             $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
@@ -173,8 +171,15 @@ Describe 'Upload to SFTP server' {
                 throw 'Failed authenticating'
             }
 
-            { .$testScript @testNewParams } | Should -Throw "Failed creating an SFTP session to '$($testNewParams.SftpComputerName)': Failed authenticating"
-        }
+            $error.Clear()
+
+            $testResult = .$testScript @testNewParams
+
+            $testResult.Error | Should -BeLike "Failed creating an SFTP session to '$($testNewParams.SftpComputerName)': Failed authenticating"
+            $testSource.FileFullName | Should -Exist
+
+            $error | Should -HaveCount 0
+        } -Tag test
     }
     Context 'do not start an SFTP sessions when' {
         It 'there is nothing to upload' {
