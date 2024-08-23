@@ -162,7 +162,7 @@ try {
                 Write-Verbose 'Test download folder exists'
 
                 if (-not (Test-Path -LiteralPath $path.Destination -PathType 'Container')) {
-                    throw "Download folder '$($path.Destination)' not found"
+                    throw "Path '$($path.Destination)' not found on the file system"
                 }
                 #endregion
 
@@ -208,7 +208,7 @@ try {
                     $localFiles = Get-ChildItem -LiteralPath $path.Destination -File
                 }
                 catch {
-                    $errorMessage = "Failed retrieving all local files: $_"
+                    $errorMessage = "Failed retrieving files in folder '$($path.Destination)': $_"
                     $Error.RemoveAt(0)
                     throw $errorMessage
                 }
@@ -239,7 +239,7 @@ try {
                         $result.Action += 'Removed incomplete downloaded file from the destination folder'
                     }
                     catch {
-                        $result.Error = "Failed removing incomplete downloaded file: $_"
+                        $result.Error = "Failed removing incomplete downloaded file '$($incompleteFile.Name)': $_"
                         Write-Warning $result.Error
                         $Error.RemoveAt(0)
                     }
@@ -343,7 +343,7 @@ try {
                                 }
                             }
                             else {
-                                throw 'Duplicate file on local file system, use Option.OverwriteFile if desired'
+                                throw "Duplicate file '$($result.FileName)' in folder '$($path.Destination)', use Option.OverwriteFile if desired"
                             }
                         }
                         #endregion
@@ -534,7 +534,7 @@ try {
                     FileLength  = $null
                     DateTime    = Get-Date
                     Action      = @()
-                    Error       = "Source folder '$($path.Source)' not found"
+                    Error       = "Path '$($path.Source)' not found on the file system"
                 }
 
                 Continue

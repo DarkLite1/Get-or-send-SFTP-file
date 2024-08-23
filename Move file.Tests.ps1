@@ -116,7 +116,7 @@ Describe 'Upload to SFTP server' {
             $testResult = .$testScript @testNewParams
 
             $testResult.Error |
-            Should -Be "Source folder '$($testNewParams.Paths[0].Source)' not found"
+            Should -Be "Path '$($testNewParams.Paths[0].Source)' not found on the file system"
         }
         It 'the SFTP path does not exist' {
             $testNewParams = Copy-ObjectHC $testParams
@@ -432,7 +432,7 @@ Describe 'Download from the SFTP server' {
             $testResult = .$testScript @testNewParams
 
             $testResult.Error |
-            Should -BeLike "*Download folder 'TestDrive:/notExisting/' not found"
+            Should -BeLike "*Path 'TestDrive:/notExisting/' not found on the file system"
 
             Should -Not -Invoke Get-SFTPItem
             Should -Not -Invoke Rename-SFTPFile
@@ -692,7 +692,7 @@ Describe 'Download from the SFTP server' {
                 $testResults | Should -HaveCount 1
 
                 $testResults.FileName | Should -Be $testFile.Name
-                $testResults.Error | Should -Be 'Duplicate file on local file system, use Option.OverwriteFile if desired'
+                $testResults.Error | Should -Be "Duplicate file '$($testFile.Name)' in folder '$($testNewParams.Paths[0].Destination)', use Option.OverwriteFile if desired"
             }
             It 'errors are handled within the script' {
                 $error | Should -HaveCount 0
