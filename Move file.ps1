@@ -69,12 +69,6 @@ Param (
 )
 
 try {
-    #region Set defaults
-    # workaround for https://github.com/PowerShell/PowerShell/issues/16894
-    $ProgressPreference = 'SilentlyContinue'
-    $ErrorActionPreference = 'Stop'
-    #endregion
-
     $VerbosePreference = 'Continue'
 
     $scriptBlock = {
@@ -82,10 +76,14 @@ try {
 
         Write-Verbose "Source '$($path.Source)' Destination '$($path.Destination)'"
 
+        #region Set defaults
+        # workaround for https://github.com/PowerShell/PowerShell/issues/16894
+        $ProgressPreference = 'SilentlyContinue'
+        $ErrorActionPreference = 'Stop'
+        #endregion
+
         #region Declare variables for code running in parallel
         if (-not $MaxConcurrentJobs) {
-            $ErrorActionPreference = $using:ErrorActionPreference
-            $ProgressPreference = $using:ProgressPreference
             $VerbosePreference = $using:VerbosePreference
 
             $FileExtensions = $using:FileExtensions
