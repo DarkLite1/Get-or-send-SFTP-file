@@ -490,8 +490,7 @@ try {
                 }
             }
             catch {
-                $M = "Failed download: $_"
-                Write-Warning $M
+                Write-Warning $_
 
                 [PSCustomObject]@{
                     DateTime    = Get-Date
@@ -500,7 +499,7 @@ try {
                     FileName    = $null
                     FileLength  = $null
                     Action      = @()
-                    Error       = $M
+                    Error       = $_
                 }
                 $Error.RemoveAt(0)
             }

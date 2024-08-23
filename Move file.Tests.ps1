@@ -134,7 +134,7 @@ Describe 'Upload to SFTP server' {
             $testResult = .$testScript @testNewParams
 
             $testResult.Error |
-            Should -Be "Failed upload: Path '/notExisting/' not found on the SFTP server"
+            Should -Be "Path '/notExisting/' not found on the SFTP server"
         }
         It 'the upload fails' {
             $testNewParams = Copy-ObjectHC $testParams
@@ -175,11 +175,11 @@ Describe 'Upload to SFTP server' {
 
             $testResult = .$testScript @testNewParams
 
-            $testResult.Error | Should -BeLike "Failed creating an SFTP session to '$($testNewParams.SftpComputerName)': Failed authenticating"
+            $testResult.Error | Should -Be "Failed creating an SFTP session to '$($testNewParams.SftpComputerName)': Failed authenticating"
             $testSource.FileFullName | Should -Exist
 
             $error | Should -HaveCount 0
-        } -Tag test
+        }
     }
     Context 'do not start an SFTP sessions when' {
         It 'there is nothing to upload' {
@@ -455,8 +455,6 @@ Describe 'Download from the SFTP server' {
 
             $error | Should -HaveCount 0
         }
-    }
-    Context 'throw a terminating error when' {
         It 'authentication to the SFTP server fails' {
             $testNewParams = Copy-ObjectHC $testParams
             $testNewParams.Paths = @(
@@ -470,7 +468,13 @@ Describe 'Download from the SFTP server' {
                 throw 'Failed authenticating'
             }
 
-            { .$testScript @testNewParams } | Should -Throw "Failed creating an SFTP session to '$($testNewParams.SftpComputerName)': Failed authenticating"
+            $error.Clear()
+
+            $testResult = .$testScript @testParams
+
+            $testResult.Error | Should -Be "Failed creating an SFTP session to '$($testNewParams.SftpComputerName)': Failed authenticating"
+
+            $error | Should -HaveCount 0
 
             Should -Not -Invoke Get-SFTPItem
             Should -Not -Invoke Rename-SFTPFile
