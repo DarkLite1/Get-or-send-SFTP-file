@@ -87,13 +87,13 @@ try {
             $ErrorActionPreference = $using:ErrorActionPreference
             $ProgressPreference = $using:ProgressPreference
             $VerbosePreference = $using:VerbosePreference
+
             $FileExtensions = $using:FileExtensions
             $PartialFileExtension = $using:PartialFileExtension
             $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
             $RetryWaitSeconds = $using:RetryWaitSeconds
             $OverwriteFile = $using:OverwriteFile
 
-            # $sftpSession = $using:sftpSession
             $SftpComputerName = $using:SftpComputerName
             $SftpUserName = $using:SftpUserName
             $SftpPassword = $using:SftpPassword
@@ -146,8 +146,15 @@ try {
             try {
                 Write-Verbose 'Download from SFTP server'
 
-                #region Open SFTP session
+                #region Test download folder exists
+                Write-Verbose 'Test download folder exists'
 
+                if (-not (Test-Path -LiteralPath $path.Destination -PathType 'Container')) {
+                    throw "Path '$($path.Destination)' not found on the file system"
+                }
+                #endregion
+
+                #region Open SFTP session
                 $sftpSession = Open-SftpSessionHM
 
                 $sessionParams = @{
@@ -164,14 +171,6 @@ try {
 
                 if (-not (Test-SFTPPath @sessionParams -Path $sftpPath)) {
                     throw "Path '$sftpPath' not found on the SFTP server"
-                }
-                #endregion
-
-                #region Test download folder exists
-                Write-Verbose 'Test download folder exists'
-
-                if (-not (Test-Path -LiteralPath $path.Destination -PathType 'Container')) {
-                    throw "Path '$($path.Destination)' not found on the file system"
                 }
                 #endregion
 
@@ -830,7 +829,7 @@ try {
 
     $Paths | ForEach-Object @foreachParams
 
-    Write-Verbose 'All download jobs finished'
+    Write-Verbose 'All jobs finished'
     #endregion
 }
 catch {
