@@ -482,7 +482,6 @@ try {
                         $result
                     }
                 }
-
             }
             else {
                 Write-Verbose 'Upload to SFTP server'
@@ -795,6 +794,19 @@ try {
             }
             $Error.RemoveAt(0)
         }
+        finally {
+            #region Close SFTP session
+            if ($sessionParams.SessionID) {
+                Write-Verbose 'Close SFTP session'
+
+                $params = @{
+                    SessionId   = $sessionParams.SessionID
+                    ErrorAction = 'Ignore'
+                }
+                $null = Remove-SFTPSession @params
+            }
+            #endregion
+        }
     }
 
     #region Run code serial or parallel
@@ -820,17 +832,4 @@ catch {
     Write-Warning $M
     $Error.RemoveAt(0)
     throw $M
-}
-finally {
-    #region Close SFTP session
-    if ($sessionParams.SessionID) {
-        Write-Verbose 'Close SFTP session'
-
-        $params = @{
-            SessionId   = $sessionParams.SessionID
-            ErrorAction = 'Ignore'
-        }
-        $null = Remove-SFTPSession @params
-    }
-    #endregion
 }
