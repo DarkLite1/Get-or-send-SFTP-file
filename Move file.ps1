@@ -72,75 +72,75 @@ try {
     # $VerbosePreference = 'Continue'
 
     $scriptBlock = {
-        $path = $_
-
-        Write-Verbose "Source '$($path.Source)' Destination '$($path.Destination)'"
-
-        #region Set defaults
-        # workaround for https://github.com/PowerShell/PowerShell/issues/16894
-        $ProgressPreference = 'SilentlyContinue'
-        $ErrorActionPreference = 'Stop'
-        #endregion
-
-        #region Declare variables for code running in parallel
-        if (-not $MaxConcurrentJobs) {
-            $VerbosePreference = $using:VerbosePreference
-
-            $SftpComputerName = $using:SftpComputerName
-            $SftpUserName = $using:SftpUserName
-            $SftpPassword = $using:SftpPassword
-            $SftpOpenSshKeyFile = $using:SftpOpenSshKeyFile
-
-            $FileExtensions = $using:FileExtensions
-            $PartialFileExtension = $using:PartialFileExtension
-            $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
-            $RetryWaitSeconds = $using:RetryWaitSeconds
-            $OverwriteFile = $using:OverwriteFile
-        }
-        #endregion
-
-        Function Open-SftpSessionHM {
-            <#
-            .SYNOPSIS
-                Open an SFTP session to the SFTP server
-                #>
-
-            try {
-                #region Create credential
-                Write-Verbose 'Create SFTP credential'
-
-                $params = @{
-                    TypeName     = 'System.Management.Automation.PSCredential'
-                    ArgumentList = $SftpUserName, $SftpPassword
-                }
-                $sftpCredential = New-Object @params
-                #endregion
-
-                #region Open SFTP session
-                Write-Verbose 'Open SFTP session'
-
-                $params = @{
-                    ComputerName = $SftpComputerName
-                    Credential   = $sftpCredential
-                    AcceptKey    = $true
-                    Force        = $true
-                }
-
-                if ($SftpOpenSshKeyFile) {
-                    $params.KeyString = $SftpOpenSshKeyFile
-                }
-
-                New-SFTPSession @params
-                #endregion
-            }
-            catch {
-                $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
-                $Error.RemoveAt(0)
-                throw $M
-            }
-        }
-
         try {
+            $path = $_
+
+            Write-Verbose "Source '$($path.Source)' Destination '$($path.Destination)'"
+
+            #region Set defaults
+            # workaround for https://github.com/PowerShell/PowerShell/issues/16894
+            $ProgressPreference = 'SilentlyContinue'
+            $ErrorActionPreference = 'Stop'
+            #endregion
+
+            #region Declare variables for code running in parallel
+            if (-not $MaxConcurrentJobs) {
+                $VerbosePreference = $using:VerbosePreference
+
+                $SftpComputerName = $using:SftpComputerName
+                $SftpUserName = $using:SftpUserName
+                $SftpPassword = $using:SftpPassword
+                $SftpOpenSshKeyFile = $using:SftpOpenSshKeyFile
+
+                $FileExtensions = $using:FileExtensions
+                $PartialFileExtension = $using:PartialFileExtension
+                $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
+                $RetryWaitSeconds = $using:RetryWaitSeconds
+                $OverwriteFile = $using:OverwriteFile
+            }
+            #endregion
+
+            Function Open-SftpSessionHM {
+                <#
+                .SYNOPSIS
+                    Open an SFTP session to the SFTP server
+                    #>
+
+                try {
+                    #region Create credential
+                    Write-Verbose 'Create SFTP credential'
+
+                    $params = @{
+                        TypeName     = 'System.Management.Automation.PSCredential'
+                        ArgumentList = $SftpUserName, $SftpPassword
+                    }
+                    $sftpCredential = New-Object @params
+                    #endregion
+
+                    #region Open SFTP session
+                    Write-Verbose 'Open SFTP session'
+
+                    $params = @{
+                        ComputerName = $SftpComputerName
+                        Credential   = $sftpCredential
+                        AcceptKey    = $true
+                        Force        = $true
+                    }
+
+                    if ($SftpOpenSshKeyFile) {
+                        $params.KeyString = $SftpOpenSshKeyFile
+                    }
+
+                    New-SFTPSession @params
+                    #endregion
+                }
+                catch {
+                    $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
+                    $Error.RemoveAt(0)
+                    throw $M
+                }
+            }
+
             if ($path.Source -like 'sftp*' ) {
                 Write-Verbose 'Download from SFTP server'
 
