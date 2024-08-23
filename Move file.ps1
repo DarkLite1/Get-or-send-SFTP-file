@@ -86,16 +86,16 @@ try {
         if (-not $MaxConcurrentJobs) {
             $VerbosePreference = $using:VerbosePreference
 
+            $SftpComputerName = $using:SftpComputerName
+            $SftpUserName = $using:SftpUserName
+            $SftpPassword = $using:SftpPassword
+            $SftpOpenSshKeyFile = $using:SftpOpenSshKeyFile
+
             $FileExtensions = $using:FileExtensions
             $PartialFileExtension = $using:PartialFileExtension
             $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
             $RetryWaitSeconds = $using:RetryWaitSeconds
             $OverwriteFile = $using:OverwriteFile
-
-            $SftpComputerName = $using:SftpComputerName
-            $SftpUserName = $using:SftpUserName
-            $SftpPassword = $using:SftpPassword
-            $SftpOpenSshKeyFile = $using:SftpOpenSshKeyFile
         }
         #endregion
 
