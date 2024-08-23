@@ -140,8 +140,8 @@ try {
             }
         }
 
-        if ($path.Source -like 'sftp*' ) {
-            try {
+        try {
+            if ($path.Source -like 'sftp*' ) {
                 Write-Verbose 'Download from SFTP server'
 
                 #region Test download folder exists
@@ -482,24 +482,9 @@ try {
                         $result
                     }
                 }
-            }
-            catch {
-                Write-Warning $_
 
-                [PSCustomObject]@{
-                    DateTime    = Get-Date
-                    Source      = $path.Source
-                    Destination = $path.Destination
-                    FileName    = $null
-                    FileLength  = $null
-                    Action      = @()
-                    Error       = $_
-                }
-                $Error.RemoveAt(0)
             }
-        }
-        else {
-            try {
+            else {
                 Write-Verbose 'Upload to SFTP server'
 
                 #region Test source folder exists
@@ -795,20 +780,20 @@ try {
                     }
                 }
             }
-            catch {
-                Write-Warning $_
+        }
+        catch {
+            Write-Warning $_
 
-                [PSCustomObject]@{
-                    DateTime    = Get-Date
-                    Source      = $path.Source
-                    Destination = $path.Destination
-                    FileName    = $null
-                    FileLength  = $null
-                    Action      = @()
-                    Error       = $_
-                }
-                $Error.RemoveAt(0)
+            [PSCustomObject]@{
+                DateTime    = Get-Date
+                Source      = $path.Source
+                Destination = $path.Destination
+                FileName    = $null
+                FileLength  = $null
+                Action      = @()
+                Error       = $_
             }
+            $Error.RemoveAt(0)
         }
     }
 
