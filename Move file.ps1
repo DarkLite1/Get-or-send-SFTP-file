@@ -69,7 +69,7 @@ Param (
 )
 
 try {
-    $VerbosePreference = 'Continue'
+    # $VerbosePreference = 'Continue'
 
     $scriptBlock = {
         $path = $_
