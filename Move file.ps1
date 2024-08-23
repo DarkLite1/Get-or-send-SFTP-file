@@ -187,7 +187,7 @@ try {
                         }
                     }
 
-                    $filesToDownload = $filesToDownload + $interruptedDownloadedFiles
+                    $filesToDownload = $interruptedDownloadedFiles + $filesToDownload
 
                     if (-not $filesToDownload) {
                         Write-Verbose 'No files to download'
