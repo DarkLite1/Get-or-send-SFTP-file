@@ -75,46 +75,7 @@ try {
     $ErrorActionPreference = 'Stop'
     #endregion
 
-    Function Open-SftpSessionHM {
-        <#
-        .SYNOPSIS
-            Open an SFTP session to the SFTP server
-        #>
-
-        try {
-            #region Create credential
-            Write-Verbose 'Create SFTP credential'
-
-            $params = @{
-                TypeName     = 'System.Management.Automation.PSCredential'
-                ArgumentList = $SftpUserName, $SftpPassword
-            }
-            $sftpCredential = New-Object @params
-            #endregion
-
-            #region Open SFTP session
-            Write-Verbose 'Open SFTP session'
-
-            $params = @{
-                ComputerName = $SftpComputerName
-                Credential   = $sftpCredential
-                AcceptKey    = $true
-                Force        = $true
-            }
-
-            if ($SftpOpenSshKeyFile) {
-                $params.KeyString = $SftpOpenSshKeyFile
-            }
-
-            New-SFTPSession @params
-            #endregion
-        }
-        catch {
-            $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
-            $Error.RemoveAt(0)
-            throw $M
-        }
-    }
+    $VerbosePreference = 'Continue'
 
     $downloadPaths, $uploadPaths = $Paths.where(
         { $_.Source -like 'sftp*' }, 'Split'
@@ -122,8 +83,6 @@ try {
 
     if ($downloadPaths) {
         Write-Verbose "Found $($downloadPaths.Count) download folder(s)"
-
-        $sftpSession = Open-SftpSessionHM
 
         $scriptBlock = {
             try {
@@ -135,18 +94,71 @@ try {
                 if (-not $MaxConcurrentJobs) {
                     $ErrorActionPreference = $using:ErrorActionPreference
                     $ProgressPreference = $using:ProgressPreference
-                    $sftpSession = $using:sftpSession
+                    $VerbosePreference = $using:VerbosePreference
                     $FileExtensions = $using:FileExtensions
                     $PartialFileExtension = $using:PartialFileExtension
                     $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
                     $RetryWaitSeconds = $using:RetryWaitSeconds
                     $OverwriteFile = $using:OverwriteFile
+
+                    # $sftpSession = $using:sftpSession
+                    $SftpComputerName = $using:SftpComputerName
+                    $SftpUserName = $using:SftpUserName
+                    $SftpPassword = $using:SftpPassword
+                    $SftpOpenSshKeyFile = $using:SftpOpenSshKeyFile
                 }
                 #endregion
+
+                #region Open SFTP session
+                Function Open-SftpSessionHM {
+                    <#
+                    .SYNOPSIS
+                        Open an SFTP session to the SFTP server
+                    #>
+
+                    try {
+                        #region Create credential
+                        Write-Verbose 'Create SFTP credential'
+
+                        $params = @{
+                            TypeName     = 'System.Management.Automation.PSCredential'
+                            ArgumentList = $SftpUserName, $SftpPassword
+                        }
+                        $sftpCredential = New-Object @params
+                        #endregion
+
+                        #region Open SFTP session
+                        Write-Verbose 'Open SFTP session'
+
+                        $params = @{
+                            ComputerName = $SftpComputerName
+                            Credential   = $sftpCredential
+                            AcceptKey    = $true
+                            Force        = $true
+                        }
+
+                        if ($SftpOpenSshKeyFile) {
+                            $params.KeyString = $SftpOpenSshKeyFile
+                        }
+
+                        New-SFTPSession @params
+                        #endregion
+                    }
+                    catch {
+                        $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
+                        $Error.RemoveAt(0)
+                        throw $M
+                    }
+                }
+
+                $sftpSession = Open-SftpSessionHM
 
                 $sessionParams = @{
                     SessionId = $sftpSession.SessionID
                 }
+
+                Write-Verbose "SFTP session ID '$($sessionParams.SessionId)'"
+                #endregion
 
                 $sftpPath = $path.Source.TrimStart('sftp:')
 
@@ -565,10 +577,6 @@ try {
             exit
         }
 
-        if (-not $sftpSession) {
-            $sftpSession = Open-SftpSessionHM
-        }
-
         $scriptBlock = {
             try {
                 $path = $_
@@ -579,12 +587,18 @@ try {
                 if (-not $MaxConcurrentJobs) {
                     $ErrorActionPreference = $using:ErrorActionPreference
                     $ProgressPreference = $using:ProgressPreference
-                    $sftpSession = $using:sftpSession
+                    $VerbosePreference = $using:VerbosePreference
                     $FileExtensions = $using:FileExtensions
                     $PartialFileExtension = $using:PartialFileExtension
                     $RetryCountOnLockedFiles = $using:RetryCountOnLockedFiles
                     $RetryWaitSeconds = $using:RetryWaitSeconds
                     $OverwriteFile = $using:OverwriteFile
+
+                    # $sftpSession = $using:sftpSession
+                    $SftpComputerName = $using:SftpComputerName
+                    $SftpUserName = $using:SftpUserName
+                    $SftpPassword = $using:SftpPassword
+                    $SftpOpenSshKeyFile = $using:SftpOpenSshKeyFile
                 }
                 #endregion
 
@@ -609,9 +623,56 @@ try {
                 Write-Verbose "Found $($filesToUpload.Count) file(s) to upload"
                 #endregion
 
+                #region Open SFTP session
+                Function Open-SftpSessionHM {
+                    <#
+                    .SYNOPSIS
+                        Open an SFTP session to the SFTP server
+                    #>
+
+                    try {
+                        #region Create credential
+                        Write-Verbose 'Create SFTP credential'
+
+                        $params = @{
+                            TypeName     = 'System.Management.Automation.PSCredential'
+                            ArgumentList = $SftpUserName, $SftpPassword
+                        }
+                        $sftpCredential = New-Object @params
+                        #endregion
+
+                        #region Open SFTP session
+                        Write-Verbose 'Open SFTP session'
+
+                        $params = @{
+                            ComputerName = $SftpComputerName
+                            Credential   = $sftpCredential
+                            AcceptKey    = $true
+                            Force        = $true
+                        }
+
+                        if ($SftpOpenSshKeyFile) {
+                            $params.KeyString = $SftpOpenSshKeyFile
+                        }
+
+                        New-SFTPSession @params
+                        #endregion
+                    }
+                    catch {
+                        $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
+                        $Error.RemoveAt(0)
+                        throw $M
+                    }
+                }
+
+                $sftpSession = Open-SftpSessionHM
+
                 $sessionParams = @{
                     SessionId = $sftpSession.SessionID
                 }
+
+                Write-Verbose "SFTP session ID '$($sessionParams.SessionId)'"
+                #endregion
 
                 $sftpPath = $path.Destination.TrimStart('sftp:')
 

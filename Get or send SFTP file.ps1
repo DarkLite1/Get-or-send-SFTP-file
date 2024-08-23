@@ -659,12 +659,7 @@ End {
                         { $_.Error }
                     ).foreach(
                         {
-                            $M = "Error for TaskName '$($task.TaskName)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName) {0}: $($_.Error)" -f
-                            $(
-                                $action.Paths.foreach(
-                                    { "Source '$($_.Source)' Destination '$($_.Destination)'" }
-                                ) -join ', '
-                            )
+                            $M = "Error for TaskName '$($task.TaskName)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName) Source '$($_.Source)' Destination '$($_.Destination)' FileName '$($_.FileName)': $($_.Error)"
                             Write-Warning $M
                             Write-EventLog @EventErrorParams -Message $M
                         }
