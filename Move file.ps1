@@ -69,7 +69,9 @@ Param (
 )
 
 try {
-    # $VerbosePreference = 'Continue'
+    $VerbosePreference = 'Continue'
+
+    Write-Verbose "MaxConcurrentJobs '$MaxConcurrentJobs'"
 
     $scriptBlock = {
         try {

@@ -673,6 +673,17 @@ End {
                     <tr style=`"background-color: #f78474;`">
                         <td colspan=`"3`">ERROR: $($action.Job.Error)</td>
                     </tr>"
+
+                    $M = "Error for TaskName '$($task.TaskName)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName) {0}: $($action.Job.Error)" -f
+                    $(
+                        $action.Paths.ForEach(
+                            {
+                                "Source '$($_.Source)' Destination '$($_.Destination)'"
+                            }
+                        )
+                    )
+                    Write-Warning $M
+                    Write-EventLog @EventErrorParams -Message $M
                 }
                 #endregion
 
