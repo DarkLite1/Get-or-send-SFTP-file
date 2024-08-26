@@ -808,6 +808,10 @@ End {
             $createExcelFile = $true
         }
 
+        if (-not $exportToExcel) {
+            $createExcelFile = $false
+        }
+
         if ($createExcelFile) {
             $excelFileLogParams = @{
                 LogFolder    = $logParams.LogFolder
