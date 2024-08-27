@@ -17,8 +17,8 @@ BeforeAll {
                     }
                 }
                 Option   = @{
-                    OverwriteFile            = $false
-                    FileExtensions           = @('.txt')
+                    OverwriteFile  = $false
+                    FileExtensions = @('.txt')
                 }
                 Actions  = @(
                     @{
@@ -116,6 +116,8 @@ BeforeAll {
         )
     }
 
+    $testPsSession = New-PSSession
+
     Mock Get-EnvironmentVariableValueHC {
         'bobUserName'
     } -ParameterFilter {
@@ -134,6 +136,10 @@ BeforeAll {
     Mock Invoke-Command {
         $testData
     }
+    Mock New-PSSession {
+        $testPsSession
+    }
+    Mock Remove-PSSession
     Mock Send-MailHC
     Mock Write-EventLog
 }
@@ -785,7 +791,7 @@ Describe 'correct the import file' {
         }
     }
 }
-Describe 'execute the SFTP script' {
+Describe 'execute the SFTP script when' {
     BeforeAll {
         $testJobArguments = @(
             {
@@ -806,21 +812,34 @@ Describe 'execute the SFTP script' {
             $testNewInputFile.Tasks[0].Actions[0]
         )
     }
-    Context "call Invoke-Command when" {
-        It 'Tasks.Actions.ComputerName is not the localhost' {
+    Context 'Tasks.Actions.ComputerName is not the localhost' {
+        BeforeAll {
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
 
             .$testScript @testParams
-
-            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
-                (& $testJobArguments[0]) -and
+        }
+        It 'call New-PSSession' {
+            Should -Invoke New-PSSession -Times 1 -Exactly -Scope Context -ParameterFilter {
+                ($ErrorAction -eq 'Stop') -and
+                ($ConfigurationName -eq $PSSessionConfiguration) -and
                 ($ComputerName -eq $testNewInputFile.Tasks[0].Actions[0].ComputerName)
             }
         }
+        It 'call Invoke-Command' {
+            Should -Invoke Invoke-Command -Times 1 -Exactly -Scope Context -ParameterFilter {
+                (& $testJobArguments[0]) -and
+                ($Session -eq $testPsSession)
+            }
+        }
+        It 'call Remove-PSSession' {
+            Should -Invoke Remove-PSSession -Times 1 -Exactly -Scope Context -ParameterFilter {
+                ($Session -eq $testPsSession)
+            }
+        }
     }
-    Context 'do not call Invoke-Command when' {
-        It 'Tasks.Actions.ComputerName is the localhost' {
+    Context 'Tasks.Actions.ComputerName is the localhost' {
+        It 'do not call Invoke-Command ' {
             $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'localhost'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
@@ -831,7 +850,7 @@ Describe 'execute the SFTP script' {
             Should -Not -Invoke Invoke-Command
         }
     }
-    Context 'when Tasks.Sftp.Credential.PasswordKeyFile is used' {
+    Context 'use Tasks.Sftp.Credential.PasswordKeyFile when needed' {
         It 'send a blank secure string for Tasks.Sftp.Credential.Password' {
             $testNewInputFile = Copy-ObjectHC $testInputFile
             $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'PC1'

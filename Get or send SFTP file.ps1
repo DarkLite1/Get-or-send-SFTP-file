@@ -478,6 +478,7 @@ Process {
                     $scriptPathItem = $using:scriptPathItem
                     $PSSessionConfiguration = $using:PSSessionConfiguration
                     $EventVerboseParams = $using:EventVerboseParams
+
                 }
                 #endregion
 
@@ -522,12 +523,42 @@ Process {
                     & $invokeParams.FilePath @params
                 }
                 else {
-                    $invokeParams += @{
-                        ConfigurationName = $PSSessionConfiguration
+                    #region Code with workaround
+                    # create 'Move file' script parameters in script scope
+                    # bug: https://github.com/PowerShell/PowerShell/issues/21332
+                    $SftpComputerName = $null
+                    $SftpUserName = $null
+                    $Paths = $null
+                    $SftpPassword = $null
+                    $SftpOpenSshKeyFile = $null
+                    $FileExtensions = $null
+                    $OverwriteFile = $null
+                    $RetryCountOnLockedFiles = $null
+                    $RetryWaitSeconds = $null
+                    $PartialFileExtension = $null
+
+                    $psSessionParams = @{
                         ComputerName      = $computerName
+                        ConfigurationName = $PSSessionConfiguration
+                        ErrorAction       = 'Stop'
+                    }
+                    $psSession = New-PSSession @psSessionParams
+
+                    $invokeParams += @{
+                        Session           = $psSession
                         ErrorAction       = 'Stop'
                     }
                     Invoke-Command @invokeParams
+                    #endregion
+
+                    <#region Code without workaround
+                        $invokeParams += @{
+                            ConfigurationName = $PSSessionConfiguration
+                            ComputerName      = $computerName
+                            ErrorAction       = 'Stop'
+                        }
+                        Invoke-Command @invokeParams
+                    #>
                 }
                 #endregion
 
@@ -555,6 +586,11 @@ Process {
             catch {
                 $action.Job.Error = $_
                 $Error.RemoveAt(0)
+            }
+            finally {
+                if ($psSession) {
+                    $psSession | Remove-PSSession
+                }
             }
         }
 
