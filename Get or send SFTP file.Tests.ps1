@@ -839,15 +839,22 @@ Describe 'execute the SFTP script when' {
         }
     }
     Context 'Tasks.Actions.ComputerName is the localhost' {
-        It 'do not call Invoke-Command ' {
+        BeforeAll {
             $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'localhost'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
 
             .$testScript @testParams
-
-            Should -Not -Invoke Invoke-Command
+        }
+        It 'do not call Invoke-Command ' {
+            Should -Not -Invoke Invoke-Command -Scope Context
+        }
+        It 'do not call New-PSSession ' {
+            Should -Not -Invoke New-PSSession -Scope Context
+        }
+        It 'do not call Remove-PSSession ' {
+            Should -Not -Invoke Remove-PSSession -Scope Context
         }
     }
     Context 'use Tasks.Sftp.Credential.PasswordKeyFile when needed' {
