@@ -371,18 +371,16 @@ Begin {
 
         try {
             foreach ($task in $Tasks) {
-                #region Set SFTP UserName
+                #region Get SFTP UserName
                 if (-not (
-                        $params.String = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.UserName)
+                    $SftpUserName = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.UserName)
                 ) {
                     throw "Environment variable '`$ENV:$($task.Sftp.Credential.UserName)' in 'Sftp.Credential.UserName' not found on computer $ENV:COMPUTERNAME"
                 }
-
-                $task.Sftp.Credential.UserName = $params.String
                 #endregion
 
-                #region Set SFTP password
-                if ($task.Sftp.Credential.PasswordKeyFile) {
+                #region Get SFTP password
+                $sftpPassword = if ($task.Sftp.Credential.PasswordKeyFile) {
                     try {
                         $PasswordKeyFileStrings = Get-Content -LiteralPath $task.Sftp.Credential.PasswordKeyFile -ErrorAction Stop
 
@@ -397,7 +395,7 @@ Begin {
                     }
 
                     # Avoid password popup
-                    $task.Sftp.Credential.Password = New-Object System.Security.SecureString
+                    New-Object 'System.Security.SecureString'
                 }
                 else {
                     #region Add environment variable SFTP Password
@@ -414,8 +412,21 @@ Begin {
                         throw "Environment variable '`$ENV:$($task.Sftp.Credential.Password)' in 'Sftp.Credential.Password' not found on computer $ENV:COMPUTERNAME"
                     }
 
-                    $task.Sftp.Credential.Password = ConvertTo-SecureString @params
+                    ConvertTo-SecureString @params
                     #endregion
+                }
+                #endregion
+
+                #region Create SFTP credential
+                Write-Verbose 'Create SFTP credential'
+
+                $params = @{
+                    TypeName     = 'System.Management.Automation.PSCredential'
+                    ArgumentList = $sftpUserName, $sftpPassword
+                }
+
+                $task.Sftp.Credential | Add-Member -NotePropertyMembers @{
+                    Object = New-Object @params
                 }
                 #endregion
 
@@ -478,7 +489,6 @@ Process {
                     $scriptPathItem = $using:scriptPathItem
                     $PSSessionConfiguration = $using:PSSessionConfiguration
                     $EventVerboseParams = $using:EventVerboseParams
-
                 }
                 #endregion
 
@@ -486,28 +496,26 @@ Process {
                 $invokeParams = @{
                     FilePath     = $scriptPathItem.MoveFile
                     ArgumentList = $task.Sftp.ComputerName,
-                    $task.Sftp.Credential.UserName,
+                    $task.Sftp.Credential.Object,
                     $action.Paths,
                     $MaxConcurrentJobs,
-                    $task.Sftp.Credential.Password,
                     $task.Sftp.Credential.PasswordKeyFile,
                     $task.Option.FileExtensions,
                     $task.Option.OverwriteFile
                 }
 
-                $M = "Start SFTP job '{6}' on '{7}' with: Sftp.ComputerName '{0}' Sftp.UserName '{1}' Paths {2} MaxConcurrentJobs '{3}' FileExtensions '{4}' OverwriteFile '{5}'" -f
+                $M = "Start SFTP job '{0}' on '{1}' with: Sftp.ComputerName '{2}' Paths {3} MaxConcurrentJobs '{4}' FileExtensions '{5}' OverwriteFile '{6}'" -f
+                $task.TaskName,
+                $action.ComputerName,
                 $invokeParams.ArgumentList[0],
-                $invokeParams.ArgumentList[1],
                 $(
                     $invokeParams.ArgumentList[2].foreach(
                         { "Source '$($_.Source)' Destination '$($_.Destination)'" }
                     ) -join ', '
                 ),
                 $invokeParams.ArgumentList[3],
-                $($invokeParams.ArgumentList[6] -join ', '),
-                $invokeParams.ArgumentList[7],
-                $task.TaskName,
-                $action.ComputerName
+                $($invokeParams.ArgumentList[5] -join ', '),
+                $invokeParams.ArgumentList[6]
 
                 Write-Verbose $M
                 # Write-EventLog @EventVerboseParams -Message $M
@@ -527,9 +535,8 @@ Process {
                     # create 'Move file' script parameters in script scope
                     # bug: https://github.com/PowerShell/PowerShell/issues/21332
                     $SftpComputerName = $null
-                    $SftpUserName = $null
                     $Paths = $null
-                    $SftpPassword = $null
+                    $SftpCredential = $null
                     $SftpOpenSshKeyFile = $null
                     $FileExtensions = $null
                     $OverwriteFile = $null

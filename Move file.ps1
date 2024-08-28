@@ -27,11 +27,8 @@
 .PARAMETER SftpPath
     Path to th folder on the SFTP server.
 
-.PARAMETER SftpUserName
-    The user name used to authenticate to the SFTP server.
-
-.PARAMETER SftpPassword
-    The password used to authenticate to the SFTP server.
+.PARAMETER SftpCredential
+    The SFTP credential object used to authenticate to the SFTP server.
 
 .PARAMETER SftpOpenSshKeyFile
     The password used to authenticate to the SFTP server. This is an
@@ -46,17 +43,15 @@
     it will be overwritten when OverwriteFile is TRUE.
 #>
 
-[CmdLetBinding()]
 Param (
     [Parameter(Mandatory)]
     [String]$SftpComputerName,
     [Parameter(Mandatory)]
-    [String]$SftpUserName,
+    [PSCredential]$SftpCredential,
     [Parameter(Mandatory)]
     [PSCustomObject[]]$Paths,
     [Parameter(Mandatory)]
     [Int]$MaxConcurrentJobs,
-    [SecureString]$SftpPassword,
     [String[]]$SftpOpenSshKeyFile,
     [String[]]$FileExtensions,
     [Boolean]$OverwriteFile,
@@ -88,9 +83,8 @@ try {
                 $VerbosePreference = $using:VerbosePreference
 
                 $SftpComputerName = $using:SftpComputerName
-                $SftpUserName = $using:SftpUserName
-                $SftpPassword = $using:SftpPassword
                 $SftpOpenSshKeyFile = $using:SftpOpenSshKeyFile
+                $sftpCredential = $using:sftpCredential
 
                 $FileExtensions = $using:FileExtensions
                 $PartialFileExtension = $using:PartialFileExtension
@@ -99,47 +93,6 @@ try {
                 $OverwriteFile = $using:OverwriteFile
             }
             #endregion
-
-            Function Open-SftpSessionHM {
-                <#
-                .SYNOPSIS
-                    Open an SFTP session to the SFTP server
-                    #>
-
-                try {
-                    #region Create credential
-                    Write-Verbose 'Create SFTP credential'
-
-                    $params = @{
-                        TypeName     = 'System.Management.Automation.PSCredential'
-                        ArgumentList = $SftpUserName, $SftpPassword
-                    }
-                    $sftpCredential = New-Object @params
-                    #endregion
-
-                    #region Open SFTP session
-                    Write-Verbose 'Open SFTP session'
-
-                    $params = @{
-                        ComputerName = $SftpComputerName
-                        Credential   = $sftpCredential
-                        AcceptKey    = $true
-                        Force        = $true
-                    }
-
-                    if ($SftpOpenSshKeyFile) {
-                        $params.KeyString = $SftpOpenSshKeyFile
-                    }
-
-                    New-SFTPSession @params
-                    #endregion
-                }
-                catch {
-                    $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
-                    $Error.RemoveAt(0)
-                    throw $M
-                }
-            }
 
             if ($path.Source -like 'sftp*' ) {
                 Write-Verbose 'Download from SFTP server'
@@ -153,13 +106,33 @@ try {
                 #endregion
 
                 #region Open SFTP session
-                $sftpSession = Open-SftpSessionHM
+                try {
+                    Write-Verbose 'Open SFTP session'
 
-                $sessionParams = @{
-                    SessionId = $sftpSession.SessionID
+                    $params = @{
+                        ComputerName = $SftpComputerName
+                        Credential   = $sftpCredential
+                        AcceptKey    = $true
+                        Force        = $true
+                    }
+
+                    if ($SftpOpenSshKeyFile) {
+                        $params.KeyString = $SftpOpenSshKeyFile
+                    }
+
+                    $sftpSession = New-SFTPSession @params
+
+                    Write-Verbose "SFTP session ID '$($sessionParams.SessionId)'"
+
+                    $sessionParams = @{
+                        SessionId = $sftpSession.SessionID
+                    }
                 }
-
-                Write-Verbose "SFTP session ID '$($sessionParams.SessionId)'"
+                catch {
+                    $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
+                    $Error.RemoveAt(0)
+                    throw $M
+                }
                 #endregion
 
                 $sftpPath = $path.Source.TrimStart('sftp:')
@@ -525,13 +498,33 @@ try {
                 #endregion
 
                 #region Open SFTP session
-                $sftpSession = Open-SftpSessionHM
+                try {
+                    Write-Verbose 'Open SFTP session'
 
-                $sessionParams = @{
-                    SessionId = $sftpSession.SessionID
+                    $params = @{
+                        ComputerName = $SftpComputerName
+                        Credential   = $sftpCredential
+                        AcceptKey    = $true
+                        Force        = $true
+                    }
+
+                    if ($SftpOpenSshKeyFile) {
+                        $params.KeyString = $SftpOpenSshKeyFile
+                    }
+
+                    $sftpSession = New-SFTPSession @params
+
+                    Write-Verbose "SFTP session ID '$($sessionParams.SessionId)'"
+
+                    $sessionParams = @{
+                        SessionId = $sftpSession.SessionID
+                    }
                 }
-
-                Write-Verbose "SFTP session ID '$($sessionParams.SessionId)'"
+                catch {
+                    $M = "Failed creating an SFTP session to '$SftpComputerName': $_"
+                    $Error.RemoveAt(0)
+                    throw $M
+                }
                 #endregion
 
                 $sftpPath = $path.Destination.TrimStart('sftp:')

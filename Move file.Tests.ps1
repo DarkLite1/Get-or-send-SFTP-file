@@ -3,10 +3,15 @@
 #Requires -Version 5.1
 
 BeforeAll {
+    $params = @{
+        TypeName     = 'System.Management.Automation.PSCredential'
+        ArgumentList = 'bob', ('pass' | ConvertTo-SecureString -AsPlainText -Force)
+    }
+
     $testScript = $PSCommandPath.Replace('.Tests.ps1', '.ps1')
     $testParams = @{
         SftpComputerName     = 'PC1'
-        SftpUserName         = 'bob'
+        SftpCredential       = New-Object @params
         Paths                = @(
             @{
                 Source      = (New-Item 'TestDrive:/f1' -ItemType 'Directory').FullName
@@ -18,7 +23,6 @@ BeforeAll {
             }
         )
         MaxConcurrentJobs    = 1
-        SftpPassword         = 'pass' | ConvertTo-SecureString -AsPlainText -Force
         FileExtensions       = @()
         OverwriteFile        = $false
         PartialFileExtension = @{
@@ -46,7 +50,7 @@ Describe 'the mandatory parameters are' {
     It '<_>' -ForEach @(
         'Paths',
         'SftpComputerName',
-        'SftpUserName',
+        'SftpCredential',
         'MaxConcurrentJobs'
     ) {
         (Get-Command $testScript).Parameters[$_].Attributes.Mandatory |

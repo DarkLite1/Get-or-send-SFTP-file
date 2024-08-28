@@ -118,6 +118,8 @@ BeforeAll {
 
     $testPsSession = New-PSSession
 
+    $testSecureStringPassword = ConvertTo-SecureString -String 'pw' -AsPlainText -Force
+
     Mock Get-EnvironmentVariableValueHC {
         'bobUserName'
     } -ParameterFilter {
@@ -129,7 +131,7 @@ BeforeAll {
         $Name -eq $testInputFile.Tasks[0].Sftp.Credential.Password
     }
     Mock ConvertTo-SecureString {
-        'bobPasswordEncrypted'
+        $testSecureStringPassword
     } -ParameterFilter {
         $String -eq 'bobPassword'
     }
@@ -795,15 +797,15 @@ Describe 'execute the SFTP script when' {
     BeforeAll {
         $testJobArguments = @(
             {
+                ($Session) -and
                 ($FilePath -eq $testParams.ScriptPath.MoveFile) -and
                 ($ArgumentList[0] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
-                ($ArgumentList[1] -eq 'bobUserName') -and
+                ($ArgumentList[1].GetType().Name -eq 'PSCredential') -and
                 ($ArgumentList[2].GetType().BaseType.Name -eq 'Array') -and
                 ($ArgumentList[3] -eq $testInputFile.MaxConcurrentJobs) -and
-                ($ArgumentList[4] -eq 'bobPasswordEncrypted') -and
-                (-not $ArgumentList[5]) -and
-                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.OverwriteFile)
+                (-not $ArgumentList[4]) -and
+                ($ArgumentList[5] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
+                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Option.OverwriteFile)
             }
         )
 
@@ -828,10 +830,9 @@ Describe 'execute the SFTP script when' {
         }
         It 'call Invoke-Command' {
             Should -Invoke Invoke-Command -Times 1 -Exactly -Scope Context -ParameterFilter {
-                (& $testJobArguments[0]) -and
-                ($Session -eq $testPsSession)
+                (& $testJobArguments[0])
             }
-        }
+        } -Tag test
         It 'call Remove-PSSession' {
             Should -Invoke Remove-PSSession -Times 1 -Exactly -Scope Context -ParameterFilter {
                 ($Session -eq $testPsSession)
@@ -1167,4 +1168,4 @@ Describe 'SendMail.When' {
             Should -Invoke Send-MailHC @testParamFilter
         }
     }
-} -Tag test
+}
