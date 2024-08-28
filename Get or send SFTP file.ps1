@@ -504,7 +504,7 @@ Process {
                     $task.Option.OverwriteFile
                 }
 
-                $M = "Start SFTP job '{0}' on '{1}' with: Sftp.ComputerName '{2}' Paths {3} MaxConcurrentJobs '{4}' FileExtensions '{5}' OverwriteFile '{6}'" -f
+                $M = "Start task '{0}' on '{1}' with: Sftp.ComputerName '{2}' Paths {3} MaxConcurrentJobs '{4}' FileExtensions '{5}' OverwriteFile '{6}'" -f
                 $task.TaskName,
                 $action.ComputerName,
                 $invokeParams.ArgumentList[0],
@@ -571,21 +571,21 @@ Process {
 
                 #region Get job results
                 if ($action.Job.Results.Count -ne 0) {
-                    $M = "Job result '{6}' on '{7}' with: Sftp.ComputerName '{0}' Sftp.UserName '{1}' Paths {2} MaxConcurrentJobs '{3}' FileExtensions '{4}' OverwriteFile '{5}': {8} result{9}" -f
+                    $M = "Result task '{0}' on '{1}' with: Sftp.ComputerName '{2}' Paths {3} MaxConcurrentJobs '{4}' FileExtensions '{5}' OverwriteFile '{6}': {7} object{8}" -f
+                    $task.TaskName,
+                    $action.ComputerName,
                     $invokeParams.ArgumentList[0],
-                    $invokeParams.ArgumentList[1],
                     $(
                         $invokeParams.ArgumentList[2].foreach(
                             { "Source '$($_.Source)' Destination '$($_.Destination)'" }
                         ) -join ', '
                     ),
                     $invokeParams.ArgumentList[3],
-                    $($invokeParams.ArgumentList[6] -join ', '),
-                    $invokeParams.ArgumentList[7],
-                    $task.TaskName,
-                    $action.ComputerName,
+                    $($invokeParams.ArgumentList[5] -join ', '),
+                    $invokeParams.ArgumentList[6],
                     $action.Job.Results.Count,
                     $(if ($action.Job.Results.Count -ne 1) { 's' })
+
                     Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
                 }
                 #endregion
