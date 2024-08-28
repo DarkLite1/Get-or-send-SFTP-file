@@ -852,7 +852,7 @@ End {
             $excelFileLogParams = @{
                 LogFolder    = $logParams.LogFolder
                 Format       = 'yyyy-MM-dd'
-                Name         = "$ScriptName - $($task.TaskName) - Log.xlsx"
+                Name         = "$ScriptName - $((Split-Path $ImportFile -Leaf).TrimEnd('.json')) - Log.xlsx"
                 Date         = 'ScriptStartTime'
                 NoFormatting = $true
             }
