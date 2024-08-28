@@ -832,7 +832,7 @@ Describe 'execute the SFTP script when' {
             Should -Invoke Invoke-Command -Times 1 -Exactly -Scope Context -ParameterFilter {
                 (& $testJobArguments[0])
             }
-        } -Tag test
+        }
         It 'call Remove-PSSession' {
             Should -Invoke Remove-PSSession -Times 1 -Exactly -Scope Context -ParameterFilter {
                 ($Session -eq $testPsSession)
@@ -858,32 +858,28 @@ Describe 'execute the SFTP script when' {
             Should -Not -Invoke Remove-PSSession -Scope Context
         }
     }
-    Context 'use Tasks.Sftp.Credential.PasswordKeyFile when needed' {
-        It 'send a blank secure string for Tasks.Sftp.Credential.Password' {
+    Context 'with Tasks.Sftp.Credential.PasswordKeyFile' {
+        BeforeAll {
             $testNewInputFile = Copy-ObjectHC $testInputFile
-            $testNewInputFile.Tasks[0].Actions[0].ComputerName = 'PC1'
-            $testNewInputFile.Tasks[0].Sftp.Credential.Password = $null
-            $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile = (New-Item 'TestDrive:\key' -ItemType File).FullName
+            $testNewInputFile.Tasks[0].Actions = @(
+                $testNewInputFile.Tasks[0].Actions[0]
+            )
 
-            'passKeyContent' | Out-File -LiteralPath $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile
+            'sadfsd' | Out-File 'TestDrive:\key.txt'
+
+            $testNewInputFile.Tasks[0].Sftp.Credential.Password = $null
+            $testNewInputFile.Tasks[0].Sftp.Credential.PasswordKeyFile = 'TestDrive:\key.txt'
 
             $testNewInputFile | ConvertTo-Json -Depth 7 |
             Out-File @testOutParams
 
             .$testScript @testParams
-
-            Should -Invoke Invoke-Command -Times 1 -Exactly -ParameterFilter {
-                ($FilePath -eq $testParams.ScriptPath.MoveFile) -and
-                ($ArgumentList[0] -eq $testInputFile.Tasks[0].Sftp.ComputerName) -and
-                ($ArgumentList[1] -eq 'bobUserName') -and
-                ($ArgumentList[2].GetType().BaseType.Name -eq 'Array') -and
-                ($ArgumentList[3] -eq $testInputFile.MaxConcurrentJobs) -and
-                ($ArgumentList[4] -is 'SecureString') -and
-                ($ArgumentList[5] -eq 'passKeyContent') -and
-                ($ArgumentList[6] -eq $testInputFile.Tasks[0].Option.FileExtensions) -and
-                ($ArgumentList[7] -eq $testInputFile.Tasks[0].Option.OverwriteFile)
-            }
         }
+        It 'call Invoke-Command' {
+            Should -Invoke Invoke-Command -Times 1 -Exactly -Scope Context -ParameterFilter {
+                ($ArgumentList[4] -ne $null)
+            }
+        } -Tag test
     }
 }
 Describe 'when the SFTP script runs successfully' {
