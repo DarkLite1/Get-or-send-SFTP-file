@@ -1167,4 +1167,4 @@ Describe 'SendMail.When' {
             Should -Invoke Send-MailHC @testParamFilter
         }
     }
-}
+} -Tag test

@@ -545,8 +545,8 @@ Process {
                     $psSession = New-PSSession @psSessionParams
 
                     $invokeParams += @{
-                        Session           = $psSession
-                        ErrorAction       = 'Stop'
+                        Session     = $psSession
+                        ErrorAction = 'Stop'
                     }
                     Invoke-Command @invokeParams
                     #endregion
@@ -695,7 +695,14 @@ End {
                         { $_.Error }
                     ).foreach(
                         {
-                            $M = "Error for TaskName '$($task.TaskName)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName) Source '$($_.Source)' Destination '$($_.Destination)' FileName '$($_.FileName)': $($_.Error)"
+                            $M = "Error for TaskName '$($task.TaskName)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName)' {0}: $($_.Error)" -f
+                            $(
+                                $action.Paths.ForEach(
+                                    {
+                                        "Source '$($_.Source)' Destination '$($_.Destination)'"
+                                    }
+                                )
+                            )
                             Write-Warning $M
                             Write-EventLog @EventErrorParams -Message $M
                         }
@@ -710,7 +717,7 @@ End {
                         <td colspan=`"3`">ERROR: $($action.Job.Error)</td>
                     </tr>"
 
-                    $M = "Error for TaskName '$($task.TaskName)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName) {0}: $($action.Job.Error)" -f
+                    $M = "Error for TaskName '$($task.TaskName)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName)' {0}: $($action.Job.Error)" -f
                     $(
                         $action.Paths.ForEach(
                             {
