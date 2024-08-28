@@ -658,7 +658,11 @@ End {
 
         $htmlTable += '<table>'
 
+        Write-Verbose 'Start reporting'
+
         foreach ($task in $Tasks) {
+            Write-Verbose "Task '$($task.TaskName)'"
+
             #region Create HTML table header
             $htmlTable += "
                 <tr style=`"background-color: lightgrey;`">
@@ -695,14 +699,7 @@ End {
                         { $_.Error }
                     ).foreach(
                         {
-                            $M = "Error for TaskName '$($task.TaskName)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName)' {0}: $($_.Error)" -f
-                            $(
-                                $action.Paths.ForEach(
-                                    {
-                                        "Source '$($_.Source)' Destination '$($_.Destination)'"
-                                    }
-                                )
-                            )
+                            $M = "Error for TaskName '$($task.TaskName)' Sftp.ComputerName '$($task.Sftp.ComputerName)' ComputerName '$($action.ComputerName)' Source '$($_.Source)' Destination '$($_.Destination)' FileName '$($_.FileName)': $($_.Error)"
                             Write-Warning $M
                             Write-EventLog @EventErrorParams -Message $M
                         }
