@@ -827,7 +827,7 @@ Describe 'execute the SFTP script when' {
                 ($ConfigurationName -eq $PSSessionConfiguration) -and
                 ($ComputerName -eq $testNewInputFile.Tasks[0].Actions[0].ComputerName)
             }
-        } -Tag test
+        }
         It 'call Invoke-Command' {
             Should -Invoke Invoke-Command -Times 1 -Exactly -Scope Context -ParameterFilter {
                 (& $testJobArguments[0])
