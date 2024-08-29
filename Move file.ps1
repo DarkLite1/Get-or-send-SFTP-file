@@ -297,7 +297,7 @@ try {
                                         Remove-Item @removeParams
 
                                         [PSCustomObject]@{
-                                            DateTime    = $result.DateTime.AddSeconds(-1)
+                                            DateTime    = $result.DateTime
                                             Source      = $result.Source
                                             Destination = $result.Destination
                                             FileName    = $result.FileName
@@ -630,7 +630,7 @@ try {
                                         $fileLocked = $false
 
                                         [PSCustomObject]@{
-                                            DateTime    = $result.DateTime.AddSeconds(-1)
+                                            DateTime    = $result.DateTime
                                             Source      = $result.Source
                                             Destination = $result.Destination
                                             FileName    = $result.FileName
