@@ -373,7 +373,7 @@ Begin {
             foreach ($task in $Tasks) {
                 #region Get SFTP UserName
                 if (-not (
-                    $SftpUserName = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.UserName)
+                        $SftpUserName = Get-EnvironmentVariableValueHC -Name $task.Sftp.Credential.UserName)
                 ) {
                     throw "Environment variable '`$ENV:$($task.Sftp.Credential.UserName)' in 'Sftp.Credential.UserName' not found on computer $ENV:COMPUTERNAME"
                 }
@@ -432,6 +432,10 @@ Begin {
 
                 foreach ($action in $task.Actions) {
                     #region Set ComputerName
+                    if ($action.ComputerName) {
+                        $action.ComputerName = $action.ComputerName.Trim().ToUpper()
+                    }
+
                     if (
                         (-not $action.ComputerName) -or
                         ($action.ComputerName -eq 'localhost') -or
@@ -485,6 +489,7 @@ Process {
                 #region Declare variables for code running in parallel
                 if (-not $MaxConcurrentJobs) {
                     $task = $using:task
+                    $psSessions = $using:psSessions
                     $MaxConcurrentJobs = $using:MaxConcurrentJobs
                     $scriptPathItem = $using:scriptPathItem
                     $PSSessionConfiguration = $using:PSSessionConfiguration
@@ -516,9 +521,6 @@ Process {
                 $invokeParams.ArgumentList[3],
                 $($invokeParams.ArgumentList[5] -join ', '),
                 $invokeParams.ArgumentList[6]
-
-                Write-Verbose $M
-                # Write-EventLog @EventVerboseParams -Message $M
                 #endregion
 
                 #region Start job
@@ -527,6 +529,9 @@ Process {
                 $action.Job.Results += if (
                     $computerName -eq $ENV:COMPUTERNAME
                 ) {
+                    Write-Verbose $M
+                    # Write-EventLog @EventVerboseParams -Message $M
+
                     $params = $invokeParams.ArgumentList
                     & $invokeParams.FilePath @params
                 }
@@ -534,6 +539,18 @@ Process {
                     #region Code with workaround
                     # create 'Move file' script parameters in script scope
                     # bug: https://github.com/PowerShell/PowerShell/issues/21332
+
+                    if (
+                        -not ($psSession = $psSessions[$computerName].Session)
+                    ) {
+                        # For Pester mocking with a local session object
+                        if (-not (
+                                $psSession = $psSessions['localhost'].Session)
+                        ) {
+                            throw $psSessions[$computerName].Error
+                        }
+                    }
+
                     $SftpComputerName = $null
                     $Paths = $null
                     $SftpCredential = $null
@@ -544,12 +561,8 @@ Process {
                     $RetryWaitSeconds = $null
                     $PartialFileExtension = $null
 
-                    $psSessionParams = @{
-                        ComputerName      = $computerName
-                        ConfigurationName = $PSSessionConfiguration
-                        ErrorAction       = 'Stop'
-                    }
-                    $psSession = New-PSSession @psSessionParams
+                    Write-Verbose $M
+                    # Write-EventLog @EventVerboseParams -Message $M
 
                     $invokeParams += @{
                         Session     = $psSession
@@ -594,12 +607,54 @@ Process {
                 $action.Job.Error = $_
                 $Error.RemoveAt(0)
             }
-            finally {
-                if ($psSession) {
-                    $psSession | Remove-PSSession
+        }
+
+        #region Create PS sessions
+        $psSessions = @{}
+
+        $psSessionParams = @{
+            ComputerName      = $null
+            ConfigurationName = $PSSessionConfiguration
+            ErrorAction       = 'SilentlyContinue'
+        }
+
+        if (
+            $psSessionParams.ComputerName = $Tasks.Actions.ComputerName |
+            Sort-Object -Unique |
+            Where-Object { $_ -ne $env:COMPUTERNAME }
+        ) {
+            #region Open PS remoting sessions
+            Write-Verbose "Connect to $($psSessionParams.ComputerName.Count) remote computers"
+
+            foreach ($session in New-PSSession @psSessionParams) {
+                $psSessions[$session.ComputerName] = @{
+                    Session = $session
+                    Error   = $null
                 }
             }
+            #endregion
+
+            #region Get connection errors
+            $Error.where(
+                { $_.InvocationInfo.InvocationName -eq 'New-PSSession' }
+            ).foreach(
+                {
+                    $computerName = $_.TargetObject.OriginalConnectionInfo.ComputerName
+                    $errorMessage = $_.Exception.Message
+
+                    Write-Warning "Failed connecting to '$computerName': $errorMessage"
+
+                    $psSessions[$computerName] = @{
+                        Session = $null
+                        Error   = $errorMessage
+                    }
+
+                    $Error.Remove($_)
+                }
+            )
+            #endregion
         }
+        #endregion
 
         #region Run code serial or parallel
         $foreachParams = if ($MaxConcurrentJobs -eq 1) {
@@ -628,6 +683,11 @@ Process {
         Send-MailHC -To $ScriptAdmin -Subject 'FAILURE' -Priority 'High' -Message $_ -Header $ScriptName
         Write-EventLog @EventErrorParams -Message "FAILURE:`n`n- $_"
         Write-EventLog @EventEndParams; Exit 1
+    }
+    Finally {
+        if ($psSessions.Values.Session) {
+            Get-PSSession | Remove-PSSession -EA Ignore
+        }
     }
 }
 

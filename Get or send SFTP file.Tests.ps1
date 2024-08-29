@@ -823,11 +823,11 @@ Describe 'execute the SFTP script when' {
         }
         It 'call New-PSSession' {
             Should -Invoke New-PSSession -Times 1 -Exactly -Scope Context -ParameterFilter {
-                ($ErrorAction -eq 'Stop') -and
+                ($ErrorAction -eq 'SilentlyContinue') -and
                 ($ConfigurationName -eq $PSSessionConfiguration) -and
                 ($ComputerName -eq $testNewInputFile.Tasks[0].Actions[0].ComputerName)
             }
-        }
+        } -Tag test
         It 'call Invoke-Command' {
             Should -Invoke Invoke-Command -Times 1 -Exactly -Scope Context -ParameterFilter {
                 (& $testJobArguments[0])
@@ -879,7 +879,7 @@ Describe 'execute the SFTP script when' {
             Should -Invoke Invoke-Command -Times 1 -Exactly -Scope Context -ParameterFilter {
                 ($ArgumentList[4] -ne $null)
             }
-        } -Tag test
+        }
     }
 }
 Describe 'when the SFTP script runs successfully' {
