@@ -633,8 +633,8 @@ try {
                                             DateTime    = $result.DateTime.AddSeconds(-1)
                                             Source      = $result.Source
                                             Destination = $result.Destination
-                                            FileName    = $result.Name
-                                            FileLength  = $result.Length
+                                            FileName    = $result.FileName
+                                            FileLength  = $result.FileLength
                                             Action      = @('Removed duplicate file from SFTP server')
                                             Error       = $null
                                         }
