@@ -702,8 +702,9 @@ End {
         #region Counter
         $counter = @{
             Total = @{
-                MovedFiles = 0
-                Errors     = $countSystemErrors
+                MovedFiles  = 0
+                OtherAction = 0
+                Errors      = $countSystemErrors
             }
         }
         #endregion
@@ -752,18 +753,24 @@ End {
             foreach ($action in $task.Actions) {
                 #region Counter
                 $counter.Action = @{
-                    MovedFiles = 0
-                    Errors     = 0
+                    MovedFiles  = 0
+                    OtherAction = 0
+                    Errors      = 0
                 }
 
                 $counter.Action.MovedFiles = $action.Job.Results.Where(
-                    { -not $_.Error }).Count
+                    { (-not $_.Error) -and ($_.Action -like 'File moved*') }
+                ).Count
+                $counter.Action.OtherAction = $action.Job.Results.Where(
+                    { (-not $_.Error) -and ($_.Action -notLike 'File moved*') }
+                ).Count
                 $counter.Action.Errors = $action.Job.Results.Where(
                     { $_.Error }).Count
                 $counter.Action.Errors += $action.Job.Error.Count
 
                 $counter.Total.Errors += $counter.Action.Errors
                 $counter.Total.MovedFiles += $counter.Action.MovedFiles
+                $counter.Total.OtherAction += $counter.Action.OtherAction
                 #endregion
 
                 #region Log errors
@@ -803,8 +810,9 @@ End {
                 foreach ($path in $action.Paths) {
                     #region Counter
                     $counter.Path = @{
-                        MovedFiles = 0
-                        Errors     = 0
+                        MovedFiles  = 0
+                        OtherAction = 0
+                        Errors      = 0
                     }
 
                     $counter.Path.Errors += $action.Job.Results.Where(
@@ -818,7 +826,15 @@ End {
                         {
                         (-not $_.Error) -and
                         ($_.Source -eq $path.Source) -and
-                        ($_.Destination -eq $path.Destination)
+                        ($_.Destination -eq $path.Destination) -and
+                        ($_.Action -like 'File moved*')
+                        }).Count
+                    $counter.Path.OtherAction += $action.Job.Results.Where(
+                        {
+                        (-not $_.Error) -and
+                        ($_.Source -eq $path.Source) -and
+                        ($_.Destination -eq $path.Destination) -and
+                        ($_.Action -notLike 'File moved*')
                         }).Count
                     #endregion
 
@@ -844,6 +860,16 @@ End {
                         <td>
                             $(
                                 $result = "$($counter.Path.MovedFiles) moved"
+
+                                if ($counter.Path.OtherAction) {
+                                    $result += ", {0} other action{1}" -f
+                                    $(
+                                        $counter.Path.OtherAction
+                                    ),
+                                    $(
+                                        if($counter.Path.OtherAction -ne 1) {'s'}
+                                    )
+                                }
 
                                 if ($counter.Path.Errors) {
                                     $result += ", {0} error{1}" -f
@@ -914,7 +940,9 @@ End {
             (
                 ($file.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and
                 (
-                    ($counter.Total.Errors) -or ($counter.Total.MovedFiles)
+                    ($counter.Total.Errors) -or
+                    ($counter.Total.MovedFiles) -or
+                    ($counter.Total.OtherAction)
                 )
             )
         ) {
@@ -972,6 +1000,11 @@ End {
         if ($counter.Total.MovedFiles) {
             $mailParams.Subject += "$($counter.Total.MovedFiles) moved"
         }
+        if ($counter.Total.OtherAction) {
+            $mailParams.Subject += "$($counter.Total.OtherAction) other action{0}" -f $(
+                if ($counter.Total.OtherAction -ne 1) { 's' }
+            )
+        }
         if ($counter.Total.Errors) {
             $mailParams.Priority = 'High'
             $mailParams.Subject += "{0} error{1}" -f
@@ -1000,7 +1033,9 @@ End {
             (
                 ($file.SendMail.When -eq 'OnlyOnErrorOrAction') -and
                 (
-                ($counter.Total.MovedFiles) -or ($counter.Total.Errors)
+                    ($counter.Total.Errors) -or
+                    ($counter.Total.MovedFiles) -or
+                    ($counter.Total.OtherAction)
                 )
             )
         ) {

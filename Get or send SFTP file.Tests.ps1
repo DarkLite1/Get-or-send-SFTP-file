@@ -53,7 +53,7 @@ BeforeAll {
             FileName    = 'a.txt'
             FileLength  = 5KB
             DateTime    = Get-Date
-            Action      = @('file moved', 'file removed')
+            Action      = @('File moved after previous unsuccessful move')
             Error       = $null
         }
         [PSCustomObject]@{
@@ -62,7 +62,7 @@ BeforeAll {
             FileName    = 'b.txt'
             FileLength  = 3KB
             DateTime    = Get-Date
-            Action      = @('file moved', 'file removed')
+            Action      = @('File moved')
             Error       = $null
         }
     )
@@ -928,7 +928,7 @@ Describe 'when the SFTP script runs successfully' {
             ($Attachments -like '*- Log.xlsx') -and
             ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*1 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*1 moved*2 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
             }
-        }
+        } -Tag test
     }
 }
 Describe 'ExportExcelFile.When' {
