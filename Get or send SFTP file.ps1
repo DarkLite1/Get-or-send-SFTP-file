@@ -599,7 +599,8 @@ Process {
                     $action.Job.Results.Count,
                     $(if ($action.Job.Results.Count -ne 1) { 's' })
 
-                    Write-Verbose $M; Write-EventLog @EventVerboseParams -Message $M
+                    Write-Verbose $M
+                    Write-EventLog @EventVerboseParams -Message $M
                 }
                 #endregion
             }
@@ -632,6 +633,8 @@ Process {
                     Error   = $null
                 }
             }
+
+            Write-Verbose "Created $($session.Count) sessions"
             #endregion
 
             #region Get connection errors
@@ -686,7 +689,10 @@ Process {
     }
     Finally {
         if ($psSessions.Values.Session) {
-            Get-PSSession | Remove-PSSession -EA Ignore
+            # Only close PS Sessions and not the WinPSCompatSession
+            # used by Write-EventLog
+            # https://github.com/PowerShell/PowerShell/issues/24227
+            $psSessions.Values.Session | Remove-PSSession -EA Ignore
         }
     }
 }
