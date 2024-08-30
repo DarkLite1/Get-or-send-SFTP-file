@@ -327,6 +327,8 @@ try {
                         }
                         #endregion
 
+                        $result.DateTime = Get-Date
+
                         #region Rename source file to temp file on SFTP server
                         if (-not $failedFile) {
                             $retryCount = 0
@@ -657,6 +659,8 @@ try {
                             }
                         }
                         #endregion
+
+                        $result.DateTime = Get-Date
 
                         #region Rename source file to temp file
                         $retryCount = 0
