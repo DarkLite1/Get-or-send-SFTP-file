@@ -920,7 +920,7 @@ End {
                 },
                 @{
                     Name       = 'Action'
-                    Expression = { $_.Action -join ', ' }
+                    Expression = { $_.Action }
                 },
                 'Error'
                 #endregion

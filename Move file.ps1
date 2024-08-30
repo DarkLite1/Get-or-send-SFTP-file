@@ -207,7 +207,7 @@ try {
                             Destination = $path.Destination
                             FileName    = $incompleteFile.Name
                             FileLength  = $incompleteFile.Length
-                            Action      = @()
+                            Action      = $null
                             Error       = $null
                         }
 
@@ -215,7 +215,7 @@ try {
 
                         $incompleteFile | Remove-Item
 
-                        $result.Action += 'Removed incomplete downloaded file from the destination folder'
+                        $result.Action = 'Removed incomplete downloaded file from the destination folder'
                     }
                     catch {
                         $result.Error = "Failed removing incomplete downloaded file '$($incompleteFile.Name)': $_"
@@ -238,7 +238,7 @@ try {
                             Destination = $path.Destination
                             FileName    = $file.Name
                             FileLength  = $file.Length
-                            Action      = @()
+                            Action      = $null
                             Error       = $null
                         }
 
@@ -302,7 +302,7 @@ try {
                                             Destination = $result.Destination
                                             FileName    = $result.FileName
                                             FileLength  = $result.FileLength
-                                            Action      = @('Removed duplicate file from the file system')
+                                            Action      = 'Removed duplicate file from the file system'
                                             Error       = $null
                                         }
 
@@ -411,10 +411,10 @@ try {
                         #endregion
 
                         if ($failedFile) {
-                            $result.Action += 'File moved after previous unsuccessful move'
+                            $result.Action = 'File moved after previous unsuccessful move'
                         }
                         else {
-                            $result.Action += 'File moved'
+                            $result.Action = 'File moved'
                         }
                     }
                     catch {
@@ -438,7 +438,7 @@ try {
                                     Destination = $result.Destination
                                     FileName    = ($result.FileName + $PartialFileExtension.Download)
                                     FileLength  = $result.FileLength
-                                    Action      = @()
+                                    Action      = $null
                                     Error       = "Failed to remove incomplete downloaded file '$($testPathParams.LiteralPath)': $_"
                                 }
 
@@ -471,7 +471,7 @@ try {
                         FileName    = $null
                         FileLength  = $null
                         DateTime    = Get-Date
-                        Action      = @()
+                        Action      = $null
                         Error       = "Path '$($path.Source)' not found on the file system"
                     }
                 }
@@ -562,7 +562,7 @@ try {
                             Destination = $path.Destination
                             FileName    = $partialFile.Name
                             FileLength  = $partialFile.Length
-                            Action      = @()
+                            Action      = $null
                             Error       = $null
                         }
 
@@ -570,7 +570,7 @@ try {
 
                         Remove-SFTPItem @sessionParams -Path $partialFile.FullName
 
-                        $result.Action += 'Removed incomplete uploaded file'
+                        $result.Action = 'Removed incomplete uploaded file'
                     }
                     catch {
                         $result.Error = "Failed removing incomplete uploaded file: $_"
@@ -593,7 +593,7 @@ try {
                             Destination = $path.Destination
                             FileName    = $file.Name
                             FileLength  = $file.Length
-                            Action      = @()
+                            Action      = $null
                             Error       = $null
                         }
 
@@ -635,7 +635,7 @@ try {
                                             Destination = $result.Destination
                                             FileName    = $result.FileName
                                             FileLength  = $result.FileLength
-                                            Action      = @('Removed duplicate file from SFTP server')
+                                            Action      = 'Removed duplicate file from SFTP server'
                                             Error       = $null
                                         }
                                     }
@@ -733,7 +733,7 @@ try {
                         }
                         #endregion
 
-                        $result.Action += 'File moved'
+                        $result.Action = 'File moved'
                     }
                     catch {
                         #region Rename temp file back to original file name
@@ -754,7 +754,7 @@ try {
                                     Destination = $result.Destination
                                     FileName    = $tempFile.Name
                                     FileLength  = $result.Length
-                                    Action      = @()
+                                    Action      = $null
                                     Error       = "Failed to rename temp file '$($tempFile.UploadFilePath)' back to its original name '$($file.Name)': $_"
                                 }
 
@@ -782,7 +782,7 @@ try {
                 Destination = $path.Destination
                 FileName    = $null
                 FileLength  = $null
-                Action      = @()
+                Action      = $null
                 Error       = $_
             }
             $Error.RemoveAt(0)

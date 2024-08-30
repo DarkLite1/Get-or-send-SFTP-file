@@ -53,7 +53,7 @@ BeforeAll {
             FileName    = 'a.txt'
             FileLength  = 5KB
             DateTime    = Get-Date
-            Action      = @('File moved after previous unsuccessful move')
+            Action      = 'File moved after previous unsuccessful move'
             Error       = $null
         }
         [PSCustomObject]@{
@@ -62,7 +62,7 @@ BeforeAll {
             FileName    = 'b.txt'
             FileLength  = 3KB
             DateTime    = Get-Date
-            Action      = @('File moved')
+            Action      = 'File moved'
             Error       = $null
         }
     )
@@ -77,7 +77,7 @@ BeforeAll {
             FileName     = $testData[0].FileName
             FileSize     = $testData[0].FileLength / 1KB
             DateTime     = $testData[0].DateTime
-            Action       = $testData[0].Action -join ', '
+            Action       = $testData[0].Action
             Error        = $null
         }
         [PSCustomObject]@{
@@ -89,7 +89,7 @@ BeforeAll {
             FileName     = $testData[1].FileName
             FileSize     = $testData[1].FileLength / 1KB
             DateTime     = $testData[1].DateTime
-            Action       = $testData[1].Action -join ', '
+            Action       = $testData[1].Action
             Error        = $null
         }
     )
