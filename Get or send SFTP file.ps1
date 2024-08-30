@@ -953,7 +953,7 @@ End {
             $createExcelFile = $false
         }
 
-        if ($createExcelFile) {
+        if ($createExcelFile -or ($file.SendMail.When -eq 'Always')) {
             $excelFileLogParams = @{
                 LogFolder    = $logParams.LogFolder
                 Format       = 'yyyy-MM-dd'
@@ -972,7 +972,9 @@ End {
                 TableName     = 'Overview'
                 Verbose       = $false
             }
+        }
 
+        if ($createExcelFile) {
             $M = "Export {0} rows to Excel sheet '{1}'" -f
             $exportToExcel.Count, $excelParams.WorksheetName
             Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
@@ -988,8 +990,6 @@ End {
                     { $_.NumberFormat.Format = '0.00\ \K\B' }
                 )
             }
-
-            $mailParams.Attachments = $excelParams.Path
         }
         #endregion
 
@@ -1055,6 +1055,14 @@ End {
             EventLogSource = $ScriptName
             Save           = $LogFile + ' - Mail.html'
             ErrorAction    = 'Stop'
+        }
+
+        if (
+            ($sendMailToUser) -and
+            (Test-Path -LiteralPath $excelParams.Path -PathType 'Leaf')
+        ) {
+            # When SendMail.When is 'Always' send Excel file too
+            $mailParams.Attachments = $excelParams.Path
         }
 
         if ($mailParams.Attachments) {
