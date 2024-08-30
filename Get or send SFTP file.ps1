@@ -764,11 +764,13 @@ End {
                 $counter.Action.OtherAction = $action.Job.Results.Where(
                     { (-not $_.Error) -and ($_.Action -notLike 'File moved*') }
                 ).Count
+
                 $counter.Action.Errors = $action.Job.Results.Where(
                     { $_.Error }).Count
-                $counter.Action.Errors += $action.Job.Error.Count
 
                 $counter.Total.Errors += $counter.Action.Errors
+                $counter.Total.Errors += $action.Job.Error.Count
+
                 $counter.Total.MovedFiles += $counter.Action.MovedFiles
                 $counter.Total.OtherAction += $counter.Action.OtherAction
                 #endregion
@@ -842,7 +844,7 @@ End {
                     $htmlTable += "
                         $(
                             if (
-                                $counter.Action.Errors -or
+                                $action.Job.Error.Count -or
                                 $counter.Path.Errors
                             ) {
                                 '<tr style="background-color: #f78474">'
