@@ -726,7 +726,6 @@ End {
         }
         #endregion
 
-        $mailParams = @{}
         $htmlTable = @()
         $exportToExcel = @()
 
@@ -996,10 +995,10 @@ End {
         #endregion
 
         #region Mail subject and priority
-        $mailParams.Priority = 'Normal'
-        $mailParams.Subject = @()
-
-        $mailParams.Subject += "$($counter.Total.MovedFiles) moved"
+        $mailParams = @{
+            Priority = 'Normal'
+            Subject  = @("$($counter.Total.MovedFiles) moved")
+        }
 
         if ($counter.Total.OtherAction) {
             $mailParams.Subject += "$($counter.Total.OtherAction) other action{0}" -f $(
@@ -1014,10 +1013,6 @@ End {
         }
 
         $mailParams.Subject = $mailParams.Subject -join ', '
-
-        if (-not $mailParams.Subject) {
-            $mailParams.Subject = 'Nothing done'
-        }
         #endregion
 
         #region Check to send mail to user
