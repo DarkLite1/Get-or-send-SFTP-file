@@ -999,9 +999,8 @@ End {
         $mailParams.Priority = 'Normal'
         $mailParams.Subject = @()
 
-        if ($counter.Total.MovedFiles) {
-            $mailParams.Subject += "$($counter.Total.MovedFiles) moved"
-        }
+        $mailParams.Subject += "$($counter.Total.MovedFiles) moved"
+
         if ($counter.Total.OtherAction) {
             $mailParams.Subject += "$($counter.Total.OtherAction) other action{0}" -f $(
                 if ($counter.Total.OtherAction -ne 1) { 's' }
