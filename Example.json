@@ -1,5 +1,6 @@
 {
   "MaxConcurrentJobs": 5,
+  "OnlySendSummaryMail": false,
   "Tasks": [
     {
       "TaskName": "Application x",
@@ -41,6 +42,7 @@
   },
   "?": {
     "Option.FileExtensions": "Empty will move all files",
+    "OnlySendSummaryMail": "Don't run SFTP code but send a summary email of the previously created Excel file of the current day",
     "Actions.Type": "Upload | Download, FileExtensions: empty is all files",
     "ExportExcelFile.When": "Never | OnlyOnError | OnlyOnErrorOrAction",
     "SendMail.When": "Never | OnlyOnError | OnlyOnErrorOrAction | Always"

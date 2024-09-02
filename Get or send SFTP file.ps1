@@ -213,6 +213,22 @@ Begin {
             }
             #endregion
 
+            #region Test boolean value
+            foreach (
+                $boolean in
+                @(
+                    'OnlySendSummaryMail'
+                )
+            ) {
+                try {
+                    $null = [Boolean]::Parse($file.$boolean)
+                }
+                catch {
+                    throw "Property '$boolean' is not a boolean value"
+                }
+            }
+            #endregion
+
             $Tasks = $file.Tasks
 
             foreach ($task in $Tasks) {
