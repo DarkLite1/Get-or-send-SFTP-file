@@ -704,7 +704,7 @@ End {
             Total = @{
                 MovedFiles  = 0
                 OtherAction = 0
-                Errors      = $countSystemErrors
+                Errors      = 0
             }
         }
         #endregion
@@ -930,6 +930,8 @@ End {
 
         $htmlTable += '</table>'
 
+        $mailParams = @{}
+
         #region Create Excel worksheet Overview
         $createExcelFile = $false
 
@@ -954,7 +956,7 @@ End {
             $createExcelFile = $false
         }
 
-        if ($createExcelFile -or ($file.SendMail.When -eq 'Always')) {
+        if ($createExcelFile) {
             $excelFileLogParams = @{
                 LogFolder    = $logParams.LogFolder
                 Format       = 'yyyy-MM-dd'
@@ -973,9 +975,7 @@ End {
                 TableName     = 'Overview'
                 Verbose       = $false
             }
-        }
 
-        if ($createExcelFile) {
             $M = "Export {0} rows to Excel sheet '{1}'" -f
             $exportToExcel.Count, $excelParams.WorksheetName
             Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
@@ -991,11 +991,13 @@ End {
                     { $_.NumberFormat.Format = '0.00\ \K\B' }
                 )
             }
+
+            $mailParams.Attachments = $excelParams.Path
         }
         #endregion
 
         #region Mail subject and priority
-        $mailParams = @{
+        $mailParams += @{
             Priority = 'Normal'
             Subject  = @("$($counter.Total.MovedFiles) moved")
         }
@@ -1005,7 +1007,7 @@ End {
                 if ($counter.Total.OtherAction -ne 1) { 's' }
             )
         }
-        if ($counter.Total.Errors) {
+        if ($counter.Total.Errors -or $countSystemErrors) {
             $mailParams.Priority = 'High'
             $mailParams.Subject += "{0} error{1}" -f
             $counter.Total.Errors,
@@ -1024,11 +1026,12 @@ End {
             ) -or
             (
                 ($file.SendMail.When -eq 'OnlyOnError') -and
-                ($counter.Total.Errors)
+                ($counter.Total.Errors -or $countSystemErrors)
             ) -or
             (
                 ($file.SendMail.When -eq 'OnlyOnErrorOrAction') -and
                 (
+                    ($countSystemErrors) -or
                     ($counter.Total.Errors) -or
                     ($counter.Total.MovedFiles) -or
                     ($counter.Total.OtherAction)
@@ -1051,14 +1054,6 @@ End {
             EventLogSource = $ScriptName
             Save           = $LogFile + ' - Mail.html'
             ErrorAction    = 'Stop'
-        }
-
-        if (
-            ($sendMailToUser) -and
-            (Test-Path -LiteralPath $excelParams.Path -PathType 'Leaf')
-        ) {
-            # When SendMail.When is 'Always' send Excel file too
-            $mailParams.Attachments = $excelParams.Path
         }
 
         if ($mailParams.Attachments) {
