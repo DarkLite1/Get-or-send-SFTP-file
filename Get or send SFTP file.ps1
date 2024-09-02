@@ -720,8 +720,16 @@ End {
                 if ($countSystemErrors -ne 1) { 's' }
             ),
             $(
-                $Error.Exception.Message | Where-Object { $_ } |
-                ConvertTo-HtmlListHC
+                $errorList = $Error.Exception.Message | Where-Object { $_ }
+                $errorList | ConvertTo-HtmlListHC
+
+                $errorList.foreach(
+                    {
+                        $M = "System error: $_"
+                        Write-Warning $M
+                        Write-EventLog @EventErrorParams -Message $M
+                    }
+                )
             )
         }
         #endregion
