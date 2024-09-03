@@ -4,9 +4,8 @@
 
 BeforeAll {
     $testInputFile = @{
-        MaxConcurrentJobs   = 1
-        OnlySendSummaryMail = $false
-        Tasks               = @(
+        MaxConcurrentJobs = 1
+        Tasks             = @(
             @{
                 TaskName = 'App x'
                 Sftp     = @{
@@ -38,11 +37,11 @@ BeforeAll {
                 )
             }
         )
-        SendMail            = @{
+        SendMail          = @{
             To   = 'bob@contoso.com'
             When = 'Always'
         }
-        ExportExcelFile     = @{
+        ExportExcelFile   = @{
             When = 'OnlyOnErrorOrAction'
         }
     }
@@ -240,20 +239,6 @@ Describe 'send an e-mail to the admin when' {
                     $EntryType -eq 'Error'
                 }
             }
-            It 'OnlySendSummaryMail is not a boolean value' {
-                $testNewInputFile = Copy-ObjectHC $testInputFile
-                $testNewInputFile.OnlySendSummaryMail = 'kiwi'
-
-                $testNewInputFile | ConvertTo-Json -Depth 7 |
-                Out-File @testOutParams
-
-                .$testScript @testParams
-
-                Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
-                        (&$MailAdminParams) -and
-                        ($Message -like "*$ImportFile*Property 'OnlySendSummaryMail' is not a boolean value*")
-                }
-            } -Tag test
             It 'Tasks.<_> not found' -ForEach @(
                 'TaskName', 'Sftp', 'Actions', 'Option'
             ) {
