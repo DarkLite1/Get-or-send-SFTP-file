@@ -858,6 +858,7 @@ End {
         }
         #endregion
 
+        #region Create HTML table
         Write-Verbose 'Create HTML table'
 
         $htmlTable = @()
@@ -1030,6 +1031,7 @@ End {
         }
 
         $htmlTable += '</table>'
+        #endregion
 
         #region Create Excel worksheet Overview
         $createExcelFile = $false
