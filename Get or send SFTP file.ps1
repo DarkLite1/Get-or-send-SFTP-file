@@ -811,6 +811,7 @@ End {
 
         $mailParams = @{}
 
+        #region Add results from Excel file
         if (
             ($ReportOnly) -and
             (Test-Path -LiteralPath $excelParams.Path -PathType 'Leaf')
@@ -823,6 +824,8 @@ End {
             }
             $excelFile = Import-Excel @importExcelParams
 
+            $mailParams.Attachments = $excelParams.Path
+
             Write-Verbose 'Add results from Excel file'
 
             foreach ($row in $excelFile) {
@@ -830,7 +833,7 @@ End {
                     $task in
                     $Tasks.where({ $_.TaskName -eq $row.TaskName }, 'First')
                 ) {
-                    Write-Verbose "Task '$($_.TaskName)'"
+                    Write-Verbose "Task '$($task.TaskName)'"
 
                     foreach (
                         $action in
@@ -853,6 +856,7 @@ End {
                 }
             }
         }
+        #endregion
 
         Write-Verbose 'Create HTML table'
 
@@ -1128,7 +1132,7 @@ End {
                             $systemErrorsHtmlList
                             $(
                                 if ($ReportOnly) {
-                                    '<p>Summary of all SFTP actions executed today:</p>'
+                                    '<p>Summary of all SFTP actions <b>executed today</b>:</p>'
                                 }
                                 else {
                                     '<p>Summary of SFTP actions:</p>'

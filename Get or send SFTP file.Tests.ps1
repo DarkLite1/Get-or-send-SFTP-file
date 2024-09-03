@@ -926,7 +926,7 @@ Describe 'when the SFTP script runs successfully' {
             ($Priority -eq 'Normal') -and
             ($Subject -eq '2 moved') -and
             ($Attachments -like '*- Log.xlsx') -and
-            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*1 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*1 moved*2 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
+            ($Message -like "*Summary of SFTP actions*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*1 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*1 moved*2 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
             }
         }
     }
@@ -1194,15 +1194,15 @@ Describe 'ReportOnly' {
                 ($Priority -eq 'Normal') -and
                 ($Subject -eq '0 moved') -and
                 (-not $Attachments) -and
-                ($Message -like "*Summary of all SFTP actions executed today*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*0 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*0 moved*0 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
+                ($Message -like "*Summary of all SFTP actions <b>executed today</b>*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*0 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*0 moved*0 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
             }
         }
-    } -Tag test
+    }
     Context 'when a previously exported Excel file is found' {
         BeforeAll {
             $testExportParams = @{
                 WorksheetName = 'Overview'
-                Path          = $testParams.LogFolder + '\' + $testParams.ScriptName + '\' + (Get-Date).ToString('yyyy-DD-mm') + ' - ' + $testParams.ScriptName + ' - ' + $testParams.ImportFile + ' - Log.xlsx'
+                Path          = $testParams.LogFolder + '\' + (Get-Date).ToString('yyyy-MM-dd') + ' - ' + $testParams.ScriptName + ' - ' + (Split-Path $testParams.ImportFile -Leaf).TrimEnd('.json') + ' - Log.xlsx'
             }
             $testExportedExcelRows | Export-Excel @testExportParams
 
@@ -1211,13 +1211,17 @@ Describe 'ReportOnly' {
 
             .$testScript @testParams -ReportOnly
         }
+        It 'do not call the SFTP script' {
+            Should -Not -Invoke New-PSSession
+            Should -Not -Invoke Invoke-Command
+        }
         It 'send an e-mail' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Context -ParameterFilter {
             ($To -eq $testInputFile.SendMail.To) -and
             ($Attachments -eq $testExportParams.Path) -and
             ($Priority -eq 'Normal') -and
             ($Subject -eq '2 moved') -and
-            ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*1 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*1 moved*2 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
+            ($Message -like "*Summary of all SFTP actions <b>executed today</b>*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*1 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*1 moved*2 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
             }
         }
     }
