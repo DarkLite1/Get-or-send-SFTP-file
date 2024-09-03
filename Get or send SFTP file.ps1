@@ -90,7 +90,7 @@
     The version of PowerShell on the remote endpoint as returned by
     Get-PSSessionConfiguration.
 
-.PARAMETER OnlySendSummaryMail
+.PARAMETER ReportOnly
     When this switch is used the SFTP script is not executed. This option will
     read the previously exported Excel file and create a summary email of all
     the actions in that Excel sheet.
@@ -108,7 +108,7 @@ Param (
     [HashTable]$ScriptPath = @{
         MoveFile = "$PSScriptRoot\Move file.ps1"
     },
-    [Switch]$OnlySendSummaryMail,
+    [Switch]$ReportOnly,
     [String]$PSSessionConfiguration = 'PowerShell.7',
     [String]$LogFolder = "$env:POWERSHELL_LOG_FOLDER\File or folder\Get or send SFTP file\$ScriptName",
     [String[]]$ScriptAdmin = @(
@@ -491,7 +491,7 @@ Begin {
 
 Process {
     Try {
-        if (-not $OnlySendSummaryMail) {
+        if (-not $ReportOnly) {
             $scriptBlock = {
                 try {
                     $action = $_
