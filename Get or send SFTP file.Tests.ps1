@@ -1178,9 +1178,13 @@ Describe 'ReportOnly' {
 
             .$testScript @testParams -ReportOnly
         }
-        It 'no new Excel file is created' {
+        It 'no not create an Excel file' {
             Get-ChildItem $testParams.LogFolder -Recurse -Filter '*.xlsx' |
             Should -BeNullOrEmpty
+        }
+        It 'do not call the SFTP script' {
+            Should -Not -Invoke New-PSSession
+            Should -Not -Invoke Invoke-Command
         }
         It 'send an e-mail' {
             Should -Invoke Send-MailHC -Exactly 1 -Scope Context
@@ -1190,24 +1194,29 @@ Describe 'ReportOnly' {
                 ($Priority -eq 'Normal') -and
                 ($Subject -eq '0 moved') -and
                 (-not $Attachments) -and
-                ($Message -notLike '*table*') -and
-                ($Message -like "*Nothing done*")
+                ($Message -like "*Summary of all SFTP actions executed today*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*0 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*0 moved*0 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
             }
         }
-        It 'the SFTP script is not called' {
-            Should -Not -Invoke New-PSSession
-            Should -Not -Invoke Invoke-Command
-        }
     } -Tag test
-    Context 'send an e-mail' {
-        It 'with attachment to the user' {
-            .$testScript @testParams -ReportOnly
+    Context 'when a previously exported Excel file is found' {
+        BeforeAll {
+            $testExportParams = @{
+                WorksheetName = 'Overview'
+                Path          = $testParams.LogFolder + '\' + $testParams.ScriptName + '\' + (Get-Date).ToString('yyyy-DD-mm') + ' - ' + $testParams.ScriptName + ' - ' + $testParams.ImportFile + ' - Log.xlsx'
+            }
+            $testExportedExcelRows | Export-Excel @testExportParams
 
-            Should -Invoke Send-MailHC -Exactly 1 -ParameterFilter {
+            $testInputFile | ConvertTo-Json -Depth 7 |
+            Out-File @testOutParams
+
+            .$testScript @testParams -ReportOnly
+        }
+        It 'send an e-mail' {
+            Should -Invoke Send-MailHC -Exactly 1 -Scope Context -ParameterFilter {
             ($To -eq $testInputFile.SendMail.To) -and
+            ($Attachments -eq $testExportParams.Path) -and
             ($Priority -eq 'Normal') -and
             ($Subject -eq '2 moved') -and
-            ($Attachments -like '*- Log.xlsx') -and
             ($Message -like "*table*$($testInputFile.Tasks[0].TaskName)*$($testInputFile.Tasks[0].Sftp.ComputerName)*Source*Destination*Result*$($testInputFile.Tasks[0].Actions[0].Paths[0].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[0].Destination)*1 moved*$($testInputFile.Tasks[0].Actions[0].Paths[1].Source)*$($testInputFile.Tasks[0].Actions[0].Paths[1].Destination)*1 moved*2 moved on $($testInputFile.Tasks[0].Actions[0].ComputerName)*")
             }
         }

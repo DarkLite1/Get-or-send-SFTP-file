@@ -691,6 +691,9 @@ Process {
             Write-Verbose 'All tasks finished'
             #endregion
         }
+        else {
+            Write-Verbose 'Only report results of the current day'
+        }
     }
     Catch {
         Write-Warning $_
@@ -781,8 +784,8 @@ End {
         }
         #endregion
 
+        #region Get Excel file path
         if ($ReportOnly -or $exportToExcel) {
-            #region Get Excel file path
             $excelFileLogParams = @{
                 LogFolder    = $logParams.LogFolder
                 Format       = 'yyyy-MM-dd'
@@ -803,61 +806,58 @@ End {
             }
 
             Write-Verbose "Excel file path '$($excelParams.Path)'"
-            #endregion
+        }
+        #endregion
 
-            if (
-                -not (Test-Path -LiteralPath $excelParams.Path -PathType Leaf)
-            ) {
-                $mailParams = @{}
+        $mailParams = @{}
 
-                #region Mail subject and priority
-                $mailParams += @{
-                    Priority = 'Normal'
-                    Subject  = @('0 moved')
-                }
-
-                if ($countSystemErrors) {
-                    $mailParams.Priority = 'High'
-                    $mailParams.Subject += "{0} error{1}" -f
-                    $countSystemErrors,
-                    $(if ($countSystemErrors -ne 1) { 's' })
-                }
-
-                $mailParams.Subject = $mailParams.Subject -join ', '
-                #endregion
-
-                #region Send mail nothing found
-                $mailParams += @{
-                    To             = $file.SendMail.To
-                    Message        = "
-                                    $systemErrorsHtmlList
-                                    <p>Nothing done. No SFTP actions performed today.</p>
-                                    <p><i>No previously exported Excel file found for the current day ($((Get-Date).ToString('dd-MM-yyyy'))).</i></p>
-                                    $htmlTable"
-                    LogFolder      = $LogParams.LogFolder
-                    Header         = $ScriptName
-                    EventLogSource = $ScriptName
-                    Save           = $LogFile + ' - Mail.html'
-                    ErrorAction    = 'Stop'
-                }
-                Send-MailHC @mailParams
-                #endregion
-
-                Exit
-            }
+        if (
+            ($ReportOnly) -and
+            (Test-Path -LiteralPath $excelParams.Path -PathType 'Leaf')
+        ) {
+            Write-Verbose 'Import Excel file'
 
             $importExcelParams = @{
                 Path          = $excelParams.Path
                 WorksheetName = $excelParams.WorksheetName
             }
             $excelFile = Import-Excel @importExcelParams
+
+            Write-Verbose 'Add results from Excel file'
+
+            foreach ($row in $excelFile) {
+                foreach (
+                    $task in
+                    $Tasks.where({ $_.TaskName -eq $row.TaskName }, 'First')
+                ) {
+                    Write-Verbose "Task '$($_.TaskName)'"
+
+                    foreach (
+                        $action in
+                        $task.Actions.where(
+                            { $_.ComputerName -eq $row.ComputerName }, 'First'
+                        )
+                    ) {
+                        foreach (
+                            $path in
+                            $action.Paths.where(
+                                {
+                                    ($_.Source -eq $row.Source) -and
+                                    ($_.Destination -eq $row.Destination)
+                                }, 'First'
+                            )
+                        ) {
+                            $action.Job.Results += $row
+                        }
+                    }
+                }
+            }
         }
 
+        Write-Verbose 'Create HTML table'
+
         $htmlTable = @()
-
         $htmlTable += '<table>'
-
-        Write-Verbose 'Start reporting'
 
         foreach ($task in $Tasks) {
             Write-Verbose "Task '$($task.TaskName)'"
@@ -1027,30 +1027,29 @@ End {
 
         $htmlTable += '</table>'
 
-        $mailParams = @{}
-
         #region Create Excel worksheet Overview
         $createExcelFile = $false
 
         if (
+            ($exportToExcel) -and
             (
-                ($file.ExportExcelFile.When -eq 'OnlyOnError') -and
-                ($counter.Total.Errors)
-            ) -or
-            (
-                ($file.ExportExcelFile.When -eq 'OnlyOnErrorOrAction') -and
                 (
-                    ($counter.Total.Errors) -or
-                    ($counter.Total.MovedFiles) -or
-                    ($counter.Total.OtherAction)
+                    ($file.ExportExcelFile.When -eq 'OnlyOnError') -and
+                    ($counter.Total.Errors)
+                ) -or
+                (
+                    (
+                        $file.ExportExcelFile.When -eq 'OnlyOnErrorOrAction'
+                    ) -and
+                    (
+                        ($counter.Total.Errors) -or
+                        ($counter.Total.MovedFiles) -or
+                        ($counter.Total.OtherAction)
+                    )
                 )
             )
         ) {
             $createExcelFile = $true
-        }
-
-        if (-not $exportToExcel) {
-            $createExcelFile = $false
         }
 
         if ($createExcelFile) {
@@ -1100,6 +1099,9 @@ End {
 
         if (
             (
+                $ReportOnly
+            ) -or
+            (
                 ($file.SendMail.When -eq 'Always')
             ) -or
             (
@@ -1124,7 +1126,14 @@ End {
             To             = $file.SendMail.To
             Message        = "
                             $systemErrorsHtmlList
-                            <p>Find a summary of all SFTP actions below:</p>
+                            $(
+                                if ($ReportOnly) {
+                                    '<p>Summary of all SFTP actions executed today:</p>'
+                                }
+                                else {
+                                    '<p>Summary of SFTP actions:</p>'
+                                }
+                            )
                             $htmlTable"
             LogFolder      = $LogParams.LogFolder
             Header         = $ScriptName
