@@ -747,8 +747,113 @@ End {
         $counter.Total.Errors += $countSystemErrors
         #endregion
 
+        #region Create Excel objects
+        $exportToExcel = foreach ($task in $Tasks) {
+            Write-Verbose "Task '$($task.TaskName)'"
+
+            foreach ($action in $task.Actions) {
+                $action.Job.Results | Select-Object 'DateTime',
+                @{
+                    Name       = 'TaskName'
+                    Expression = { $task.TaskName }
+                },
+                @{
+                    Name       = 'SftpServer'
+                    Expression = { $task.Sftp.ComputerName }
+                },
+                @{
+                    Name       = 'ComputerName'
+                    Expression = { $action.ComputerName }
+                },
+                'Source',
+                'Destination',
+                'FileName',
+                @{
+                    Name       = 'FileSize'
+                    Expression = { $_.FileLength / 1KB }
+                },
+                @{
+                    Name       = 'Action'
+                    Expression = { $_.Action }
+                },
+                'Error'
+            }
+        }
+        #endregion
+
+        if ($ReportOnly -or $exportToExcel) {
+            #region Get Excel file path
+            $excelFileLogParams = @{
+                LogFolder    = $logParams.LogFolder
+                Format       = 'yyyy-MM-dd'
+                Name         = "$ScriptName - $((Split-Path $ImportFile -Leaf).TrimEnd('.json')) - Log.xlsx"
+                Date         = 'ScriptStartTime'
+                NoFormatting = $true
+            }
+
+            $excelParams = @{
+                Path          = New-LogFileNameHC @excelFileLogParams
+                AutoNameRange = $true
+                Append        = $true
+                AutoSize      = $true
+                FreezeTopRow  = $true
+                WorksheetName = 'Overview'
+                TableName     = 'Overview'
+                Verbose       = $false
+            }
+
+            Write-Verbose "Excel file path '$($excelParams.Path)'"
+            #endregion
+
+            if (
+                -not (Test-Path -LiteralPath $excelParams.Path -PathType Leaf)
+            ) {
+                $mailParams = @{}
+
+                #region Mail subject and priority
+                $mailParams += @{
+                    Priority = 'Normal'
+                    Subject  = @('0 moved')
+                }
+
+                if ($countSystemErrors) {
+                    $mailParams.Priority = 'High'
+                    $mailParams.Subject += "{0} error{1}" -f
+                    $countSystemErrors,
+                    $(if ($countSystemErrors -ne 1) { 's' })
+                }
+
+                $mailParams.Subject = $mailParams.Subject -join ', '
+                #endregion
+
+                #region Send mail nothing found
+                $mailParams += @{
+                    To             = $file.SendMail.To
+                    Message        = "
+                                    $systemErrorsHtmlList
+                                    <p>Nothing done. No SFTP actions performed today.</p>
+                                    <p><i>No previously exported Excel file found for the current day ($((Get-Date).ToString('dd-MM-yyyy'))).</i></p>
+                                    $htmlTable"
+                    LogFolder      = $LogParams.LogFolder
+                    Header         = $ScriptName
+                    EventLogSource = $ScriptName
+                    Save           = $LogFile + ' - Mail.html'
+                    ErrorAction    = 'Stop'
+                }
+                Send-MailHC @mailParams
+                #endregion
+
+                Exit
+            }
+
+            $importExcelParams = @{
+                Path          = $excelParams.Path
+                WorksheetName = $excelParams.WorksheetName
+            }
+            $excelFile = Import-Excel @importExcelParams
+        }
+
         $htmlTable = @()
-        $exportToExcel = @()
 
         $htmlTable += '<table>'
 
@@ -917,35 +1022,6 @@ End {
                     <th>$($counter.Action.MovedFiles) moved on $($action.ComputerName)</th>
                 </tr>"
                 #endregion
-
-                #region Create Excel objects
-                $exportToExcel += $action.Job.Results |
-                Select-Object 'DateTime',
-                @{
-                    Name       = 'TaskName'
-                    Expression = { $task.TaskName }
-                },
-                @{
-                    Name       = 'SftpServer'
-                    Expression = { $task.Sftp.ComputerName }
-                },
-                @{
-                    Name       = 'ComputerName'
-                    Expression = { $action.ComputerName }
-                },
-                'Source',
-                'Destination',
-                'FileName',
-                @{
-                    Name       = 'FileSize'
-                    Expression = { $_.FileLength / 1KB }
-                },
-                @{
-                    Name       = 'Action'
-                    Expression = { $_.Action }
-                },
-                'Error'
-                #endregion
             }
         }
 
@@ -978,25 +1054,6 @@ End {
         }
 
         if ($createExcelFile) {
-            $excelFileLogParams = @{
-                LogFolder    = $logParams.LogFolder
-                Format       = 'yyyy-MM-dd'
-                Name         = "$ScriptName - $((Split-Path $ImportFile -Leaf).TrimEnd('.json')) - Log.xlsx"
-                Date         = 'ScriptStartTime'
-                NoFormatting = $true
-            }
-
-            $excelParams = @{
-                Path          = New-LogFileNameHC @excelFileLogParams
-                AutoNameRange = $true
-                Append        = $true
-                AutoSize      = $true
-                FreezeTopRow  = $true
-                WorksheetName = 'Overview'
-                TableName     = 'Overview'
-                Verbose       = $false
-            }
-
             $M = "Export {0} rows to Excel sheet '{1}'" -f
             $exportToExcel.Count, $excelParams.WorksheetName
             Write-Verbose $M; Write-EventLog @EventOutParams -Message $M
