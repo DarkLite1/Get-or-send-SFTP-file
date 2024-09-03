@@ -743,6 +743,8 @@ End {
                 )
             )
         }
+
+        $counter.Total.Errors += $countSystemErrors
         #endregion
 
         $htmlTable = @()
@@ -1026,7 +1028,7 @@ End {
                 if ($counter.Total.OtherAction -ne 1) { 's' }
             )
         }
-        if ($counter.Total.Errors -or $countSystemErrors) {
+        if ($counter.Total.Errors) {
             $mailParams.Priority = 'High'
             $mailParams.Subject += "{0} error{1}" -f
             $counter.Total.Errors,
@@ -1045,12 +1047,11 @@ End {
             ) -or
             (
                 ($file.SendMail.When -eq 'OnlyOnError') -and
-                ($counter.Total.Errors -or $countSystemErrors)
+                ($counter.Total.Errors)
             ) -or
             (
                 ($file.SendMail.When -eq 'OnlyOnErrorOrAction') -and
                 (
-                    ($countSystemErrors) -or
                     ($counter.Total.Errors) -or
                     ($counter.Total.MovedFiles) -or
                     ($counter.Total.OtherAction)
