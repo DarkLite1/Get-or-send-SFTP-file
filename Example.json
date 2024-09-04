@@ -101,7 +101,6 @@
   },
   "?": {
     "Option.FileExtensions": "Empty will move all files",
-    "Actions.Type": "Upload | Download, FileExtensions: empty is all files",
     "ExportExcelFile.When": "Never | OnlyOnError | OnlyOnErrorOrAction",
     "SendMail.When": "Never | OnlyOnError | OnlyOnErrorOrAction | Always"
   }
