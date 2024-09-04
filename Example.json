@@ -2,7 +2,7 @@
   "MaxConcurrentJobs": 5,
   "Tasks": [
     {
-      "TaskName": "Application x",
+      "TaskName": "Step 1: Simple example - Application x",
       "Sftp": {
         "ComputerName": "ftp.application-x.be",
         "Credential": {
@@ -12,20 +12,80 @@
         }
       },
       "Option": {
+        "OverwriteFile": true,
+        "FileExtensions": []
+      },
+      "Actions": [
+        {
+          "ComputerName": null,
+          "Paths": [
+            {
+              "Source": "\\SERVER\\C$\\Date_From_App_2_SFTP",
+              "Destination": "sftp:/AppData/"
+            },
+            {
+              "Source": "\\SERVER\\C$\\Data",
+              "Destination": "sftp:/data/"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "TaskName": "Step 2: From process network to DMZ",
+      "Sftp": {
+        "ComputerName": "PROCESS-NETWORK-ComputerName_or_IP_or_URL",
+        "Credential": {
+          "UserName": "PROCESS-NETWORK_SFTP_USERNAME",
+          "Password": "PROCESS-NETWORK_SFTP_PASSWORD",
+          "PasswordKeyFile": null
+        }
+      },
+      "Option": {
+        "OverwriteFile": false,
+        "FileExtensions": [".csv"]
+      },
+      "Actions": [
+        {
+          "ComputerName": "DMZ_ComputerName",
+          "Paths": [
+            {
+              "Source": "sftp:/device1_2_application/",
+              "Destination": "C:\\Transfer\\device1_2_application"
+            },
+            {
+              "Source": "sftp:/device2_2_application/",
+              "Destination": "C:\\Transfer\\device2_2_application"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "TaskName": "Step 3: From DMZ to OFFICE network",
+      "Sftp": {
+        "ComputerName": "OFFICE-ComputerName_or_IP_or_URL",
+        "Credential": {
+          "UserName": "OFFICE_SFTP_USERNAME",
+          "Password": "OFFICE_SFTP_PASSWORD",
+          "PasswordKeyFile": null
+        }
+      },
+      "Option": {
         "OverwriteFile": false,
         "FileExtensions": []
       },
       "Actions": [
         {
-          "ComputerName": "PC1",
+          "ComputerName": "DMZ_ComputerName",
           "Paths": [
             {
-              "Source": "sftp:/reports/",
-              "Destination": "\\SERVER\\C$\\Reports"
+              "Source": "C:\\Transfer\\device1_2_application",
+              "Destination": "sftp:/device1_2_application/"
             },
             {
-              "Source": "\\SERVER\\C$\\Data",
-              "Destination": "sftp:/data/"
+              "Source": "C:\\Transfer\\device2_2_application",
+              "Destination": "sftp:/device2_2_application/"
             }
           ]
         }
