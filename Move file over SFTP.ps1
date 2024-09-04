@@ -861,8 +861,7 @@ End {
         #region Create HTML table
         Write-Verbose 'Create HTML table'
 
-        $htmlTable = @()
-        $htmlTable += '<table>'
+        $htmlTable = @('<table>')
 
         foreach ($task in $Tasks) {
             Write-Verbose "Task '$($task.TaskName)'"
@@ -1108,7 +1107,7 @@ End {
                 $ReportOnly
             ) -or
             (
-                ($file.SendMail.When -eq 'Always')
+                $file.SendMail.When -eq 'Always'
             ) -or
             (
                 ($file.SendMail.When -eq 'OnlyOnError') -and
