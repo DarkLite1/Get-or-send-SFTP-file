@@ -814,7 +814,7 @@ End {
             if (
                 ($ReportOnly) -and
                 (Test-Path -LiteralPath $excelParams.Path -PathType 'Leaf')
-                ) {
+            ) {
                 Write-Verbose 'Import Excel file'
 
                 $importExcelParams = @{
