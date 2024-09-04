@@ -12,62 +12,74 @@
     The computer that is running the SFTP code should have the module 'Posh-SSH'
     installed.
 
-    Actions run in parallel when MaxConcurrentJobs is more than 1. Tasks
-    run sequentially.
+    Tasks will always run in sequential order, one after the other. Actions run
+    in parallel when MaxConcurrentJobs is more than 1.
 
 .PARAMETER ImportFile
     A .JSON file that contains all the parameters used by the script.
 
 .PARAMETER Tasks
-    Each task is a collection of upload or download actions. Tasks run one after
-    the other, meaning they run sequentially.
+    Each task is a collection of upload and/or download actions. Tasks will
+    always run in sequential order, one after the other.
 
-    Actions run in parallel based on the "MaxConcurrentJobs" argument.
+    A single task can only talk to one SFTP server. Keep this in mind when
+    creating your input file.
 
 .PARAMETER Tasks.TaskName
-    Name of the task. This name is used for naming the Excel log file and to
-    identify a task in the e-mail sent to the user.
+    Name of the task. This name is used identify the task in the Excel log file
+    and in the e-mail sent to the user.
 
 .PARAMETER Tasks.Sftp.ComputerName
-    The URL where the SFTP server can be reached.
+    The SFTP server or endpoint. This can be a hostname, IP address or URL.
 
 .PARAMETER Tasks.Sftp.Credential.UserName
-    The user name used to authenticate to the SFTP server. This is an
-    environment variable on the client running the script.
+    The user name used to authenticate to the SFTP server.
+
+    This is an environment variable on the computer that is running this script.
 
 .PARAMETER Tasks.Sftp.Credential.Password
-    The password used to authenticate to the SFTP server. This is an
-    environment variable on the client running the script.
+    The password used to authenticate to the SFTP server.
+
+    This is an environment variable on the computer that is running this script.
 
 .PARAMETER Tasks.Sftp.Credential.PasswordKeyFile
-    The password used to authenticate to the SFTP server. This is an
-    SSH private key file in the OpenSSH format.
+    The password used to authenticate to the SFTP server.
+
+    This is an SSH private key file in the OpenSSH format.
 
 .PARAMETER Tasks.Actions
-    Each action represents a job that will either upload of download files
-    to or from an SFTP server. The action in a task are run in parallel when
-    "MaxConcurrentJobs" is more than 1.
+    Each action represents a connection to a remote computer, when
+    ComputerName is used. When ComputerName is not used, the SFTP code is
+    executed on the localhost.
+
+    All the Actions of a Task run in parallel when MaxConcurrentJobs is more
+    than 1.
 
 .PARAMETER Tasks.Actions.ComputerName
-    The client where the SFTP code will be executed. This machine needs to
+    The client where the SFTP code will be executed. This computer needs to
     have the module 'Posh-SSH' installed.
 
 .PARAMETER Tasks.Actions.Paths
-    Combination of Source and Destination where either can be an SFTP path,
-    indicated with "sftp:\the path" and a local or SMB path.
+    Combination of 'Source' and 'Destination' folder where one is an
+    SFTP path ('sftp:\xxx\') and the other a file system path
+    ('c:\xxx' or '\\SERVER\xxx').
 
 .PARAMETER Tasks.Option.OverwriteFile
-    Overwrite files on the SFTP server when they already exist.
+    Overwrite a file in the 'Destination' folder when it already exists.
 
 .PARAMETER Tasks.Option.FileExtensions
-    If blank, all files are treated. If used, only those files meeting the
-    extension filter will be moved.
+    Only move files with the extensions defined in 'FileExtensions'
+    ('.txt', 'csv', ...). If 'FileExtensions' is left blank, all files in the
+    'Source' folder are moved to the 'Destination' folder.
+
+.PARAMETER SendMail
+    Contains all the information for sending e-mails.
 
 .PARAMETER SendMail.To
-    E-mail addresses of users where to send the summary e-mail.
+    Destination e-mail addresses.
 
 .PARAMETER SendMail.When
-    Indicate when an e-mail will be sent to the user.
+    When does the script need to send an e-mail.
 
     Valid values:
     - Always              : Always sent an e-mail
@@ -77,7 +89,7 @@
                             when items were uploaded
 
 .PARAMETER ExportExcelFile.When
-    Indicate when an Excel file will be created containing the log data.
+    When does the script create an Excel log file.
 
     Valid values:
     - Never               : Never create an Excel log file
@@ -91,12 +103,14 @@
     Get-PSSessionConfiguration.
 
 .PARAMETER ReportOnly
-    When this switch is used the SFTP script is not executed. This option will
-    read the previously exported Excel file and create a summary email of all
+    This switch is not in the input file but meant as an argument to the script.
+
+    When this switch is used the SFTP code is not executed. This option will
+    read the previously exported Excel file and creates a summary email of all
     the actions in that Excel sheet.
 
-    This can be useful when the script ran all day but a report of total moved
-    files at the end of the day can be helpful.
+    This can be useful when the script ran every 5 minutes with a Task
+    Scheduler and 'SendMail.When' was 'OnlyOnError'.
 #>
 
 [CmdLetBinding()]
