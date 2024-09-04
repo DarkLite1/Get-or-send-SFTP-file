@@ -110,7 +110,7 @@ Param (
     },
     [Switch]$ReportOnly,
     [String]$PSSessionConfiguration = 'PowerShell.7',
-    [String]$LogFolder = "$env:POWERSHELL_LOG_FOLDER\File or folder\Get or send SFTP file\$ScriptName",
+    [String]$LogFolder = "$env:POWERSHELL_LOG_FOLDER\File or folder\Move file over SFTP\$ScriptName",
     [String[]]$ScriptAdmin = @(
         $env:POWERSHELL_SCRIPT_ADMIN,
         $env:POWERSHELL_SCRIPT_ADMIN_BACKUP
