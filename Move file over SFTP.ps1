@@ -784,8 +784,10 @@ End {
         }
         #endregion
 
-        #region Get Excel file path
+        $mailParams = @{}
+
         if ($ReportOnly -or $exportToExcel) {
+            #region Get Excel file path
             $excelFileLogParams = @{
                 LogFolder    = $logParams.LogFolder
                 Format       = 'yyyy-MM-dd'
@@ -806,57 +808,55 @@ End {
             }
 
             Write-Verbose "Excel file path '$($excelParams.Path)'"
-        }
-        #endregion
+            #endregion
 
-        $mailParams = @{}
-
-        #region Add results from Excel file
-        if (
-            ($ReportOnly) -and
-            (Test-Path -LiteralPath $excelParams.Path -PathType 'Leaf')
-        ) {
-            Write-Verbose 'Import Excel file'
-
-            $importExcelParams = @{
-                Path          = $excelParams.Path
-                WorksheetName = $excelParams.WorksheetName
-            }
-            $excelFile = Import-Excel @importExcelParams
-
-            $mailParams.Attachments = $excelParams.Path
-
-            Write-Verbose 'Add results from Excel file'
-
-            foreach ($row in $excelFile) {
-                foreach (
-                    $task in
-                    $Tasks.where({ $_.TaskName -eq $row.TaskName }, 'First')
+            #region Add results from Excel file
+            if (
+                ($ReportOnly) -and
+                (Test-Path -LiteralPath $excelParams.Path -PathType 'Leaf')
                 ) {
-                    Write-Verbose "Task '$($task.TaskName)'"
+                Write-Verbose 'Import Excel file'
 
+                $importExcelParams = @{
+                    Path          = $excelParams.Path
+                    WorksheetName = $excelParams.WorksheetName
+                }
+                $excelFile = Import-Excel @importExcelParams
+
+                $mailParams.Attachments = $excelParams.Path
+
+                Write-Verbose 'Add results from Excel file'
+
+                foreach ($row in $excelFile) {
                     foreach (
-                        $action in
-                        $task.Actions.where(
-                            { $_.ComputerName -eq $row.ComputerName }, 'First'
-                        )
+                        $task in
+                        $Tasks.where({ $_.TaskName -eq $row.TaskName }, 'First')
                     ) {
+                        Write-Verbose "Task '$($task.TaskName)'"
+
                         foreach (
-                            $path in
-                            $action.Paths.where(
-                                {
-                                    ($_.Source -eq $row.Source) -and
-                                    ($_.Destination -eq $row.Destination)
-                                }, 'First'
+                            $action in
+                            $task.Actions.where(
+                                { $_.ComputerName -eq $row.ComputerName }, 'First'
                             )
                         ) {
-                            $action.Job.Results += $row
+                            foreach (
+                                $path in
+                                $action.Paths.where(
+                                    {
+                                        ($_.Source -eq $row.Source) -and
+                                        ($_.Destination -eq $row.Destination)
+                                    }, 'First'
+                                )
+                            ) {
+                                $action.Job.Results += $row
+                            }
                         }
                     }
                 }
             }
+            #endregion
         }
-        #endregion
 
         #region Create HTML table
         Write-Verbose 'Create HTML table'
