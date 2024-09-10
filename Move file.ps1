@@ -110,10 +110,11 @@ try {
                     Write-Verbose 'Open SFTP session'
 
                     $params = @{
-                        ComputerName = $SftpComputerName
-                        Credential   = $sftpCredential
-                        AcceptKey    = $true
-                        Force        = $true
+                        ComputerName      = $SftpComputerName
+                        Credential        = $sftpCredential
+                        AcceptKey         = $true
+                        Force             = $true
+                        ConnectionTimeout = 60
                     }
 
                     if ($SftpOpenSshKeyFile) {
@@ -504,10 +505,11 @@ try {
                     Write-Verbose 'Open SFTP session'
 
                     $params = @{
-                        ComputerName = $SftpComputerName
-                        Credential   = $sftpCredential
-                        AcceptKey    = $true
-                        Force        = $true
+                        ComputerName      = $SftpComputerName
+                        Credential        = $sftpCredential
+                        AcceptKey         = $true
+                        Force             = $true
+                        ConnectionTimeout = 60
                     }
 
                     if ($SftpOpenSshKeyFile) {
